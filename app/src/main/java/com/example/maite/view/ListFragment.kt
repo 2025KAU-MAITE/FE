@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.maite.ListDetailFragment
+import com.example.maite.R
 import com.example.maite.viewmodel.MaiteListViewModel
 import com.example.maite.databinding.FragmentListBinding
 
@@ -51,7 +53,13 @@ class ListFragment : Fragment() {
         viewModel = ViewModelProvider(this)[MaiteListViewModel::class.java]
 
         // 어댑터 초기화
-        adapter = MaiteListAdapter()
+        adapter = MaiteListAdapter { maiteListItem ->
+            val fragment = ListDetailFragment.newInstance(maiteListItem)
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, fragment)
+                .addToBackStack(null)
+                .commit()
+        }
 
         // RecyclerView 설정
         binding.listRV.apply {
@@ -65,7 +73,7 @@ class ListFragment : Fragment() {
         }
 
         // "MAITE 만들기" 버튼 클릭 리스너 설정
-        binding.imageView.setOnClickListener {
+        binding.doneBtn.setOnClickListener {
             // 여기서 새 MAITE를 만드는 프래그먼트나 액티비티로 이동할 수 있습니다
             // 예:
             // findNavController().navigate(R.id.action_listFragment_to_createMaiteFragment)

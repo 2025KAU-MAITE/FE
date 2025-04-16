@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        window.navigationBarColor = resources.getColor(android.R.color.black, theme)
         // 기본 선택 항목 설정
         binding.bottomNavigation.selectedItemId = R.id.navigation_home
     }
