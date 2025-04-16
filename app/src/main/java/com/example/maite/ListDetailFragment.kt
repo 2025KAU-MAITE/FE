@@ -56,7 +56,6 @@ class ListDetailFragment : Fragment() {
         TimetableItem(15, 7, "알바", Color.parseColor("#4C7EED")),
         TimetableItem(16, 7, "알바", Color.parseColor("#4C7EED")),
         TimetableItem(17, 7, "알바", Color.parseColor("#4C7EED")),
-
     )
 
     override fun onCreateView(
@@ -84,6 +83,12 @@ class ListDetailFragment : Fragment() {
         binding.addBtn.setOnClickListener {
             val bottomSheet = InviteBottomSheet()
             bottomSheet.show(parentFragmentManager, bottomSheet.tag)
+        }
+
+        // 시간표 레이아웃 클릭 리스너 설정
+        binding.timetableLayout.setOnClickListener {
+            val suggestBottomSheet = SuggestBottomSheet.newInstance()
+            suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
         }
 
         // 시간표 생성
@@ -188,7 +193,6 @@ class ListDetailFragment : Fragment() {
             isSingleLine = true
         }
     }
-
 
     private fun createTextView(text: String): TextView {
         return TextView(context).apply {
