@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Login Screen Colors -->
-    <color name="login_primary">#6E8AFA</color>
+    <color name="login_primary">#4D71F7</color>
     <color name="login_background">#FFFFFF</color>
     <color name="login_input_background">#F5F5F5</color>
     <color name="login_input_border">#E5E5E5</color>

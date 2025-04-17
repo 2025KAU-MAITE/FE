@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
+    android:foregroundTint="@color/mainColor"
     tools:context=".view.LoginActivity">
 
     <!-- Border around the entire layout as seen in the second image -->
@@ -12,12 +13,12 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_margin="1dp"
-        android:padding="24dp"
         android:background="@color/white"
-        app:layout_constraintTop_toTopOf="parent"
+        android:padding="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
             android:id="@+id/ivLogo"
@@ -69,11 +70,13 @@
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_marginTop="16dp"
-            android:background="@drawable/login_button_background"
+            android:background="@null"
+            android:backgroundTint="@color/mainColor"
             android:text="로그인"
             android:textColor="@color/login_button_text"
             android:textSize="16sp"
             android:textStyle="bold"
+            app:cornerRadius="12dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/etPassword" />
@@ -83,8 +86,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal"
             android:gravity="center"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/btnLogin">
@@ -93,8 +96,8 @@
                 android:id="@+id/tvFindId"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
                 android:layout_marginEnd="10dp"
+                android:padding="8dp"
                 android:text="아이디 찾기"
                 android:textColor="#808080"
                 android:textSize="14sp" />
@@ -103,8 +106,8 @@
                 android:id="@+id/tvFindPassword"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
                 android:layout_marginStart="10dp"
+                android:padding="8dp"
                 android:text="비밀번호 찾기"
                 android:textColor="#808080"
                 android:textSize="14sp" />
@@ -117,9 +120,9 @@
             android:layout_marginTop="32dp"
             android:background="#E0E0E0"
             app:layout_constraintEnd_toStartOf="@+id/tvOrDivider"
+            app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/llLoginHelp"
-            app:layout_constraintHorizontal_chainStyle="packed" />
+            app:layout_constraintTop_toBottomOf="@+id/llLoginHelp" />
 
         <TextView
             android:id="@+id/tvOrDivider"
@@ -186,7 +189,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:text="회원가입"
-            android:textColor="#4D71F7"
+            android:textColor="@color/mainColor"
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
