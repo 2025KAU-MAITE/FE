@@ -1,20 +1,28 @@
 package com.example.maite.view
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import com.example.maite.R
 
 class FindIdFragment : Fragment() {
 
-    private lateinit var etEmail: EditText
-    private lateinit var btnFindId: Button
     private lateinit var btnBack: ImageButton
+    private lateinit var etName: EditText
+    private lateinit var etEmail: EditText
+    private lateinit var etAuthCode: EditText
+    private lateinit var btnSendAuthLayout: ConstraintLayout
+    private lateinit var authCodeFields: List<EditText>
+    private lateinit var tvResendAuth: TextView
+    private lateinit var btnVerifyAuthLayout: ConstraintLayout
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -28,35 +36,120 @@ class FindIdFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // Initialize views
-        etEmail = view.findViewById(R.id.etEmail)
-        btnFindId = view.findViewById(R.id.btnFindId)
         btnBack = view.findViewById(R.id.btnBack)
-
+        etName = view.findViewById(R.id.etName)
+        etEmail = view.findViewById(R.id.etEmail)
+        etAuthCode = view.findViewById(R.id.etAuthCode)
+        btnSendAuthLayout = view.findViewById(R.id.btnSendAuthLayout)
+        tvResendAuth = view.findViewById(R.id.tvResendAuth)
+        btnVerifyAuthLayout = view.findViewById(R.id.btnVerifyAuthLayout)
+        
+        // Initialize the 6 auth code fields
+        authCodeFields = listOf(
+            view.findViewById(R.id.etAuthCode1),
+            view.findViewById(R.id.etAuthCode2),
+            view.findViewById(R.id.etAuthCode3),
+            view.findViewById(R.id.etAuthCode4),
+            view.findViewById(R.id.etAuthCode5),
+            view.findViewById(R.id.etAuthCode6)
+        )
+        
+        // Set up auto-focus movement between auth code fields
+        setupAuthCodeFieldsAutoFocus()
+        
         // Set click listener for back button
         btnBack.setOnClickListener {
-            // Go back to the previous screen
             requireActivity().supportFragmentManager.popBackStack()
         }
 
-        // Set click listener for find ID button
-        btnFindId.setOnClickListener {
+        // Set click listener for send authentication button
+        btnSendAuthLayout.setOnClickListener {
+            val name = etName.text.toString().trim()
             val email = etEmail.text.toString().trim()
-            if (email.isNotEmpty()) {
-                // Implement ID recovery logic here
-                findIdWithEmail(email)
-            } else {
-                // Show error message if email is empty
+            
+            if (name.isEmpty()) {
+                etName.error = "이름을 입력해주세요"
+                return@setOnClickListener
+            }
+            
+            if (email.isEmpty()) {
                 etEmail.error = "이메일을 입력해주세요"
+                return@setOnClickListener
+            }
+            
+            // Implement send authentication logic here
+            sendAuthenticationNumber(name, email)
+        }
+        
+        // Set click listener for resend text
+        tvResendAuth.setOnClickListener {
+            val name = etName.text.toString().trim()
+            val email = etEmail.text.toString().trim()
+            
+            if (name.isNotEmpty() && email.isNotEmpty()) {
+                // Resend authentication number
+                sendAuthenticationNumber(name, email)
+            }
+        }
+        
+        // Set click listener for verify authentication button
+        btnVerifyAuthLayout.setOnClickListener {
+            // Get the auth code from the 6 fields
+            val authCode = buildAuthCode()
+            
+            if (authCode.length == 6) {
+                verifyAuthentication(authCode)
+            } else {
+                // Show error
+                // Toast.makeText(requireContext(), "인증번호 6자리를 모두 입력해주세요", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun findIdWithEmail(email: String) {
-        // This is where you would implement the logic to find the user's ID
+    private fun setupAuthCodeFieldsAutoFocus() {
+        // Auto-move to next field after entering a digit
+        for (i in 0 until 5) {
+            val currentField = authCodeFields[i]
+            val nextField = authCodeFields[i + 1]
+            
+            currentField.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                
+                override fun afterTextChanged(s: Editable?) {
+                    if (s?.length == 1) {
+                        nextField.requestFocus()
+                    }
+                }
+            })
+        }
+    }
+    
+    private fun buildAuthCode(): String {
+        val stringBuilder = StringBuilder()
+        
+        for (field in authCodeFields) {
+            stringBuilder.append(field.text.toString())
+        }
+        
+        return stringBuilder.toString()
+    }
+    
+    private fun sendAuthenticationNumber(name: String, email: String) {
+        // This is where you would implement the logic to send authentication number
         // For example, making a network request to your backend
         
-        // For now, we'll just handle the UI flow
-        // In a real app, this would connect to your backend service
+        // Show a toast or snackbar to inform the user
+        // Toast.makeText(requireContext(), "인증번호가 발송되었습니다.", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun verifyAuthentication(authCode: String) {
+        // This is where you would implement the verification logic
+        // For example, making a network request to your backend to verify the code
+        
+        // Show a toast or snackbar to inform the user
+        // Toast.makeText(requireContext(), "인증이 완료되었습니다.", Toast.LENGTH_SHORT).show()
     }
 
     companion object {
