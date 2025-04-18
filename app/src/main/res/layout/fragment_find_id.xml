@@ -84,13 +84,16 @@
         app:layout_constraintTop_toBottomOf="@+id/etEmail" />
 
     <!-- Authentication Code fields -->
+
+    <!-- Resend Authentication Text -->
     <LinearLayout
         android:id="@+id/authCodeFieldsLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="68dp"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/btnSendAuth">
 
@@ -183,7 +186,8 @@
             android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- Resend Authentication Text -->
+    <!-- Verify Authentication button -->
+
     <TextView
         android:id="@+id/tvResendAuth"
         android:layout_width="wrap_content"
@@ -193,10 +197,10 @@
         android:textColor="@android:color/darker_gray"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/authCodeFieldsLayout" />
 
-    <!-- Verify Authentication button -->
     <Button
         android:id="@+id/btnVerifyAuth"
         android:layout_width="0dp"
