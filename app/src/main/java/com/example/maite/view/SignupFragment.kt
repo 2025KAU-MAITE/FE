@@ -166,15 +166,14 @@ class SignupFragment : Fragment() {
     
     private fun handleSignup() {
         // Here you would implement the actual signup process
-        // For now, we'll just show a toast message
-        Toast.makeText(
-            requireContext(),
-            "회원가입이 완료되었습니다",
-            Toast.LENGTH_SHORT
-        ).show()
+        // For now, we'll just move to the next step in the signup flow
         
-        // Navigate to login screen or main screen after successful signup
-        requireActivity().supportFragmentManager.popBackStack()
+        // Navigate to profile information input screen
+        val signupProfileFragment = SignupProfileFragment()
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(android.R.id.content, signupProfileFragment)
+            .addToBackStack(null)
+            .commit()
     }
     
     override fun onDestroyView() {

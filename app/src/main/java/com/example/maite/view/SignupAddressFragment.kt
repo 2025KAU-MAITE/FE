@@ -33,25 +33,25 @@ class SignupAddressFragment : Fragment() {
     private fun setupListeners() {
         // Back button click listener
         binding.btnBack.setOnClickListener {
-            findNavController().navigateUp()
+            requireActivity().supportFragmentManager.popBackStack()
         }
         
-        // Address field click listener
+        // Address field click listener - directly navigate to next screen 
         binding.tvAddress.setOnClickListener {
-            // TODO: Implement Kakao address search API integration
-            openKakaoAddressSearch()
+            // Skip Kakao address search and just go to next screen
+            navigateToNextScreen()
         }
         
         // Continue button click listener
         binding.btnContinue.setOnClickListener {
             if (binding.tvAddress.text.toString() == binding.tvAddress.hint.toString() || 
                 binding.tvAddress.text.isNullOrEmpty()) {
-                Toast.makeText(requireContext(), "주소를 입력해주세요", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+                // No longer showing a toast, just proceed
+                navigateToNextScreen()
+            } else {
+                // Save address and navigate to the next screen
+                navigateToNextScreen()
             }
-            
-            // Save address and navigate to the next screen
-            navigateToNextScreen()
         }
     }
     
@@ -66,9 +66,12 @@ class SignupAddressFragment : Fragment() {
     }
     
     private fun navigateToNextScreen() {
-        // Navigate to the next screen in the signup flow
-        // findNavController().navigate(R.id.action_signupAddressFragment_to_nextFragment)
-        Toast.makeText(requireContext(), "회원가입이 완료되었습니다", Toast.LENGTH_SHORT).show()
+        // Navigate to the profile picture screen
+        val signupProfilePictureFragment = SignupProfilePictureFragment()
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(android.R.id.content, signupProfilePictureFragment)
+            .addToBackStack(null)
+            .commit()
     }
     
     override fun onDestroyView() {

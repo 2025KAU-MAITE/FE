@@ -50,7 +50,7 @@ class SignupProfilePictureFragment : Fragment() {
     private fun setupListeners() {
         // Back button click listener
         binding.btnBack.setOnClickListener {
-            findNavController().navigateUp()
+            requireActivity().supportFragmentManager.popBackStack()
         }
         
         // Profile picture click listener
@@ -89,9 +89,12 @@ class SignupProfilePictureFragment : Fragment() {
     }
     
     private fun navigateToNextScreen() {
-        // TODO: Navigate to the next screen in the signup flow
-        // findNavController().navigate(R.id.action_signupProfilePictureFragment_to_nextFragment)
-        Toast.makeText(requireContext(), "회원가입이 완료되었습니다", Toast.LENGTH_SHORT).show()
+        // Navigate to the signup completion screen
+        val signupCompletionFragment = SignupCompletionFragment()
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(android.R.id.content, signupCompletionFragment)
+            .addToBackStack(null)
+            .commit()
     }
     
     override fun onDestroyView() {

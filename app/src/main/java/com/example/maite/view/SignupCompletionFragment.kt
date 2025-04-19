@@ -1,5 +1,6 @@
 package com.example.maite.view
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -38,17 +39,11 @@ class SignupCompletionFragment : Fragment() {
     }
     
     private fun navigateToMainScreen() {
-        // Navigate to the main activity or home fragment
-        // This will depend on your app's navigation flow
-        // Option 1: Navigate to home fragment if we're already in the main activity
-        // findNavController().navigate(R.id.action_signupCompletionFragment_to_homeFragment)
-        
-        // Option 2: Start MainActivity and finish current activity
-        activity?.let {
-            // Clear backstack so user can't go back to signup flow
-            findNavController().popBackStack(R.id.signupFragment, false)
-            findNavController().navigate(R.id.homeFragment)
-        }
+        // Navigate to MainActivity and clear back stack
+        val intent = Intent(requireActivity(), com.example.maite.MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        requireActivity().finish()
     }
     
     override fun onDestroyView() {
