@@ -5,4 +5,6 @@
     <color name="white">#FFFFFFFF</color>
     <color name="mainColor">#4C7EED</color>
     <color name="gray">#9E9E9E</color>
+    <color name="border_default">#C7C7C7</color>
+    <color name="btn_inactive">#C4C4C4</color>
 </resources>

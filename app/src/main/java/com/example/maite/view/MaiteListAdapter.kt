@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.maite.databinding.ItemMaiteListBinding
 import com.example.maite.model.MaiteListItem
 
-class MaiteListAdapter : ListAdapter<MaiteListItem, MaiteListAdapter.MaiteViewHolder>(DiffCallback) {
+class MaiteListAdapter(private val onClick: (MaiteListItem) -> Unit) : ListAdapter<MaiteListItem, MaiteListAdapter.MaiteViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MaiteViewHolder {
         return MaiteViewHolder(
@@ -16,7 +16,8 @@ class MaiteListAdapter : ListAdapter<MaiteListItem, MaiteListAdapter.MaiteViewHo
                 LayoutInflater.from(parent.context),
                 parent,
                 false
-            )
+            ),
+            onClick
         )
     }
 
@@ -25,13 +26,18 @@ class MaiteListAdapter : ListAdapter<MaiteListItem, MaiteListAdapter.MaiteViewHo
         holder.bind(maiteListItem)
     }
 
-    class MaiteViewHolder(private val binding: ItemMaiteListBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    class MaiteViewHolder(
+        private val binding: ItemMaiteListBinding,
+        private val onClick: (MaiteListItem) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(maiteListItem: MaiteListItem) {
             binding.title.text = maiteListItem.title
             binding.name.text = maiteListItem.name
             binding.intro.text = maiteListItem.intro
+            binding.root.setOnClickListener {
+                onClick(maiteListItem)
+            }
         }
     }
 
