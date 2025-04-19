@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    android:padding="24dp">
+    android:padding="24dp"
+    tools:context=".view.SignupProfileFragment">
 
     <!-- Back button -->
     <ImageButton
@@ -26,7 +27,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="이름과 이메일을\n입력해주세요"
+        android:text="이름과 전화번호를\n입력해주세요"
         android:textColor="@color/black"
         android:textSize="28sp"
         android:textStyle="bold"
@@ -46,24 +47,26 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:textColor="@color/black"
-        android:textColorHint="@android:color/darker_gray"
+        android:textColorHint="@color/login_hint_text"
+        android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvTitle" />
 
-    <!-- Email input field -->
+    <!-- Phone Number input field -->
     <EditText
-        android:id="@+id/etEmail"
+        android:id="@+id/etPhoneNumber"
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/edit_text_background"
-        android:hint="이메일"
-        android:inputType="textEmailAddress"
+        android:hint="전화번호"
+        android:inputType="phone"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:textColor="@color/black"
-        android:textColorHint="@android:color/darker_gray"
+        android:textColorHint="@color/login_hint_text"
+        android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/etName" />
@@ -83,7 +86,7 @@
         app:cornerRadius="12dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/etEmail" />
+        app:layout_constraintTop_toBottomOf="@+id/etPhoneNumber" />
 
     <!-- Verify Authentication button -->
     <Button
@@ -97,6 +100,8 @@
         android:textColor="@color/white"
         android:textSize="16sp"
         android:textStyle="bold"
+        android:visibility="visible"
+        tools:visibility="visible"
         app:cornerRadius="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -111,6 +116,8 @@
         android:text="인증번호 재발송"
         android:textColor="@android:color/darker_gray"
         android:textSize="14sp"
+        android:visibility="visible"
+        tools:visibility="visible"
         app:layout_constraintBottom_toTopOf="@+id/btnVerifyAuth"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -122,6 +129,8 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:orientation="horizontal"
+        android:visibility="visible"
+        tools:visibility="visible"
         app:layout_constraintBottom_toTopOf="@+id/tvResendAuth"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -220,5 +229,23 @@
             android:textColor="@color/black"
             android:textSize="16sp" />
     </LinearLayout>
+
+    <!-- Continue Button -->
+    <Button
+        android:id="@+id/btnContinue"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="24dp"
+        android:background="@null"
+        android:backgroundTint="@color/mainColor"
+        android:text="계속하기"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:cornerRadius="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

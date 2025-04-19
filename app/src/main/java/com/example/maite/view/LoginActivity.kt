@@ -34,6 +34,11 @@ class LoginActivity : AppCompatActivity() {
         binding.tvFindPassword.setOnClickListener {
             navigateToFindPasswordFragment()
         }
+        
+        // Set up navigation to Signup fragment
+        binding.tvSignUp.setOnClickListener {
+            navigateToSignupFragment()
+        }
     }
     
     private fun navigateToFindIdFragment() {
@@ -48,6 +53,14 @@ class LoginActivity : AppCompatActivity() {
         val findPasswordFragment = FindPasswordFragment.newInstance()
         supportFragmentManager.beginTransaction()
             .replace(android.R.id.content, findPasswordFragment)
+            .addToBackStack(null)
+            .commit()
+    }
+    
+    private fun navigateToSignupFragment() {
+        val signupFragment = SignupFragment.newInstance()
+        supportFragmentManager.beginTransaction()
+            .replace(android.R.id.content, signupFragment)
             .addToBackStack(null)
             .commit()
     }
