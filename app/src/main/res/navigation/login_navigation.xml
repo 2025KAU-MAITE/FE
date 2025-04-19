@@ -5,7 +5,7 @@
     android:id="@+id/login_navigation"
     app:startDestination="@id/loginFragment">
 
-    <!-- Login Fragment (this will be a placeholder since we're using the activity directly) -->
+    <!-- Login Fragment -->
     <fragment
         android:id="@+id/loginFragment"
         android:name="com.example.maite.view.LoginFragment"
@@ -13,101 +13,28 @@
         tools:layout="@layout/activity_login">
         
         <action
-            android:id="@+id/action_loginFragment_to_signupFragment"
-            app:destination="@id/signupFragment"
+            android:id="@+id/action_loginFragment_to_signupNavigation"
+            app:destination="@id/signup_navigation"
             app:enterAnim="@android:anim/fade_in"
             app:exitAnim="@android:anim/fade_out"
             app:popEnterAnim="@android:anim/fade_in"
             app:popExitAnim="@android:anim/fade_out" />
-    </fragment>
-    
-    <!-- Signup Email/Password Fragment -->
-    <fragment
-        android:id="@+id/signupFragment"
-        android:name="com.example.maite.view.SignupFragment"
-        android:label="fragment_signup"
-        tools:layout="@layout/fragment_signup">
-        
+            
         <action
-            android:id="@+id/action_signupFragment_to_signupProfileFragment"
-            app:destination="@id/signupProfileFragment"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"
-            app:popEnterAnim="@anim/slide_in_right"
-            app:popExitAnim="@anim/slide_out_left" />
-    </fragment>
-    
-    <!-- Profile Info Fragment -->
-    <fragment
-        android:id="@+id/signupProfileFragment"
-        android:name="com.example.maite.view.SignupProfileFragment"
-        android:label="fragment_signup_profile"
-        tools:layout="@layout/fragment_signup_profile">
-        
-        <action
-            android:id="@+id/action_signupProfileFragment_to_signupAddressFragment"
-            app:destination="@id/signupAddressFragment"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"
-            app:popEnterAnim="@anim/slide_in_right"
-            app:popExitAnim="@anim/slide_out_left" />
-    </fragment>
-    
-    <!-- Address Fragment -->
-    <fragment
-        android:id="@+id/signupAddressFragment"
-        android:name="com.example.maite.view.SignupAddressFragment"
-        android:label="fragment_signup_address"
-        tools:layout="@layout/fragment_signup_address">
-        
-        <action
-            android:id="@+id/action_signupAddressFragment_to_signupProfilePictureFragment"
-            app:destination="@id/signupProfilePictureFragment"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"
-            app:popEnterAnim="@anim/slide_in_right"
-            app:popExitAnim="@anim/slide_out_left" />
-    </fragment>
-    
-    <!-- Profile Picture Fragment -->
-    <fragment
-        android:id="@+id/signupProfilePictureFragment"
-        android:name="com.example.maite.view.SignupProfilePictureFragment"
-        android:label="fragment_signup_profile_picture"
-        tools:layout="@layout/fragment_signup_profile_picture">
-        
-        <action
-            android:id="@+id/action_signupProfilePictureFragment_to_signupCompletionFragment"
-            app:destination="@id/signupCompletionFragment"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"
-            app:popEnterAnim="@anim/slide_in_right"
-            app:popExitAnim="@anim/slide_out_left"
-            app:popUpTo="@id/signupFragment"
-            app:popUpToInclusive="true" />
-    </fragment>
-    
-    <!-- Signup Completion Fragment -->
-    <fragment
-        android:id="@+id/signupCompletionFragment"
-        android:name="com.example.maite.view.SignupCompletionFragment"
-        android:label="fragment_signup_completion"
-        tools:layout="@layout/fragment_signup_completion">
-        
-        <action
-            android:id="@+id/action_signupCompletionFragment_to_homeFragment"
+            android:id="@+id/action_loginFragment_to_homeFragment"
             app:destination="@id/homeFragment"
             app:enterAnim="@android:anim/fade_in"
-            app:exitAnim="@android:anim/fade_out"
-            app:popUpTo="@id/loginFragment"
-            app:popUpToInclusive="true" />
+            app:exitAnim="@android:anim/fade_out" />
     </fragment>
     
-    <!-- Home Fragment (destination after signup completion) -->
+    <!-- Home Fragment (destination after login) -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.maite.HomeFragment"
         android:label="fragment_home"
         tools:layout="@layout/fragment_home" />
+        
+    <!-- Include signup navigation graph -->
+    <include app:graph="@navigation/signup_navigation" />
 
 </navigation>
