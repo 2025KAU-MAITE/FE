@@ -9,11 +9,11 @@ import android.view.ViewGroup
 import android.widget.EditText
 import androidx.fragment.app.Fragment
 import com.example.maite.R
-import com.example.maite.databinding.FragmentFindIdBinding
+import com.example.maite.databinding.FragmentFindPasswordBinding
 
-class FindIdFragment : Fragment() {
+class FindPasswordFragment : Fragment() {
 
-    private var _binding: FragmentFindIdBinding? = null
+    private var _binding: FragmentFindPasswordBinding? = null
     private val binding get() = _binding!!
     private lateinit var authCodeFields: List<EditText>
 
@@ -21,7 +21,7 @@ class FindIdFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentFindIdBinding.inflate(inflater, container, false)
+        _binding = FragmentFindPasswordBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -78,8 +78,8 @@ class FindIdFragment : Fragment() {
         
         // Set click listener for verify authentication button
         binding.btnVerifyAuth.setOnClickListener {
-            // Skip verification for now and immediately navigate to EmailFoundFragment
-            navigateToEmailFoundFragment()
+            // Skip verification for now and immediately navigate to UpdatePasswordFragment
+            navigateToUpdatePasswordFragment()
             
             /* Original code with validation - to be implemented later
             // Get the auth code from the 6 fields
@@ -87,8 +87,8 @@ class FindIdFragment : Fragment() {
             
             if (authCode.length == 6) {
                 verifyAuthentication(authCode)
-                // Navigate to email found fragment using traditional fragment transaction
-                navigateToEmailFoundFragment()
+                // Navigate to update password fragment
+                navigateToUpdatePasswordFragment()
             } else {
                 // Show error
                 // Toast.makeText(requireContext(), "인증번호 6자리를 모두 입력해주세요", Toast.LENGTH_SHORT).show()
@@ -96,17 +96,11 @@ class FindIdFragment : Fragment() {
             */
         }
     }
-
-    private fun navigateToEmailFoundFragment() {
-        val emailFoundFragment = EmailFoundFragment.newInstance()
-        
-        // You can pass data using Bundle if needed
-        val bundle = Bundle()
-        bundle.putString("userId", "user123@example.com") // Example ID to display
-        emailFoundFragment.arguments = bundle
-        
+    
+    private fun navigateToUpdatePasswordFragment() {
+        val updatePasswordFragment = UpdatePasswordFragment.newInstance()
         requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, emailFoundFragment)
+            .replace(android.R.id.content, updatePasswordFragment)
             .addToBackStack(null)
             .commit()
     }
@@ -164,6 +158,6 @@ class FindIdFragment : Fragment() {
 
     companion object {
         @JvmStatic
-        fun newInstance() = FindIdFragment()
+        fun newInstance() = FindPasswordFragment()
     }
 }
