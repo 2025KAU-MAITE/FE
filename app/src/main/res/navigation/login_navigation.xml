@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/login_navigation"
+    app:startDestination="@id/loginFragment">
+
+    <!-- Login Fragment (this will be a placeholder since we're using the activity directly) -->
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.example.maite.view.LoginFragment"
+        android:label="fragment_login"
+        tools:layout="@layout/activity_login" />
+
+</navigation>
