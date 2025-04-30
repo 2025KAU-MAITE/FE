@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FFFFFF" />
-    <stroke android:width="1dp" android:color="#DDDDDD" />
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <solid android:color="@android:color/white" />
+
+    <stroke
+        android:width="1dp"
+        android:color="#DDDDDD" />
+
+    <!-- 살짝 내부 여백을 줘서 선 깨짐 방지 -->
+    <padding
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="1dp" />
 </shape>
