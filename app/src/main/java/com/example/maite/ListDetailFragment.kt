@@ -2,7 +2,7 @@ package com.example.maite
 
 import android.graphics.Color
 import android.os.Bundle
-import android.util.DisplayMetrics
+import android.util.Log
 import android.util.TypedValue
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -13,6 +13,8 @@ import android.widget.TableRow
 import android.widget.TextView
 import android.widget.LinearLayout
 import android.view.Gravity
+import android.widget.Toast
+import androidx.fragment.app.activityViewModels
 import com.example.maite.databinding.FragmentListDetailBinding
 import com.example.maite.model.MaiteListItem
 
@@ -20,49 +22,54 @@ class ListDetailFragment : Fragment() {
     private var _binding: FragmentListDetailBinding? = null
     private val binding get() = _binding!!
 
+    // ViewModel 추가 (Activity 스코프)
+    private val sharedViewModel: TimeSelectionViewModel by activityViewModels()
+
     // 요일 목록 (월~일)
     private val weekDays = arrayOf("", "월", "화", "수", "목", "금", "토", "일")
 
-    // 시간 (00시부터 24시까지) - 간단한 형식으로 변경
-    private val timeSlots = arrayOf(
-        "00", "01", "02", "03", "04", "05",
-        "06", "07", "08", "09", "10", "11",
-        "12", "13", "14", "15", "16", "17",
-        "18", "19", "20", "21", "22", "23", "24"
-    )
+    // 시간 (00시부터 24시까지) - 인덱스 접근 위해 유지
+    private val timeSlots = Array(25) { String.format("%02d", it) } // 00 ~ 24
 
     // 수업 데이터 예시 (시간, 요일, 강의명, 색상)
     private val classes = listOf(
-        TimetableItem(18, 1, "회의", Color.parseColor("#A5BEF5")),
-        TimetableItem(19, 1, "회의", Color.parseColor("#A5BEF5")),
+        TimetableItem(18, 1, "회의", Color.parseColor("#A5BEF5")), // 월 18시
+        TimetableItem(19, 1, "회의", Color.parseColor("#A5BEF5")), // 월 19시
 
-        TimetableItem(10, 2, "머신러닝", Color.parseColor("#4C7EED")),
-        TimetableItem(11, 2, "머신러닝", Color.parseColor("#4C7EED")),
-        TimetableItem(12, 2, "머신러닝", Color.parseColor("#4C7EED")),
+        TimetableItem(10, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 10시
+        TimetableItem(11, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 11시
+        TimetableItem(12, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 12시
 
-        TimetableItem(15, 2, "컴네", Color.parseColor("#4C7EED")),
-        TimetableItem(16, 2, "컴네", Color.parseColor("#4C7EED")),
+        TimetableItem(15, 2, "컴네", Color.parseColor("#4C7EED")), // 화 15시
+        TimetableItem(16, 2, "컴네", Color.parseColor("#4C7EED")), // 화 16시
 
-        TimetableItem(10, 3, "딥러닝", Color.parseColor("#4C7EED")),
-        TimetableItem(11, 3, "딥러닝", Color.parseColor("#4C7EED")),
-        TimetableItem(12, 3, "딥러닝", Color.parseColor("#4C7EED")),
+        TimetableItem(10, 3, "딥러닝", Color.parseColor("#4C7EED")), // 수 10시
+        TimetableItem(11, 3, "딥러닝", Color.parseColor("#4C7EED")), // 수 11시
+        TimetableItem(12, 3, "딥러닝", Color.parseColor("#4C7EED")), // 수 12시
 
-        TimetableItem(15, 3, "산학", Color.parseColor("#4C7EED")),
-        TimetableItem(16, 3, "산학", Color.parseColor("#4C7EED")),
-        TimetableItem(17, 3, "산학", Color.parseColor("#4C7EED")),
+        TimetableItem(15, 3, "산학", Color.parseColor("#4C7EED")), // 수 15시
+        TimetableItem(16, 3, "산학", Color.parseColor("#4C7EED")), // 수 16시
+        TimetableItem(17, 3, "산학", Color.parseColor("#4C7EED")), // 수 17시
 
-        TimetableItem(13, 7, "알바", Color.parseColor("#4C7EED")),
-        TimetableItem(14, 7, "알바", Color.parseColor("#4C7EED")),
-        TimetableItem(15, 7, "알바", Color.parseColor("#4C7EED")),
-        TimetableItem(16, 7, "알바", Color.parseColor("#4C7EED")),
-        TimetableItem(17, 7, "알바", Color.parseColor("#4C7EED")),
+        TimetableItem(13, 7, "알바", Color.parseColor("#4C7EED")), // 일 13시
+        TimetableItem(14, 7, "알바", Color.parseColor("#4C7EED")), // 일 14시
+        TimetableItem(15, 7, "알바", Color.parseColor("#4C7EED")), // 일 15시
+        TimetableItem(16, 7, "알바", Color.parseColor("#4C7EED")), // 일 16시
+        TimetableItem(17, 7, "알바", Color.parseColor("#4C7EED")), // 일 17시
     )
+
+    // 사용 가능한 요일 Set
+    private lateinit var availableDaysOfWeek: Set<Int>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentListDetailBinding.inflate(inflater, container, false)
+        availableDaysOfWeek = classes.map { it.dayOfWeek }.toSet()
+        Log.d("ListDetailFragment", "사용 가능한 요일: $availableDaysOfWeek")
+        sharedViewModel.setTimetableData(classes)
+        Log.d("ListDetailFragment", "ViewModel에 시간표 데이터 설정 완료")
         return binding.root
     }
 
@@ -71,11 +78,9 @@ class ListDetailFragment : Fragment() {
 
         val maiteListItem = arguments?.getParcelable<MaiteListItem>(ARG_MAITE_LIST_ITEM)
 
-        // 받아온 데이터를 UI에 설정
         binding.title.text = maiteListItem?.title
         binding.intro.text = maiteListItem?.intro
 
-        // 뒤로 가기 버튼 클릭 리스너 설정
         binding.backBtn.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -85,132 +90,126 @@ class ListDetailFragment : Fragment() {
             bottomSheet.show(parentFragmentManager, bottomSheet.tag)
         }
 
-        // 시간표 레이아웃 클릭 리스너 설정
         binding.timetableLayout.setOnClickListener {
-            val suggestBottomSheet = SuggestBottomSheet.newInstance()
+            val availableDaysList = ArrayList(availableDaysOfWeek)
+            Log.d("ListDetailFragment", "SuggestBottomSheet 생성, 전달 요일: $availableDaysList")
+            val suggestBottomSheet = SuggestBottomSheet.newInstance(availableDaysList)
             suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
         }
 
-        // 시간표 생성
-        createTimetable()
+        createTimetable() // 시간표 생성 호출
     }
 
+    // 시간표 생성 함수 (수정됨: 동적 시간 범위)
     private fun createTimetable() {
         val tableLayout = binding.root.findViewById<TableLayout>(R.id.timetableLayout)
+        tableLayout.removeAllViews() // 기존 뷰 제거
 
-        // 수업 데이터에서 최소 시간과 최대 시간을 찾기
-        val minTime = (classes.minOfOrNull { it.timeSlot } ?: 0) - 1
-        val maxTime = (classes.maxOfOrNull { it.timeSlot } ?: 24) + 1
+        // --- 시간 범위 동적 계산 로직 ---
+        val minTime: Int
+        val maxTime: Int // 마지막으로 표시할 시간 인덱스 (포함)
 
-        // 시간 셀 너비 계산 (텍스트 크기에 맞게 최소화)
-        val timeColumnWidth = calculateTextWidth("09")
+        if (classes.isNotEmpty()) {
+            minTime = classes.minOfOrNull { it.timeSlot }?.let { (it - 1).coerceAtLeast(0) } ?: 0
+            maxTime = classes.maxOfOrNull { it.timeSlot }?.let { (it + 1).coerceAtMost(23) } ?: 23
+        } else {
+            minTime = 9 // 데이터 없을 시 기본 시작 시간
+            maxTime = 17 // 데이터 없을 시 기본 종료 시간
+            Log.w("ListDetailFragment", "시간표 데이터가 없어 기본 시간 범위($minTime ~ $maxTime) 사용")
+        }
+        // --- 시간 범위 계산 로직 끝 ---
+
+        Log.d("ListDetailFragment", "시간표 생성 범위: $minTime 시 ~ $maxTime 시")
+
+        val timeColumnWidth = calculateTextWidth("00") + 16 // 시간 셀 너비
 
         // 요일 헤더 추가
         val headerRow = TableRow(context)
-
-        // 시간 헤더 (빈 칸)
-        val timeHeaderCell = createTextView(weekDays[0], timeColumnWidth)
-        timeHeaderCell.setBackgroundColor(Color.WHITE)
-        timeHeaderCell.textSize = 12f
-        timeHeaderCell.setPadding(2, 6, 2, 6)
+        val headerParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT)
+        headerRow.layoutParams = headerParams
+        val timeHeaderCell = TextView(context).apply {
+            text = ""
+            layoutParams = TableRow.LayoutParams(timeColumnWidth, TableRow.LayoutParams.WRAP_CONTENT)
+            setBackgroundColor(Color.WHITE)
+            setPadding(4, 8, 4, 8)
+        }
         headerRow.addView(timeHeaderCell)
-
-        // 요일 헤더들
         for (i in 1 until weekDays.size) {
-            val textView = createTextView(weekDays[i])
-            textView.setBackgroundColor(Color.WHITE)
-            textView.textSize = 12f
-            textView.setPadding(2, 6, 2, 6)
-            val params = TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f)
-            textView.layoutParams = params
-            headerRow.addView(textView)
+            val dayHeaderCell = TextView(context).apply {
+                text = weekDays[i]
+                gravity = Gravity.CENTER
+                textSize = 12f
+                setBackgroundColor(Color.WHITE)
+                setPadding(4, 8, 4, 8)
+                layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            headerRow.addView(dayHeaderCell)
         }
         tableLayout.addView(headerRow)
 
-        // 시간대별 행 추가 (얇은 바 형태로)
+        // 시간대별 행 추가 (minTime부터 maxTime까지)
         val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
-
-        for (i in minTime..maxTime) {
+        for (time in minTime..maxTime) {
             val row = TableRow(context)
+            val rowParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, cellHeight)
+            row.layoutParams = rowParams
 
-            // 시간 셀 추가 (숫자만 표시, 최소 너비로)
-            val timeCell = createTextView(timeSlots.getOrNull(i) ?: "", timeColumnWidth)
-            timeCell.setBackgroundColor(Color.WHITE)
-            timeCell.textSize = 10f
-            timeCell.setPadding(1, 2, 1, 2) // 패딩 최소화
+            // 시간 셀 추가
+            val timeCell = TextView(context).apply {
+                text = timeSlots.getOrNull(time) ?: ""
+                gravity = Gravity.CENTER
+                textSize = 10f
+                setBackgroundColor(Color.WHITE)
+                setPadding(4, 4, 4, 4)
+                layoutParams = TableRow.LayoutParams(timeColumnWidth, TableRow.LayoutParams.MATCH_PARENT)
+            }
             row.addView(timeCell)
 
-            // 요일별 셀 추가 (월화수목금토일)
-            for (j in 1 until weekDays.size) {
-                // 해당 시간, 요일에 수업이 있는지 확인
-                val classItem = classes.find { it.timeSlot == i && it.dayOfWeek == j }
-
-                // 컨테이너 셀 생성
+            // 요일별 셀 추가
+            for (day in 1 until weekDays.size) {
+                val classItem = classes.find { it.timeSlot == time && it.dayOfWeek == day }
                 val containerView = LinearLayout(context).apply {
-                    layoutParams = TableRow.LayoutParams(0, cellHeight, 1f)
-                    gravity = Gravity.TOP
-                    setPadding(0, 0, 0, 0)
+                    layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.MATCH_PARENT, 1f)
+                    gravity = Gravity.CENTER
                     setBackgroundResource(R.drawable.timetable_cell_border)
+                    orientation = LinearLayout.VERTICAL
                 }
 
                 if (classItem != null) {
-                    // 일정이 있는 경우 세로 바 표시
+                    // 수업 바 표시
                     val barView = View(context).apply {
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.MATCH_PARENT // ← 바 높이를 셀 전체에 맞춤
-                        )
+                        val barHeight = (cellHeight * 0.8).toInt()
+                        val barMargin = (cellHeight * 0.1).toInt()
+                        val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, barHeight)
+                        params.setMargins(4, barMargin, 4, barMargin)
+                        layoutParams = params
                         setBackgroundColor(classItem.color)
                     }
                     containerView.addView(barView)
-
-                    // 롱클릭 시 수업명 표시
+                    // 롱클릭 리스너
                     containerView.setOnLongClickListener {
-                        // 토스트 메시지로 수업명 표시
-                        android.widget.Toast.makeText(context, classItem.className, android.widget.Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, classItem.className, Toast.LENGTH_SHORT).show()
                         true
                     }
                 }
-
                 row.addView(containerView)
             }
-
             tableLayout.addView(row)
         }
     }
 
-    private fun createTextView(text: String, width: Int): TextView {
-        return TextView(context).apply {
-            this.text = text
-            this.width = width + 8 // 여기서 기존 너비에 약간의 여유 (8 픽셀)를 추가합니다.
-            gravity = Gravity.CENTER
-            layoutParams = TableRow.LayoutParams(
-                width + 8, // 여기서 기존 너비에 약간의 여유 (8 픽셀)를 추가합니다.
-                resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
-            )
-            setBackgroundResource(R.drawable.timetable_cell_border)
-            maxLines = 1
-            isSingleLine = true
-        }
-    }
-
-    private fun createTextView(text: String): TextView {
-        return TextView(context).apply {
-            this.text = text
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            height = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
-            setBackgroundResource(R.drawable.timetable_cell_border)
-            maxLines = 1
-            isSingleLine = true
-        }
-    }
-
+    // 텍스트 너비 계산 함수
     private fun calculateTextWidth(text: String): Int {
-        val textView = TextView(context).apply {
+        // context가 null일 수 있으므로 안전 호출 또는 requireContext() 사용
+        val currentContext = context ?: return 0
+        val textView = TextView(currentContext).apply {
             this.text = text
-            this.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) // 시간 셀의 텍스트 크기에 맞춤
+            this.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
         }
-        textView.measure(0, 0)
         return textView.measuredWidth
     }
 
@@ -219,9 +218,17 @@ class ListDetailFragment : Fragment() {
         _binding = null
     }
 
+    // 시간표 아이템 데이터 클래스
+    data class TimetableItem(
+        val timeSlot: Int,   // 시간대 인덱스 (0~23)
+        val dayOfWeek: Int,  // 요일 인덱스 (1: 월, ..., 7: 일)
+        val className: String,
+        val color: Int
+    )
+
+    // Companion object
     companion object {
         private const val ARG_MAITE_LIST_ITEM = "maite_list_item"
-
         fun newInstance(maiteListItem: MaiteListItem): ListDetailFragment {
             val fragment = ListDetailFragment()
             val args = Bundle().apply {
@@ -231,12 +238,4 @@ class ListDetailFragment : Fragment() {
             return fragment
         }
     }
-
-    // 시간표 아이템 데이터 클래스
-    data class TimetableItem(
-        val timeSlot: Int,   // 시간대 인덱스 (0~24)
-        val dayOfWeek: Int,  // 요일 인덱스 (1: 월, 2: 화, 3: 수, 4: 목, 5: 금, 6: 토, 7: 일)
-        val className: String, // 수업명
-        val color: Int        // 배경색
-    )
 }

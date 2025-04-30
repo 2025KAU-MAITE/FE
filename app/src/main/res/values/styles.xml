@@ -6,4 +6,24 @@
         <item name="cornerSizeBottomLeft">0dp</item>
         <item name="cornerSizeBottomRight">0dp</item>
     </style>
+
+    <!-- 수정된 캘린더 스타일 -->
+    <style name="CustomCalendarViewStyle" parent="Theme.AppCompat">
+        <item name="colorAccent">#4C7EED</item> <!-- 선택된 날짜 색상 -->
+        <item name="android:textColorPrimary">@android:color/black</item> <!-- 일반 텍스트 색상 -->
+        <!-- 오늘 날짜 강조 비활성화 -->
+        <item name="android:datePickerStyle">@style/CustomDatePickerStyle</item>
+        <!-- 기본 선택 비활성화 관련 속성 -->
+        <item name="android:selectedWeekBackgroundColor">@android:color/transparent</item>
+        <item name="android:focusedMonthDateColor">@android:color/black</item>
+        <item name="android:unfocusedMonthDateColor">@android:color/darker_gray</item>
+        <item name="android:weekSeparatorLineColor">@android:color/transparent</item>
+    </style>
+
+    <style name="CustomDatePickerStyle" parent="android:Widget.Material.DatePicker">
+        <item name="android:headerBackground">#FFFFFF</item>
+        <item name="android:calendarTextColor">@android:color/black</item>
+        <item name="android:dayOfWeekBackground">@android:color/transparent</item>
+        <item name="android:yearListSelectorColor">#4C7EED</item>
+    </style>
 </resources>

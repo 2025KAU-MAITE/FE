@@ -51,5 +51,18 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("androidx.fragment:fragment-ktx:1.3.6")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.5")
+    implementation("com.github.prolificinteractive:material-calendarview:2.0.1")
+    implementation("com.google.android.material:material:1.12.0")
 
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Support 라이브러리 강제 제거
+        force("androidx.core:core:1.15.0")
+
+        // 충돌하는 클래스 명시적으로 제외
+        exclude(group = "com.android.support", module = "support-compat")
+    }
 }
