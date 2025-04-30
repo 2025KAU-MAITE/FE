@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:padding="24dp"
+    tools:context=".view.SignupProfilePictureFragment">
+
+    <!-- Back button -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="@null"
+        android:contentDescription="Back"
+        android:padding="0dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/btn_back_arrow"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Title Text -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="프로필 사진을\n추가해주세요"
+        android:textColor="@color/black"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnBack" />
+
+    <!-- Profile picture placeholder -->
+    <ImageView
+        android:id="@+id/ivProfilePicture"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:layout_marginTop="80dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/img_profile_default"
+        app:layout_constraintBottom_toTopOf="@+id/btnAdd"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitle"
+        app:layout_constraintVertical_bias="0.4" />
+        
+    <!-- Add Picture Text Button -->
+    <TextView
+        android:id="@+id/tvAddPicture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:text="추가하기"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="@+id/ivProfilePicture"
+        app:layout_constraintStart_toStartOf="@+id/ivProfilePicture"
+        app:layout_constraintTop_toBottomOf="@+id/ivProfilePicture" />
+
+    <!-- Skip Button -->
+    <Button
+        android:id="@+id/btnSkip"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="24dp"
+        android:background="@null"
+        android:backgroundTint="@android:color/transparent"
+        android:text="건너뛰기"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/btnContinue"
+        app:layout_constraintStart_toStartOf="parent"
+        app:strokeColor="@color/mainColor"
+        app:strokeWidth="1dp" />
+
+    <!-- Continue Button (Previously Add Button) -->
+    <Button
+        android:id="@+id/btnContinue"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="24dp"
+        android:background="@null"
+        android:backgroundTint="@color/mainColor"
+        android:text="다음"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/btnSkip" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

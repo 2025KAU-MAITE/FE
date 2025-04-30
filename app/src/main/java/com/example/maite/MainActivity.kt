@@ -1,13 +1,12 @@
 package com.example.maite
 
-import android.content.res.ColorStateList
-import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.maite.databinding.ActivityMainBinding
+import com.example.maite.view.ListFragment
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -62,6 +61,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        window.navigationBarColor = resources.getColor(android.R.color.black, theme)
         // 기본 선택 항목 설정
         binding.bottomNavigation.selectedItemId = R.id.navigation_home
     }
