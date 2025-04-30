@@ -2,4 +2,11 @@
     <string name="app_name">MAITE</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- 회의 및 시간표 관련 문자열 -->
+    <string name="meeting_date_format">날짜: %s</string>
+    <string name="meeting_time_format">시간: %s ~ %s</string>
+    <string name="meeting_time_format_simple">시간: %s</string>
+    <string name="meeting_location_format">장소: %s</string>
+    <string name="timetable_empty_message">시간표가 비어있습니다. 프로필에서 시간표를 추가해보세요.</string>
 </resources>

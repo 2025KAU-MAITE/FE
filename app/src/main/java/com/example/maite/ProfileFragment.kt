@@ -1,59 +1,206 @@
 package com.example.maite
 
+import android.graphics.Color
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.TableLayout
+import android.widget.TableRow
+import android.widget.TextView
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import com.example.maite.databinding.FragmentProfileBinding
+import com.example.maite.model.TimetableEntry
+import com.example.maite.model.UserInfo
+import com.example.maite.ui.profile.EditTimetableFragment
+import com.example.maite.ui.profile.ProfileViewModel
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [ProfileFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class ProfileFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
+    private var _binding: FragmentProfileBinding? = null
+    private val binding get() = _binding!!
+
+    private val viewModel: ProfileViewModel by activityViewModels()
+
+    private val weekDays = arrayOf("", "월", "화", "수", "목", "금", "토", "일")
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_profile, container, false)
+    ): View {
+        _binding = FragmentProfileBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment ProfileFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            ProfileFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // 사용자 정보 관찰
+        viewModel.userInfo.observe(viewLifecycleOwner) { userInfo: UserInfo? ->
+            userInfo?.let {
+                binding.tvName.text = it.name
+                binding.tvMateCount.text = "${it.mateCount}명의 Mate가 있습니다"
+
+                // TODO: 프로필 이미지 로드 로직 구현
+                // if (it.profileImageUrl != null) {
+                //     Glide.with(this)
+                //         .load(it.profileImageUrl)
+                //         .circleCrop()
+                //         .into(binding.ivProfile)
+                // }
             }
+        }
+
+        // 시간표 데이터 관찰
+        viewModel.timetable.observe(viewLifecycleOwner) { timetableList ->
+            createTimetable(timetableList)
+        }
+
+        // 시간표 수정 버튼 클릭 이벤트
+        binding.btnEditTimetable.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, EditTimetableFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
+        // 상단 설정 버튼 클릭 이벤트 (추가 기능)
+        binding.ivSettings.setOnClickListener {
+            // TODO: 설정 화면으로 이동 또는 설정 메뉴 표시
+        }
+    }
+
+    private fun createTimetable(entries: List<TimetableEntry>) {
+        val tableLayout = binding.timetableLayout
+        tableLayout.removeAllViews()
+
+        // 동적 시간 범위 계산
+        var minTime = 9 // 기본 최소 시간 (9시)
+        var maxTime = 20 // 기본 최대 시간 (20시)
+
+        // 일정이 있는 경우 시간 범위 조정
+        if (entries.isNotEmpty()) {
+            val startTimes = entries.map { it.startHour }
+            val endTimes = entries.map { it.endHour }
+
+            if (startTimes.min() < minTime) {
+                minTime = startTimes.min()
+            }
+
+            if (endTimes.max() > maxTime) {
+                maxTime = endTimes.max()
+            }
+        }
+
+        // 시간 범위가 넘어가면 제한 (0-23 범위 내로)
+        minTime = minTime.coerceIn(0, 23)
+        maxTime = maxTime.coerceIn(minTime + 1, 23)
+
+        // 시간 열 너비 계산
+        val timeColWidth = calculateTextWidth("00")
+
+        // 요일 헤더 행 추가
+        val headerRow = TableRow(context)
+        val timeHeaderCell = createTextView("", timeColWidth)
+        timeHeaderCell.setBackgroundColor(Color.parseColor("#F5F5F5"))
+        headerRow.addView(timeHeaderCell)
+
+        for (i in 1 until weekDays.size) {
+            val tv = createTextView(weekDays[i])
+            tv.setBackgroundColor(Color.parseColor("#F5F5F5"))
+            tv.textSize = 12f
+            tv.setTextColor(Color.parseColor("#555555"))
+            headerRow.addView(tv)
+        }
+        tableLayout.addView(headerRow)
+
+        // 시간대별 행 추가
+        val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
+
+        for (hour in minTime..maxTime) {
+            val row = TableRow(context)
+
+            // 시간 표시 열
+            val timeCell = createTextView(hour.toString(), timeColWidth)
+            timeCell.setBackgroundColor(Color.parseColor("#F5F5F5"))
+            timeCell.textSize = 10f
+            timeCell.setTextColor(Color.parseColor("#555555"))
+            row.addView(timeCell)
+
+            // 요일별 셀 추가
+            for (day in 1 until weekDays.size) {
+                // 해당 요일, 시간의 일정 찾기
+                val matched = entries.find {
+                    (hour in it.startHour until it.endHour) && it.dayOfWeek == day
+                }
+
+                // 셀 컨테이너 생성
+                val cell = LinearLayout(context).apply {
+                    layoutParams = TableRow.LayoutParams(0, cellHeight, 1f)
+                    gravity = Gravity.CENTER
+                    setPadding(2, 2, 2, 2)
+                    setBackgroundResource(R.drawable.timetable_cell_border)
+                }
+
+                // 일정이 있는 경우 내용 추가
+                if (matched != null) {
+                    val inner = TextView(context).apply {
+                        text = matched.title
+                        textSize = 10f
+                        gravity = Gravity.CENTER
+                        setBackgroundColor(Color.parseColor(matched.colorHex))
+                        setTextColor(Color.WHITE)
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.MATCH_PARENT
+                        )
+                        setPadding(4, 4, 4, 4)
+                        maxLines = 1
+                        isSingleLine = true
+                        alpha = 0.85f  // 약간의 투명도
+                        elevation = 2f  // 약간의 그림자 효과
+                    }
+                    cell.addView(inner)
+                }
+
+                row.addView(cell)
+            }
+
+            tableLayout.addView(row)
+        }
+    }
+
+    private fun createTextView(text: String, width: Int = 0): TextView {
+        return TextView(context).apply {
+            this.text = text
+            gravity = Gravity.CENTER
+            layoutParams = TableRow.LayoutParams(
+                if (width > 0) width + 8 else 0,
+                resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
+            ).apply {
+                if (width <= 0) weight = 1f
+            }
+            setBackgroundResource(R.drawable.timetable_cell_border)
+            maxLines = 1
+            isSingleLine = true
+        }
+    }
+
+    private fun calculateTextWidth(text: String): Int {
+        val tv = TextView(context).apply {
+            this.text = text
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        }
+        tv.measure(0, 0)
+        return tv.measuredWidth
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
