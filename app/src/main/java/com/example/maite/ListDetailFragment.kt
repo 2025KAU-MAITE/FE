@@ -33,9 +33,6 @@ class ListDetailFragment : Fragment() {
 
     // 수업 데이터 예시 (시간, 요일, 강의명, 색상)
     private val classes = listOf(
-        TimetableItem(18, 1, "회의", Color.parseColor("#A5BEF5")), // 월 18시
-        TimetableItem(19, 1, "회의", Color.parseColor("#A5BEF5")), // 월 19시
-
         TimetableItem(10, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 10시
         TimetableItem(11, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 11시
         TimetableItem(12, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 12시
@@ -173,20 +170,11 @@ class ListDetailFragment : Fragment() {
                     gravity = Gravity.CENTER
                     setBackgroundResource(R.drawable.timetable_cell_border)
                     orientation = LinearLayout.VERTICAL
+                    minimumHeight = cellHeight
                 }
 
                 if (classItem != null) {
-                    // 수업 바 표시
-                    val barView = View(context).apply {
-                        val barHeight = (cellHeight * 0.8).toInt()
-                        val barMargin = (cellHeight * 0.1).toInt()
-                        val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, barHeight)
-                        params.setMargins(4, barMargin, 4, barMargin)
-                        layoutParams = params
-                        setBackgroundColor(classItem.color)
-                    }
-                    containerView.addView(barView)
-                    // 롱클릭 리스너
+                    containerView.setBackgroundColor(classItem.color)
                     containerView.setOnLongClickListener {
                         Toast.makeText(context, classItem.className, Toast.LENGTH_SHORT).show()
                         true
