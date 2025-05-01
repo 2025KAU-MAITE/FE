@@ -72,16 +72,6 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.naver.maps:map-sdk:3.20.0")
 
-}
-
-configurations.all {
-    resolutionStrategy {
-        // Support 라이브러리 강제 제거
-        force("androidx.core:core:1.15.0")
-
-        // 충돌하는 클래스 명시적으로 제외
-        exclude(group = "com.android.support", module = "support-compat")
-    }
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
@@ -106,4 +96,14 @@ configurations.all {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Support 라이브러리 강제 제거
+        force("androidx.core:core:1.15.0")
+
+        // 충돌하는 클래스 명시적으로 제외
+        exclude(group = "com.android.support", module = "support-compat")
+    }
 }
