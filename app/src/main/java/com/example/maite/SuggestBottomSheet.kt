@@ -8,26 +8,30 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.activityViewModels // activityViewModels 사용
+import androidx.core.widget.addTextChangedListener // EditText 변경 감지
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
 import com.example.maite.databinding.BottomSheetSuggestBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.naver.maps.geometry.LatLng
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter // 사용하지 않으면 제거 가능
-import java.util.Locale // 사용하지 않으면 제거 가능
+import java.util.Locale
+// Import FragmentTransaction if needed, though usually included with fragment imports
+// import androidx.fragment.app.FragmentTransaction
 
-class SuggestBottomSheet : BottomSheetDialogFragment() {
+class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlaceSelectedListener {
     private var _binding: BottomSheetSuggestBinding? = null
     private val binding get() = _binding!!
 
-    // ViewModel 공유 (Activity 스코프)
+    // ViewModel 공유 (Activity 스코프) - 실제 ViewModel 클래스로 교체 필요
     private val sharedViewModel: TimeSelectionViewModel by activityViewModels()
-
-    // 사용 가능한 요일 목록 (Fragment Argument로 전달받음)
     private var availableDaysOfWeek: List<Int>? = null
 
+    private var selectedPlaceLatLng: LatLng? = null
+    private var selectedPlaceName: String? = null
+
     companion object {
-        const val ARG_AVAILABLE_DAYS = "available_days" // Argument Key
+        const val ARG_AVAILABLE_DAYS = "available_days"
 
         // newInstance 수정: 사용 가능한 요일 목록을 받도록 함
         fun newInstance(availableDays: ArrayList<Int>): SuggestBottomSheet {
@@ -69,20 +73,24 @@ class SuggestBottomSheet : BottomSheetDialogFragment() {
         Log.d("SuggestBottomSheet", "onViewCreated 호출됨")
 
         setupObservers() // LiveData 관찰 설정
+        setupListeners() // 리스너 설정 분리
+        checkAndUpdateDoneButtonState() // 초기 버튼 상태 확인
+    }
 
-        // --- 버튼 리스너 설정 ---
-        binding.title.setOnClickListener {
-            // TODO: 제목 입력 로직 구현
-            Toast.makeText(context, "제목 입력 로직 구현 필요", Toast.LENGTH_SHORT).show()
+    // 리스너 설정 함수
+    private fun setupListeners() {
+        // 제목 EditText 텍스트 변경 리스너
+        binding.titleEditText.addTextChangedListener {
+            checkAndUpdateDoneButtonState() // 텍스트 변경 시 완료 버튼 상태 재확인
         }
 
-        // dateBtn 클릭 시 DateBottomSheet 표시 (요일 정보 전달)
+        // dateBtn 클릭 시 DateBottomSheet 표시
         binding.dateBtn.setOnClickListener {
             Log.d("SuggestBottomSheet", "dateBtn 클릭됨")
             availableDaysOfWeek?.let { days ->
                 Log.d("SuggestBottomSheet", "DateBottomSheet 생성 시도, 전달 요일: $days")
+                // 실제 DateBottomSheet 클래스로 교체 필요
                 val datePicker = DateBottomSheet.newInstance(ArrayList(days))
-                // parentFragmentManager 대신 childFragmentManager 사용 권장 (BottomSheet 내에서 다른 BottomSheet 호출 시)
                 datePicker.show(childFragmentManager, "datePicker")
             } ?: run {
                 Log.e("SuggestBottomSheet", "availableDaysOfWeek가 null이라 DateBottomSheet를 열 수 없습니다.")
@@ -90,68 +98,62 @@ class SuggestBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        // time1 버튼 리스너: 날짜 선택 여부 확인 추가
+        // time1 버튼 리스너
         binding.time1.setOnClickListener {
             if (sharedViewModel.getCurrentDate() == null) {
                 Toast.makeText(context, "날짜를 먼저 선택해주세요", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             val currentTime = parseTimeFromTextView(binding.time1Text)
+            // 실제 TimePickerBottomSheet 클래스로 교체 필요
             val timePicker = TimePickerBottomSheet.newInstance("time1", currentTime.first, currentTime.second)
             timePicker.show(childFragmentManager, "timePicker1")
         }
 
-        // time2 버튼 리스너: 날짜 선택 여부 확인 추가
+        // time2 버튼 리스너
         binding.time2.setOnClickListener {
             if (sharedViewModel.getCurrentDate() == null) {
                 Toast.makeText(context, "날짜를 먼저 선택해주세요", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            // 시작 시간이 설정되지 않았으면 종료 시간 선택 불가
             if (sharedViewModel.getCurrentStartTime() == null) {
                 Toast.makeText(context, "시작 시간을 먼저 선택해주세요", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             val currentTime = parseTimeFromTextView(binding.time2Text)
+            // 실제 TimePickerBottomSheet 클래스로 교체 필요
             val timePicker = TimePickerBottomSheet.newInstance("time2", currentTime.first, currentTime.second)
             timePicker.show(childFragmentManager, "timePicker2")
         }
 
-        // 장소 선택 버튼 리스너
-        binding.place.setOnClickListener {
-            // TODO: 장소 선택 로직 구현
-            Toast.makeText(context, "장소 선택 로직 구현 필요", Toast.LENGTH_SHORT).show()
+        binding.placeCardView.setOnClickListener {
+            val placeBottomSheet = PlaceBottomSheet.newInstance()
+            placeBottomSheet.setOnPlaceSelectedListener(this)
+            placeBottomSheet.show(parentFragmentManager, placeBottomSheet.tag)
         }
 
-        // 완료 버튼 리스너
         binding.doneBtn.setOnClickListener {
-            // 완료 버튼 비활성화 시 클릭 무시
             if (!binding.doneBtn.isEnabled) {
-                Toast.makeText(context, "날짜와 유효한 시간을 모두 선택해주세요.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val startTime = sharedViewModel.getCurrentStartTime()!! // null 체크는 isEnabled에서 이미 함
-            val endTime = sharedViewModel.getCurrentEndTime()!! // null 체크는 isEnabled에서 이미 함
-            val selectedDate = sharedViewModel.getCurrentDate()!! // null 체크는 isEnabled에서 이미 함
+            val title = binding.titleEditText.text.toString().trim()
+            val startTime = sharedViewModel.getCurrentStartTime()!!
+            val endTime = sharedViewModel.getCurrentEndTime()!!
+            val selectedDate = sharedViewModel.getCurrentDate()!!
+            val placeName = selectedPlaceName ?: "선택된 장소 없음"
+            val placeLatLng = selectedPlaceLatLng
 
-            // 최종 유효성 검사 (ViewModel 로직 사용 권장)
-            // 여기서는 이미 버튼 활성화 로직에서 검사했다고 가정
-            Log.i("SuggestBottomSheet", "회의 제안 완료: 날짜=$selectedDate, 시작=$startTime, 종료=$endTime")
+            Log.i("SuggestBottomSheet", "회의 제안 완료: 제목='$title', 날짜=$selectedDate, 시작=$startTime, 종료=$endTime, 장소='$placeName', 좌표=$placeLatLng")
+
+            // 여기서 api 통해 정보 전달
+
             Toast.makeText(context, "회의 제안이 완료되었습니다", Toast.LENGTH_SHORT).show()
 
-            // TODO: 실제 제안 로직 수행 (API 호출 등)
-
-            dismiss() // BottomSheet 닫기
+            dismiss()
         }
-
-        // 초기 상태 설정
-        // LiveData observe가 초기값을 반영하므로, 여기서 별도 호출 불필요할 수 있음
-        // checkAndUpdateDoneButtonState() // 필요 시 호출
-        // updateDateText(sharedViewModel.getCurrentDate()) // 필요 시 호출
-        // updateTimeText(binding.time1Text, sharedViewModel.getCurrentStartTime()) // 필요 시 호출
-        // updateTimeText(binding.time2Text, sharedViewModel.getCurrentEndTime()) // 필요 시 호출
     }
+
 
     // LiveData 관찰 설정
     private fun setupObservers() {
@@ -161,46 +163,42 @@ class SuggestBottomSheet : BottomSheetDialogFragment() {
         sharedViewModel.startTime.observe(viewLifecycleOwner, Observer { startTimePair ->
             Log.d("SuggestBottomSheet", "시작 시간 LiveData 변경 감지: $startTimePair")
             updateTimeText(binding.time1Text, startTimePair)
-            checkAndUpdateDoneButtonState() // 시작 시간 변경 시 완료 버튼 상태 재확인
+            checkAndUpdateDoneButtonState()
         })
 
         // 종료 시간 관찰
         sharedViewModel.endTime.observe(viewLifecycleOwner, Observer { endTimePair ->
             Log.d("SuggestBottomSheet", "종료 시간 LiveData 변경 감지: $endTimePair")
             updateTimeText(binding.time2Text, endTimePair)
-            checkAndUpdateDoneButtonState() // 종료 시간 변경 시 완료 버튼 상태 재확인
+            checkAndUpdateDoneButtonState()
         })
 
         // 날짜 관찰
         sharedViewModel.selectedDate.observe(viewLifecycleOwner, Observer { date ->
             Log.d("SuggestBottomSheet", "날짜 LiveData 변경 감지: $date")
             updateDateText(date)
-            // 날짜 변경 시 시간 선택 가능 여부가 달라질 수 있으므로 완료 버튼 상태 재확인
             checkAndUpdateDoneButtonState()
         })
     }
 
     // 날짜 텍스트 업데이트
     private fun updateDateText(date: LocalDate?) {
-        if (_binding == null) {
-            Log.w("SuggestBottomSheet", "updateDateText 호출 시 바인딩이 null입니다.")
-            return
-        }
-        // ViewModel의 포맷 함수 사용
-        binding.date.text = sharedViewModel.getFormattedDate()
+        if (_binding == null) return
+        // ViewModel의 포맷 함수 사용 (실제 함수명으로 교체 필요)
+        binding.date.text = sharedViewModel.getFormattedDate() ?: "날짜 선택하기"
     }
 
     // 시간 텍스트 업데이트
     private fun updateTimeText(textView: TextView, timePair: TimePair?) {
-        if (_binding == null) {
-            Log.w("SuggestBottomSheet", "updateTimeText 호출 시 바인딩이 null입니다.")
-            return
-        }
+        if (_binding == null) return
         textView.text = if (timePair != null) {
-            String.format("%02d : %02d", timePair.first, timePair.second)
+            // Locale.getDefault() 사용 또는 특정 로케일 지정
+            String.format(Locale.getDefault(), "%02d : %02d", timePair.first, timePair.second)
         } else {
             // 초기값 또는 null일 때 표시할 텍스트
-            "시간 선택" // 또는 "00 : 00" 등
+            // time1Text와 time2Text ID를 비교하여 다른 초기 텍스트 설정 가능
+            "시간 선택" // 예시: 양쪽 모두 "시간 선택"으로 표시
+            // if (textView.id == binding.time1Text.id) "시작 시간" else "종료 시간" // 다른 예시
         }
     }
 
@@ -213,38 +211,36 @@ class SuggestBottomSheet : BottomSheetDialogFragment() {
         val startTime = sharedViewModel.getCurrentStartTime()
         val endTime = sharedViewModel.getCurrentEndTime()
         val selectedDate = sharedViewModel.getCurrentDate()
+        val isTitleEntered = binding.titleEditText.text.toString().trim().isNotEmpty()
+        val isPlaceSelected = selectedPlaceLatLng != null
 
-        // 모든 값이 null이 아니고, 종료 시간이 시작 시간보다 늦어야 함
-        val isOverallValid = selectedDate != null && startTime != null && endTime != null &&
-                sharedViewModel.isValidEndTime(endTime.first, endTime.second) // ViewModel의 유효성 검사 사용
+        val isTimeValid = selectedDate != null && startTime != null && endTime != null &&
+                sharedViewModel.isValidEndTime(endTime.first, endTime.second)
+        val isOverallValid = isTitleEntered && isTimeValid && isPlaceSelected
 
-        Log.d("SuggestBottomSheet", "checkAndUpdateDoneButtonState: Date=$selectedDate, Start=$startTime, End=$endTime, isOverallValid=$isOverallValid")
         updateDoneButtonStateVisuals(isOverallValid) // 시각적 업데이트 함수 호출
     }
 
     // 완료 버튼 시각/활성화 상태 업데이트
     private fun updateDoneButtonStateVisuals(isValid: Boolean) {
-        if (_binding == null) {
-            Log.w("SuggestBottomSheet", "updateDoneButtonStateVisuals 호출 시 바인딩이 null입니다.")
-            return
-        }
+        if (_binding == null) return
         binding.doneBtn.isEnabled = isValid
         binding.doneBtn.isClickable = isValid
         val context = context ?: return // context null 체크
 
-        if (isValid) {
-            binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.mainColor))
-            binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
-        } else {
-            binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.btn_inactive))
-            binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.black)) // 또는 white/gray 등
-        }
+        // 실제 색상 리소스로 교체 필요 (e.g., R.color.mainColor, R.color.btn_inactive 등)
+        val filterColor = ContextCompat.getColor(context, if (isValid) R.color.mainColor else R.color.btn_inactive)
+        val textColor = ContextCompat.getColor(context, if (isValid) R.color.white else R.color.black) // 비활성 시 텍스트 색상
+
+        binding.btnBg.setColorFilter(filterColor)
+        binding.btnText.setTextColor(textColor)
     }
 
     // TextView에서 시간 파싱 (오류 처리 강화)
     private fun parseTimeFromTextView(textView: TextView): Pair<Int, Int> {
         val timeString = textView.text.toString()
-        if (!timeString.contains(":")) return Pair(0, 0) // 형식 안 맞으면 기본값 반환
+        // 초기 텍스트("시간 선택" 등) 또는 잘못된 형식 처리
+        if (!timeString.contains(":")) return Pair(0, 0) // 기본값 또는 적절한 초기값 반환
 
         return try {
             val parts = timeString.split(":")
@@ -253,7 +249,7 @@ class SuggestBottomSheet : BottomSheetDialogFragment() {
                 val minute = parts[1].trim().toIntOrNull()?.coerceIn(0, 59) ?: 0
                 Pair(hour, minute)
             } else {
-                Pair(0, 0)
+                Pair(0, 0) // 형식 안 맞으면 기본값 반환
             }
         } catch (e: Exception) {
             Log.e("SuggestBottomSheet", "시간 파싱 오류: '$timeString'", e)
@@ -264,6 +260,21 @@ class SuggestBottomSheet : BottomSheetDialogFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         Log.d("SuggestBottomSheet", "onDestroyView 호출됨")
-        _binding = null // 메모리 누수 방지
+        selectedPlaceLatLng = null
+        selectedPlaceName = null
+        _binding = null
+    }
+
+    override fun onPlaceSelected(latLng: LatLng, name: String?) {
+        Log.d("SuggestBottomSheet", "onPlaceSelected 호출됨: 좌표=$latLng, 이름=$name")
+        // 선택된 장소 정보 저장
+        selectedPlaceLatLng = latLng
+        selectedPlaceName = name
+
+        if (_binding != null) {
+            binding.place.text = name ?: "위치: ${latLng.latitude}, ${latLng.longitude}"
+        }
+
+        checkAndUpdateDoneButtonState()
     }
 }
