@@ -374,7 +374,7 @@ class EditTimetableFragment : Fragment() {
                 val cell = LinearLayout(requireContext()).apply {
                     layoutParams = TableRow.LayoutParams().apply {
                         width = 0
-                        height = 53 // 미리보기이므로 높이를 좀 더 작게
+                        height = 52 // 미리보기이므로 높이를 좀 더 작게
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
