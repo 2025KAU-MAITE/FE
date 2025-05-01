@@ -1,14 +1,229 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".HomeFragment">
+    android:padding="16dp"
+    android:fillViewport="true"
+    android:background="@color/white">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="@string/hello_blank_fragment" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:divider="?android:attr/dividerHorizontal"
+        android:showDividers="middle"
+        android:dividerPadding="16dp">
 
-</FrameLayout>
+        <!-- 🔹 상단 로고 + 알림 + 채팅 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:id="@+id/iv_logo"
+                android:layout_width="218dp"
+                android:layout_height="87dp"
+                android:contentDescription="logo"
+                android:src="@drawable/ic_maite_logo" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/iv_notification"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="16dp"
+                    android:src="@drawable/ic_notification"
+                    android:contentDescription="알림" />
+
+                <ImageView
+                    android:id="@+id/iv_chat"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_chat"
+                    android:contentDescription="채팅" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 🔹 내 시간표 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="내 시간표"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"/>
+
+        <FrameLayout
+            android:id="@+id/fl_timetable"
+            android:layout_width="match_parent"
+            android:layout_height="400dp"
+            android:background="@android:color/white" />
+
+        <!-- 🔹 내 회의 (항상 표시) -->
+        <TextView
+            android:id="@+id/tv_meeting_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="내 회의"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="visible"/>
+
+        <TextView
+            android:id="@+id/tv_no_meetings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="아직 회의가 없습니다"
+            android:textSize="14sp"
+            android:textColor="#888888"
+            android:padding="16dp"
+            android:gravity="center"
+            android:visibility="visible"/>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/card_meeting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:cardElevation="4dp"
+            app:cardCornerRadius="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tv_meeting_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textStyle="bold"
+                    android:textSize="16sp"/>
+
+                <TextView
+                    android:id="@+id/tv_meeting_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="" />
+
+                <TextView
+                    android:id="@+id/tv_meeting_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="" />
+
+                <TextView
+                    android:id="@+id/tv_meeting_location"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- 🔹 읽지 않은 제안 (항상 표시) -->
+        <TextView
+            android:id="@+id/tv_proposal_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="읽지 않은 제안"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="visible"/>
+
+        <TextView
+            android:id="@+id/tv_no_proposals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="아직 제안이 없습니다"
+            android:textSize="14sp"
+            android:textColor="#888888"
+            android:padding="16dp"
+            android:gravity="center"
+            android:visibility="visible"/>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/card_proposal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:cardElevation="4dp"
+            app:cardCornerRadius="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tv_proposal_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textStyle="bold"
+                    android:textSize="16sp"/>
+
+                <TextView
+                    android:id="@+id/tv_proposal_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="" />
+
+                <TextView
+                    android:id="@+id/tv_proposal_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="" />
+
+                <TextView
+                    android:id="@+id/tv_proposal_location"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="end"
+                    android:layout_marginTop="12dp">
+
+                    <Button
+                        android:id="@+id/btn_accept"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="수락"
+                        android:backgroundTint="@color/mainColor"
+                        android:textColor="@android:color/white" />
+
+                    <Button
+                        android:id="@+id/btn_decline"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="거절"
+                        android:layout_marginStart="8dp"
+                        android:backgroundTint="#DDDDDD"
+                        android:textColor="#666666" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</ScrollView>

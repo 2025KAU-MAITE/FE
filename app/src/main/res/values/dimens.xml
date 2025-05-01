@@ -1,6 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <dimen name="timetable_cell_height">25dp</dimen>
-    <dimen name="timetable_bar_height">15dp</dimen>
-    <dimen name="time_cell_width">30dp</dimen> <!-- 시간 셀 너비 (숫자 2개만 들어가니 최소화) -->
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 시간표 셀의 기본 높이 -->
+    <dimen name="timetable_cell_height">40dp</dimen>
 </resources>
