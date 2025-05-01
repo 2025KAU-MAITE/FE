@@ -2,6 +2,7 @@
     <string name="app_name">MAITE</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="title_activity_login">로그인</string>
 
     <!-- 회의 및 시간표 관련 문자열 -->
     <string name="meeting_date_format">날짜: %s</string>
