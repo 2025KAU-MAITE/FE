@@ -23,12 +23,27 @@
             android:gravity="center_vertical"
             android:paddingBottom="12dp">
 
-            <ImageView
-                android:id="@+id/iv_logo"
+            <!-- ✅ 로고 + 점을 위한 FrameLayout -->
+            <FrameLayout
                 android:layout_width="218dp"
-                android:layout_height="87dp"
-                android:contentDescription="logo"
-                android:src="@drawable/ic_maite_logo" />
+                android:layout_height="87dp">
+
+                <ImageView
+                    android:id="@+id/iv_logo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="logo"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_maite_logo" />
+
+                <ImageView
+                    android:id="@+id/iv_i_dot"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="123dp"
+                    android:layout_marginTop="9dp"
+                    android:src="@drawable/ic_dot" />
+            </FrameLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -70,7 +85,7 @@
             android:layout_height="400dp"
             android:background="@android:color/white" />
 
-        <!-- 🔹 내 회의 (항상 표시) -->
+        <!-- 🔹 내 회의 -->
         <TextView
             android:id="@+id/tv_meeting_label"
             android:layout_width="wrap_content"
@@ -135,7 +150,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- 🔹 읽지 않은 제안 (항상 표시) -->
+        <!-- 🔹 읽지 않은 제안 -->
         <TextView
             android:id="@+id/tv_proposal_label"
             android:layout_width="wrap_content"

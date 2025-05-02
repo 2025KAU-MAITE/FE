@@ -1,6 +1,5 @@
 package com.example.maite.ui.profile
 
-import android.app.TimePickerDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -10,13 +9,14 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import com.example.maite.R
 import com.example.maite.databinding.FragmentEditTimetableBinding
 import com.example.maite.model.TimetableEntry
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
-import java.util.*
+import java.time.LocalDate
 
 class EditTimetableFragment : Fragment() {
 
@@ -24,6 +24,9 @@ class EditTimetableFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ProfileViewModel by activityViewModels()
+
+    // 독립적인 EditTimeSelectionViewModel 사용
+    private val timeSelectionViewModel: EditTimeSelectionViewModel by activityViewModels()
 
     // 요일 선택 옵션
     private val dayOptions = arrayOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
@@ -60,6 +63,7 @@ class EditTimetableFragment : Fragment() {
         }
 
         setupUI()
+        setupTimeSelectionObservers()
         observeEvents()
 
         // 초기 시간표 미리보기 표시
@@ -75,14 +79,31 @@ class EditTimetableFragment : Fragment() {
         )
         binding.spinnerDay.adapter = dayAdapter
 
-        // 시작 시간 선택 버튼
-        binding.btnStartTime.setOnClickListener {
-            showTimePickerDialog(true)
+        // 요일 선택 리스너
+        binding.spinnerDay.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                // 선택된 요일은 1부터 시작하지만, LocalDate의 DayOfWeek는 월요일이 1
+                val dayIndex = position + 1
+
+                // TimeSelectionViewModel에 날짜 설정 (오늘 날짜에서 요일만 변경)
+                val today = LocalDate.now()
+                val selectedDate = today.with(java.time.DayOfWeek.of(dayIndex))
+                timeSelectionViewModel.updateSelectedDate(selectedDate)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // 아무것도 하지 않음 (기본 선택 유지)
+            }
         }
 
-        // 종료 시간 선택 버튼
+        // 시작 시간 선택 버튼 - 바텀 시트 사용
+        binding.btnStartTime.setOnClickListener {
+            showTimePickerBottomSheet(true)
+        }
+
+        // 종료 시간 선택 버튼 - 바텀 시트 사용
         binding.btnEndTime.setOnClickListener {
-            showTimePickerDialog(false)
+            showTimePickerBottomSheet(false)
         }
 
         // 기본 시간 표시 업데이트
@@ -126,6 +147,30 @@ class EditTimetableFragment : Fragment() {
             // 변경사항 저장 없이 돌아가기
             parentFragmentManager.popBackStack()
         }
+
+        // 초기 요일 선택 (월요일)
+        binding.spinnerDay.setSelection(0)
+    }
+
+    // TimeSelectionViewModel 관찰
+    private fun setupTimeSelectionObservers() {
+        // 시작 시간 관찰
+        timeSelectionViewModel.startTime.observe(viewLifecycleOwner, Observer { startTime ->
+            startTime?.let { (hour, minute) ->
+                selectedStartHour = hour
+                selectedStartMinute = minute
+                updateTimeDisplay()
+            }
+        })
+
+        // 종료 시간 관찰
+        timeSelectionViewModel.endTime.observe(viewLifecycleOwner, Observer { endTime ->
+            endTime?.let { (hour, minute) ->
+                selectedEndHour = hour
+                selectedEndMinute = minute
+                updateTimeDisplay()
+            }
+        })
     }
 
     private fun observeEvents() {
@@ -162,7 +207,7 @@ class EditTimetableFragment : Fragment() {
             return
         }
 
-        // 선택한 요일 인덱스 (1: 월, 2: 화, ...)
+        // 선택한 요일 인덱스 (1: 월, 2: 화, ..., 7:일)
         val dayIndex = binding.spinnerDay.selectedItemPosition + 1
 
         // TimetableEntry 생성
@@ -199,45 +244,21 @@ class EditTimetableFragment : Fragment() {
         }
     }
 
-    private fun showTimePickerDialog(isStartTime: Boolean) {
+    // 바텀 시트 방식 시간 선택
+    private fun showTimePickerBottomSheet(isStartTime: Boolean) {
+        // 대상 시간 및 초기값 설정
+        val targetTimeView = if (isStartTime) "time1" else "time2"
         val initialHour = if (isStartTime) selectedStartHour else selectedEndHour
         val initialMinute = if (isStartTime) selectedStartMinute else selectedEndMinute
 
-        TimePickerDialog(
-            requireContext(),
-            { _, hourOfDay, minute ->
-                // 30분 단위로 반올림 (0 또는 30분)
-                val roundedMinute = if (minute < 15) 0 else if (minute < 45) 30 else 0
-                val adjustedHour = if (minute >= 45) (hourOfDay + 1) % 24 else hourOfDay
-
-                if (isStartTime) {
-                    selectedStartHour = adjustedHour
-                    selectedStartMinute = roundedMinute
-
-                    // 시작 시간이 종료 시간보다 이후면 종료 시간도 조정
-                    if (selectedStartHour > selectedEndHour ||
-                        (selectedStartHour == selectedEndHour && selectedStartMinute >= selectedEndMinute)) {
-                        selectedEndHour = (selectedStartHour + (if (selectedStartMinute == 30) 1 else 0)) % 24
-                        selectedEndMinute = if (selectedStartMinute == 0) 30 else 0
-                    }
-                } else {
-                    selectedEndHour = adjustedHour
-                    selectedEndMinute = roundedMinute
-
-                    // 종료 시간이 시작 시간보다 이전이면 시작 시간도 조정
-                    if (selectedEndHour < selectedStartHour ||
-                        (selectedEndHour == selectedStartHour && selectedEndMinute <= selectedStartMinute)) {
-                        selectedStartHour = (selectedEndHour - (if (selectedEndMinute == 0) 1 else 0) + 24) % 24
-                        selectedStartMinute = if (selectedEndMinute == 30) 0 else 30
-                    }
-                }
-
-                updateTimeDisplay()
-            },
+        // 새로운 바텀 시트 생성 및 표시
+        val timePickerBottomSheet = EditTimePickerBottomSheet.newInstance(
+            targetTimeView,
             initialHour,
-            initialMinute,
-            true // 24시간 형식
-        ).show()
+            initialMinute
+        )
+
+        timePickerBottomSheet.show(parentFragmentManager, "EditTimePickerBottomSheet")
     }
 
     private fun updateTimeDisplay() {
@@ -256,9 +277,27 @@ class EditTimetableFragment : Fragment() {
         // 시간표 생성을 위한 데이터
         val entries = temporaryEntries
 
-        // 고정 시간 범위 (09~24시)
-        val minTime = 9
-        val maxTime = 24
+        // 동적 시간 범위 계산하되 최소 9시부터 20시까지 표시
+        var minTime = 9
+        var maxTime = 23
+
+        // 일정이 있는 경우에만 범위 조정
+        if (entries.isNotEmpty()) {
+            val startTimes = entries.map { it.startHour }
+            val endTimes = entries.map { it.endHour }
+
+            if (startTimes.min() < minTime) {
+                minTime = startTimes.min()
+            }
+
+            if (endTimes.max() > maxTime) {
+                maxTime = endTimes.max()
+            }
+        }
+
+        // 시간 범위가 넘어가면 제한 (0-23 범위 내로)
+        minTime = minTime.coerceIn(0, 23)
+        maxTime = maxTime.coerceIn(minTime + 1, 23)
 
         // 시간표 테이블 생성
         val tableLayout = TableLayout(requireContext()).apply {
@@ -310,7 +349,7 @@ class EditTimetableFragment : Fragment() {
         tableLayout.addView(headerRow)
 
         // 시간대별 행 추가
-        for (hour in minTime until maxTime) {
+        for (hour in minTime..maxTime) {
             val row = TableRow(requireContext())
 
             // 시간 셀
@@ -321,7 +360,7 @@ class EditTimetableFragment : Fragment() {
                 setBackgroundColor(Color.parseColor("#F5F5F5"))
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 40
-                    height = 40 // 미리보기이므로 높이를 좀 더 작게
+                    height = 52 // 미리보기이므로 높이를 좀 더 작게
                 }
             }
             row.addView(timeCell)
@@ -335,7 +374,7 @@ class EditTimetableFragment : Fragment() {
                 val cell = LinearLayout(requireContext()).apply {
                     layoutParams = TableRow.LayoutParams().apply {
                         width = 0
-                        height = 40 // 미리보기이므로 높이를 좀 더 작게
+                        height = 52 // 미리보기이므로 높이를 좀 더 작게
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
