@@ -80,7 +80,7 @@ class ProfileFragment : Fragment() {
 
         // 동적 시간 범위 계산
         var minTime = 9 // 기본 최소 시간 (9시)
-        var maxTime = 20 // 기본 최대 시간 (20시)
+        var maxTime = 24
 
         // 일정이 있는 경우 시간 범위 조정
         if (entries.isNotEmpty()) {
