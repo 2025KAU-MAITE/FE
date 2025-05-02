@@ -18,6 +18,7 @@ import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
 import com.example.maite.model.TimetableEntry
 import com.example.maite.ui.home.HomeViewModel
+import kotlin.math.ceil
 
 class HomeFragment : Fragment() {
 
@@ -103,32 +104,38 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // 시간표 렌더링 메서드
+    // 시간표 렌더링 메서드 (30분 단위로 수정)
     private fun renderTimetable(entries: List<TimetableEntry>) {
         val timetableLayout = binding.flTimetable
         timetableLayout.removeAllViews()
 
         // 동적 시간 범위 계산
-        var minTime = 9  // 기본 최소 시간 (9시)
-        var maxTime = 20 // 기본 최대 시간 (20시)
+        var minHour = 9  // 기본 최소 시간 (9시)
+        var maxHour = 20 // 기본 최대 시간 (20시)
 
         // 일정이 있는 경우 시간 범위 조정
         if (entries.isNotEmpty()) {
-            val startTimes = entries.map { it.startHour }
-            val endTimes = entries.map { it.endHour }
-
-            if (startTimes.min() < minTime) {
-                minTime = startTimes.min()
+            // 시작 시간 최소값 (시간 + 분/60으로 소수점 시간)
+            val startTimes = entries.map {
+                it.startHour + (it.startMinute / 60.0)
+            }
+            // 종료 시간 최대값 (시간 + 분/60으로 소수점 시간)
+            val endTimes = entries.map {
+                it.endHour + (it.endMinute / 60.0)
             }
 
-            if (endTimes.max() > maxTime) {
-                maxTime = endTimes.max()
+            if ((startTimes.minOrNull() ?: minHour.toDouble()) < minHour) {
+                minHour = (startTimes.minOrNull() ?: minHour.toDouble()).toInt()
+            }
+
+            if (ceil(endTimes.maxOrNull() ?: maxHour.toDouble()).toInt() > maxHour) {
+                maxHour = ceil(endTimes.maxOrNull() ?: maxHour.toDouble()).toInt()
             }
         }
 
         // 시간 범위가 넘어가면 제한 (0-23 범위 내로)
-        minTime = minTime.coerceIn(0, 23)
-        maxTime = maxTime.coerceIn(minTime + 1, 23)
+        minHour = minHour.coerceIn(0, 23)
+        maxHour = maxHour.coerceIn(minHour + 1, 23)
 
         // 시간표 테이블 생성
         val tableLayout = TableLayout(requireContext()).apply {
@@ -179,33 +186,43 @@ class HomeFragment : Fragment() {
         }
         tableLayout.addView(headerRow)
 
-        // 동적으로 계산된 시간대 범위
-        for (hour in minTime..maxTime) {
+        // 시간대별 행 추가 (30분 단위로 변경)
+        for (timeSlot in (minHour * 2)..(maxHour * 2)) {
+            val hour = timeSlot / 2
+            val minute = (timeSlot % 2) * 30
+            val currentTimeInMinutes = hour * 60 + minute
+
             val row = TableRow(requireContext())
 
-            // 시간 셀
+            // 시간 셀 - 정시(00분)에만 시간 표시
             val timeCell = TextView(requireContext()).apply {
-                text = hour.toString()
+                text = if (minute == 0) hour.toString() else ""
                 textSize = 12f // 폰트 크기 증가
                 gravity = Gravity.CENTER
                 setBackgroundColor(Color.parseColor("#F5F5F5"))
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 40
-                    height = 65 // 높이 더 증가
+                    height = 35 // 30분 단위이므로 높이 조정 (기존 65의 절반보다 약간 큰 값)
                 }
             }
             row.addView(timeCell)
 
             // 요일별 셀
             for (day in 1 until weekDays.size) {
-                val entry = entries.find {
-                    (hour in it.startHour until it.endHour) && it.dayOfWeek == day
+                // 현재 시간대의 일정 찾기 (30분 단위 고려)
+                val entry = entries.find { e ->
+                    val startTimeInMinutes = e.startHour * 60 + e.startMinute
+                    val endTimeInMinutes = e.endHour * 60 + e.endMinute
+
+                    e.dayOfWeek == day &&
+                            currentTimeInMinutes >= startTimeInMinutes &&
+                            currentTimeInMinutes < endTimeInMinutes
                 }
 
                 val cell = LinearLayout(requireContext()).apply {
                     layoutParams = TableRow.LayoutParams().apply {
                         width = 0
-                        height = 65 // 높이 더 증가
+                        height = 35 // 30분 단위이므로 높이 조정
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
@@ -215,16 +232,22 @@ class HomeFragment : Fragment() {
                         setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
 
-                        // 일정 제목 표시
-                        addView(TextView(requireContext()).apply {
-                            text = entry.title
-                            textSize = 11f // 폰트 크기 증가
-                            gravity = Gravity.CENTER
-                            setTextColor(Color.WHITE)
-                            ellipsize = android.text.TextUtils.TruncateAt.END
-                            maxLines = 1
-                            setPadding(2, 2, 2, 2)
-                        })
+                        // 일정 시작 시간인 경우에만 제목 표시
+                        val isStartTime = (
+                                currentTimeInMinutes == entry.startHour * 60 + entry.startMinute
+                                )
+
+                        if (isStartTime) {
+                            addView(TextView(requireContext()).apply {
+                                text = entry.title
+                                textSize = 11f // 폰트 크기 증가
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 2, 2, 2)
+                            })
+                        }
                     } else {
                         // 빈 셀
                         setBackgroundResource(R.drawable.timetable_cell_border)
