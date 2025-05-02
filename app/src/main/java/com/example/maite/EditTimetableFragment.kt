@@ -295,9 +295,9 @@ class EditTimetableFragment : Fragment() {
         // 시간표 생성을 위한 데이터
         val entries = temporaryEntries
 
-        // 동적 시간 범위 계산 (최소 9시부터 20시까지 표시)
+
         var minHour = 9
-        var maxHour = 20
+        var maxHour = 24
 
         // 일정이 있는 경우에만 범위 조정
         if (entries.isNotEmpty()) {
