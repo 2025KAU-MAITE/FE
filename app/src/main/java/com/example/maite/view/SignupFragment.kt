@@ -1,20 +1,29 @@
 package com.example.maite.view
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.example.maite.repository.AuthRepository
 import com.example.maite.databinding.FragmentSignupBinding
+import kotlinx.coroutines.launch
 
 class SignupFragment : Fragment() {
+
+    private val TAG = "SignupFragment" // 로깅을 위한 태그 추가
 
     private var _binding: FragmentSignupBinding? = null
     private val binding get() = _binding!!
     
     // Flag to track if email has been verified
     private var isEmailVerified = false
+    
+    // AuthRepository 인스턴스 생성
+    private val authRepository = AuthRepository()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -80,32 +89,69 @@ class SignupFragment : Fragment() {
             return
         }
         
-        // Simulate network call to check for duplicate email
-        // In a real app, you would make an API call to your backend
-        simulateEmailDuplicateCheck(email)
-    }
-    
-    private fun simulateEmailDuplicateCheck(email: String) {
-        // For demo purposes, we'll consider "test@example.com" as already registered
-        val isDuplicate = email == "test@example.com"
+        // API 호출로 이메일 중복 확인
+        binding.progressBar.visibility = View.VISIBLE
+        binding.btnDuplicateCheck.isEnabled = false
         
-        if (isDuplicate) {
-            Toast.makeText(
-                requireContext(),
-                "이미 사용 중인 이메일입니다.",
-                Toast.LENGTH_SHORT
-            ).show()
-            binding.etEmail.error = "이미 사용 중인 이메일입니다"
-            isEmailVerified = false
-        } else {
-            Toast.makeText(
-                requireContext(),
-                "사용 가능한 이메일입니다.",
-                Toast.LENGTH_SHORT
-            ).show()
-            binding.etEmail.error = null
-            isEmailVerified = true
-            currentVerifiedEmail = email
+        // 디버깅 로그 추가
+        Log.d(TAG, "이메일 중복 확인 API 호출 시작: $email")
+        
+        lifecycleScope.launch {
+            try {
+                Log.d(TAG, "API 요청 전송 중...")
+                val response = authRepository.checkEmailDuplicate(email)
+                
+                // API 응답 디버깅 로그 추가
+                Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, code=${response.code}, message=${response.message}")
+                Log.d(TAG, "결과 데이터: duplicated=${response.result.duplicated}, message=${response.result.message}")
+                
+                if (response.isSuccess) {
+                    val result = response.result
+                    val isDuplicate = result.duplicated
+                    
+                    if (isDuplicate) {
+                        Log.d(TAG, "중복된 이메일 감지됨")
+                        Toast.makeText(
+                            requireContext(),
+                            "이미 사용 중인 이메일입니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        binding.etEmail.error = "이미 사용 중인 이메일입니다"
+                        isEmailVerified = false
+                    } else {
+                        Log.d(TAG, "사용 가능한 이메일 확인됨")
+                        Toast.makeText(
+                            requireContext(),
+                            "사용 가능한 이메일입니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        binding.etEmail.error = null
+                        isEmailVerified = true
+                        currentVerifiedEmail = email
+                    }
+                } else {
+                    // API 응답이 실패인 경우
+                    Log.e(TAG, "API 응답 실패: ${response.message}")
+                    Toast.makeText(
+                        requireContext(),
+                        "이메일 중복 확인 실패: ${response.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    isEmailVerified = false
+                }
+            } catch (e: Exception) {
+                // 네트워크 오류 등의 예외 처리
+                Log.e(TAG, "API 호출 중 예외 발생", e)
+                Toast.makeText(
+                    requireContext(),
+                    "네트워크 오류가 발생했습니다: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                isEmailVerified = false
+            } finally {
+                binding.progressBar.visibility = View.GONE
+                binding.btnDuplicateCheck.isEnabled = true
+            }
         }
     }
     
