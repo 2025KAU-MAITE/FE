@@ -321,7 +321,7 @@
                     android:layout_height="match_parent">
 
                     <TextView
-                        android:id="@+id/recentTitle"
+                        android:id="@+id/meetTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
@@ -342,7 +342,7 @@
                         android:textSize="14dp"
                         android:textStyle="bold"
                         app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/recentTitle" />
+                        app:layout_constraintTop_toBottomOf="@+id/meetTitle" />
 
                     <TextView
                         android:id="@+id/textView12_recent"
@@ -369,7 +369,7 @@
                         app:layout_constraintTop_toBottomOf="@+id/textView12_recent" />
 
                     <TextView
-                        android:id="@+id/recentDate"
+                        android:id="@+id/meetDate"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -379,7 +379,7 @@
                         app:layout_constraintTop_toTopOf="@+id/textView11_recent" />
 
                     <TextView
-                        android:id="@+id/recentTime"
+                        android:id="@+id/meetTime"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -389,7 +389,7 @@
                         app:layout_constraintTop_toTopOf="@+id/textView12_recent" />
 
                     <TextView
-                        android:id="@+id/recentPlace"
+                        android:id="@+id/meetPlace"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
