@@ -1,0 +1,94 @@
+package com.example.maite.data.repository
+
+import com.example.maite.ApiClient
+import com.example.maite.api.TimetableApi
+import com.example.maite.data.model.TimetableEntryDto
+import com.example.maite.model.TimetableEntry
+import com.example.maite.util.TokenManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class TimetableRepository {
+    private val api: TimetableApi = ApiClient.retrofit.create(TimetableApi::class.java)
+    
+    // 토큰 가져오기 (실제 구현 시 TokenManager나 SharedPreferences에서 가져와야 함)
+    private fun getAuthToken(): String {
+        // TODO: 실제 토큰 관리 로직 구현
+        return "Bearer ${TokenManager.getAccessToken()}"
+    }
+
+    // 시간표 가져오기
+    suspend fun getTimetable(): List<TimetableEntry> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getTimetables(getAuthToken())
+            if (response.success && response.data != null) {
+                response.data.map { dto ->
+                    convertDtoToDomain(dto)
+                }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    // 시간표 저장하기 (전체 업데이트)
+    suspend fun saveTimetable(entries: List<TimetableEntry>): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val dtos = entries.map { TimetableEntryDto.fromDomain(it) }
+            val response = api.updateTimetable(getAuthToken(), dtos)
+            response.success
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    // 시간표 하나 추가하기
+    suspend fun addTimetableEntry(entry: TimetableEntry): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val dto = TimetableEntryDto.fromDomain(entry)
+            val response = api.createTimetable(getAuthToken(), dto)
+            response.success
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    // 시간표 이벤트 삭제하기
+    suspend fun deleteTimetableEvent(eventId: Int): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteEvent(getAuthToken(), eventId)
+            response.success
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    // 시간표 전체 삭제하기
+    suspend fun clearTimetable(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val response = api.clearTimetable(getAuthToken())
+            response.success
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    // DTO를 도메인 모델로 변환
+    private fun convertDtoToDomain(dto: TimetableEntryDto): TimetableEntry {
+        val startParts = dto.startTime.split(":")
+        val endParts = dto.endTime.split(":")
+        
+        return TimetableEntry(
+            title = dto.title,
+            dayOfWeek = dto.dayOfWeek,
+            startHour = startParts[0].toInt(),
+            startMinute = startParts[1].toInt(),
+            endHour = endParts[0].toInt(),
+            endMinute = endParts[1].toInt(),
+            colorHex = dto.color,
+            location = dto.location ?: ""
+        )
+    }
+}

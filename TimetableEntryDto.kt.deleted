@@ -1,0 +1,25 @@
+package com.example.maite.data.model
+
+data class TimetableEntryDto(
+    val eventId: Int? = null,
+    val title: String,
+    val dayOfWeek: Int,      // 1:월, 2:화, ..., 7:일
+    val startTime: String,   // "HH:mm" 형식
+    val endTime: String,     // "HH:mm" 형식
+    val location: String? = null,
+    val color: String = "#4C7EED"
+) {
+    companion object {
+        // TimetableEntry를 DTO로 변환
+        fun fromDomain(entry: com.example.maite.model.TimetableEntry): TimetableEntryDto {
+            return TimetableEntryDto(
+                title = entry.title,
+                dayOfWeek = entry.dayOfWeek,
+                startTime = String.format("%02d:%02d", entry.startHour, entry.startMinute),
+                endTime = String.format("%02d:%02d", entry.endHour, entry.endMinute),
+                location = entry.location,
+                color = entry.colorHex
+            )
+        }
+    }
+}

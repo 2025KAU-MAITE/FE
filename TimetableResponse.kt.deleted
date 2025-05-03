@@ -1,0 +1,30 @@
+package com.example.maite.data.model
+
+data class TimetableResponse(
+    val success: Boolean,
+    val message: String,
+    val data: TimetableData? = null
+)
+
+data class TimetableData(
+    val timetables: List<Timetable>? = null,
+    val events: List<EventDto>? = null,
+    val timetable: Timetable? = null,
+    val event: EventDto? = null
+)
+
+data class Timetable(
+    val id: Int,
+    val name: String,
+    val events: List<EventDto>? = null
+)
+
+data class EventDto(
+    val id: Int,
+    val title: String,
+    val dayOfWeek: Int,
+    val startTime: String,
+    val endTime: String,
+    val location: String?,
+    val color: String?
+)

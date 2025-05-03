@@ -19,6 +19,8 @@ import com.example.maite.model.UserInfo
 import com.example.maite.ui.profile.EditTimetableFragment
 import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
+import com.example.maite.data.TimetableStore
+
 
 class ProfileFragment : Fragment() {
 
@@ -40,6 +42,9 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        viewModel.saveTimetableToServer(userId = 1L)
+
+
         // 사용자 정보 관찰
         viewModel.userInfo.observe(viewLifecycleOwner) { userInfo: UserInfo? ->
             userInfo?.let {
@@ -57,9 +62,10 @@ class ProfileFragment : Fragment() {
         }
 
         // 시간표 데이터 관찰
-        viewModel.timetable.observe(viewLifecycleOwner) { timetableList ->
+        TimetableStore.entries.observe(viewLifecycleOwner) { timetableList ->
             createTimetable(timetableList)
         }
+
 
         // 시간표 수정 버튼 클릭 이벤트
         binding.btnEditTimetable.setOnClickListener {

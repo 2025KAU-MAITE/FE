@@ -18,6 +18,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.ceil
+import com.example.maite.data.TimetableStore
+
 
 class EditTimetableFragment : Fragment() {
 
@@ -59,7 +61,7 @@ class EditTimetableFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // 기존 시간표 항목들을 임시 리스트에 복사
-        viewModel.timetable.value?.let {
+        TimetableStore.entries.value?.let {
             temporaryEntries.addAll(it)
         }
 
@@ -132,6 +134,9 @@ class EditTimetableFragment : Fragment() {
         binding.btnSave.setOnClickListener {
             // 임시 시간표를 실제 시간표로 적용
             viewModel.updateTimetable(temporaryEntries)
+
+            val userId = 1L // TODO: 로그인된 사용자 ID로 바꾸기
+            viewModel.saveTimetableToServer(userId)
             Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
 
             // 프로필 화면으로 돌아가기
