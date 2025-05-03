@@ -101,7 +101,14 @@ class ListDetailFragment : Fragment() {
                 .commit()
         }
 
-        createTimetable() // 시간표 생성 호출
+        binding.propHamberger.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, PropMeetFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
+        createTimetable()
     }
 
     // 시간표 생성 함수 (수정됨: 동적 시간 범위)
