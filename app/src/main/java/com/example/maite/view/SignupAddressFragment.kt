@@ -1,17 +1,23 @@
 package com.example.maite.view
 
+import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
-import com.example.maite.R
 import com.example.maite.databinding.FragmentSignupAddressBinding
+import com.example.maite.model.SignupDataHolder
 
 class SignupAddressFragment : Fragment() {
 
+    private val TAG = "SignupAddressFragment"
     private var _binding: FragmentSignupAddressBinding? = null
     private val binding get() = _binding!!
     
@@ -36,36 +42,68 @@ class SignupAddressFragment : Fragment() {
             requireActivity().supportFragmentManager.popBackStack()
         }
         
-        // Address field click listener - directly navigate to next screen 
+        // Address field click listener - open Kakao address search
         binding.tvAddress.setOnClickListener {
-            // Skip Kakao address search and just go to next screen
-            navigateToNextScreen()
+            openKakaoAddressSearch()
         }
         
         // Continue button click listener
         binding.btnContinue.setOnClickListener {
             if (binding.tvAddress.text.toString() == binding.tvAddress.hint.toString() || 
                 binding.tvAddress.text.isNullOrEmpty()) {
-                // No longer showing a toast, just proceed
-                navigateToNextScreen()
+                Toast.makeText(requireContext(), "주소를 입력해주세요", Toast.LENGTH_SHORT).show()
             } else {
                 // Save address and navigate to the next screen
-                navigateToNextScreen()
+                saveAddressAndNavigate()
             }
         }
     }
     
+    @SuppressLint("SetJavaScriptEnabled")
     private fun openKakaoAddressSearch() {
-        // TODO: Integrate with Kakao address search API
-        // This will be implemented with the Kakao Local API
-        // For now, we'll just show a toast message
-        Toast.makeText(requireContext(), "카카오 주소 검색을 실행합니다", Toast.LENGTH_SHORT).show()
+        // WebView를 표시할 컨테이너 보이게 설정
+        binding.webViewContainer.visibility = View.VISIBLE
         
-        // Example of what would happen after selecting an address:
-        // binding.tvAddress.text = "서울특별시 강남구 테헤란로 123"
+        // WebView 설정
+        binding.webView.settings.javaScriptEnabled = true
+        binding.webView.addJavascriptInterface(WebViewInterface(), "Android")
+        
+        // WebViewClient 설정
+        binding.webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                view.loadUrl(url)
+                return true
+            }
+        }
+        
+        // 카카오 우편번호 서비스 로드
+        binding.webView.loadUrl("https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js")
+        binding.webView.loadUrl("https://ddaaee.github.io/daum-post-code/")
     }
     
-    private fun navigateToNextScreen() {
+    // JavaScript 인터페이스 클래스
+    inner class WebViewInterface {
+        @JavascriptInterface
+        fun processDATA(address: String) {
+            activity?.runOnUiThread {
+                // 주소 텍스트뷰에 선택한 주소 표시
+                binding.tvAddress.text = address
+                
+                // WebView 컨테이너 숨기기
+                binding.webViewContainer.visibility = View.GONE
+                
+                Log.d(TAG, "주소 선택 완료: $address")
+            }
+        }
+    }
+    
+    private fun saveAddressAndNavigate() {
+        // 주소 저장
+        val address = binding.tvAddress.text.toString()
+        SignupDataHolder.address = address
+        
+        Log.d(TAG, "주소 저장 완료: $address")
+        
         // Navigate to the profile picture screen
         val signupProfilePictureFragment = SignupProfilePictureFragment()
         requireActivity().supportFragmentManager.beginTransaction()
