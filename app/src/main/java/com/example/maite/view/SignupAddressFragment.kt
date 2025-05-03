@@ -52,10 +52,18 @@ class SignupAddressFragment : Fragment() {
             builtInZoomControls = true // 빌트인 확대/축소 컨트롤 활성화
             displayZoomControls = false // 화면에 확대/축소 컨트롤 표시 안함
             setGeolocationEnabled(true) // 위치 정보 사용 허용
+            cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE // 캐시 사용 중지
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW // 혼합 콘텐츠 허용
+            userAgentString = userAgentString + " maiteDaumAddressApp" // 사용자 지정 에이전트 추가
+            allowFileAccess = true
+            allowContentAccess = true
+            allowFileAccessFromFileURLs = true
+            allowUniversalAccessFromFileURLs = true
         }
         
-        // JavaScript 인터페이스 추가
-        binding.webView.addJavascriptInterface(WebViewInterface(), "Android")
+        // JavaScript 인터페이스 추가 - 중요: "Android" 이름은 HTML에서의 호출명과 일치해야 함
+        val webInterface = WebViewInterface()
+        binding.webView.addJavascriptInterface(webInterface, "Android")
         Log.d(TAG, "JavaScript 인터페이스 설정 완료")
         
         // WebView 클라이언트 설정
@@ -65,15 +73,36 @@ class SignupAddressFragment : Fragment() {
                 return false // 기본 WebView에서 URL 처리
             }
             
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                binding.progressBar.visibility = View.VISIBLE
+                Log.d(TAG, "페이지 로드 시작: $url")
+            }
+            
             override fun onPageFinished(view: WebView?, url: String?) {
                 // 페이지 로딩 완료 시 프로그레스바 숨기기
                 binding.progressBar.visibility = View.GONE
                 Log.d(TAG, "페이지 로딩 완료: $url")
+                
+                // Android 인터페이스가 제대로 설정되었는지 확인
+                view?.evaluateJavascript(
+                    "javascript:(function() { " +
+                            "console.log('Android 인터페이스 사용 가능 여부: ' + (window.Android !== undefined));" +
+                            "if (window.Android === undefined) { " +
+                            "  console.error('Android 인터페이스 없음!');" +
+                            "} else { " +
+                            "  console.log('Android 인터페이스 사용 가능 - 버전: ' + (window.Android.getAndroidVersion ? window.Android.getAndroidVersion() : 'unknown'));" +
+                            "}" +
+                            "})();",
+                    null
+                )
+                
                 super.onPageFinished(view, url)
             }
             
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
                 Log.e(TAG, "WebView 오류 발생: ${error?.description}")
+                binding.progressBar.visibility = View.GONE
                 super.onReceivedError(view, request, error)
             }
         }
@@ -89,6 +118,11 @@ class SignupAddressFragment : Fragment() {
             
             override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: android.webkit.GeolocationPermissions.Callback?) {
                 callback?.invoke(origin, true, false)
+            }
+            
+            override fun onJsAlert(view: WebView?, url: String?, message: String?, result: android.webkit.JsResult?): Boolean {
+                Log.d(TAG, "JavaScript Alert: $message")
+                return super.onJsAlert(view, url, message, result)
             }
         }
         
@@ -133,9 +167,22 @@ class SignupAddressFragment : Fragment() {
             binding.webView.clearCache(true)
             binding.webView.clearHistory()
             
+            // JavaScript 인터페이스 재등록 확인
+            binding.webView.removeJavascriptInterface("Android")
+            binding.webView.addJavascriptInterface(WebViewInterface(), "Android")
+            
             // assets 폴더의 daum_address.html 파일을 로드
             binding.webView.loadUrl("file:///android_asset/daum_address.html")
             Log.d(TAG, "daum_address.html 로드 시도")
+            
+            // 5초 뒤에 아무 반응이 없으면 자동으로 재로드
+            binding.webView.postDelayed({
+                if (binding.webViewContainer.visibility == View.VISIBLE && binding.progressBar.visibility == View.VISIBLE) {
+                    Log.d(TAG, "재로드 시도")
+                    binding.webView.reload()
+                }
+            }, 5000)
+            
         } catch (e: Exception) {
             Log.e(TAG, "WebView 로드 오류: ${e.message}")
             Toast.makeText(requireContext(), "주소 검색 기능을 로드하는데 문제가 발생했습니다.", Toast.LENGTH_SHORT).show()
@@ -220,6 +267,16 @@ class SignupAddressFragment : Fragment() {
                     Toast.makeText(requireContext(), "유효한 주소가 선택되지 않았습니다", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+
+        @JavascriptInterface
+        public fun getAndroidVersion(): Int {
+            return android.os.Build.VERSION.SDK_INT
+        }
+
+        @JavascriptInterface
+        public fun isAndroidInterface(): Boolean {
+            return true
         }
     }
     

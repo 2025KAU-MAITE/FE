@@ -11,6 +11,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background-color: #ffffff;
         }
         #daumPostContainer {
             width: 100%;
@@ -22,57 +23,76 @@
 <body>
     <div id="daumPostContainer"></div>
     
-    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script>
-        // 페이지 로드 시 자동으로 우편번호 검색 실행
-        window.onload = function() {
-            console.log("페이지 로드됨");
-            execDaumPostcode();
-        };
-
-        function execDaumPostcode() {
-            var element = document.getElementById('daumPostContainer');
-            
-            try {
-                console.log("우편번호 서비스 실행 시도");
-                new daum.Postcode({
-                    oncomplete: function(data) {
-                        console.log("주소 선택 완료", data);
-                        
-                        // 각 주소의 노출 규칙에 따라 주소를 조합한다.
-                        var addr = ''; // 주소 변수
-
-                        // 사용자가 선택한 주소 타입에 따라 해당 주소 값을 가져온다.
-                        if (data.userSelectedType === 'R') { // 도로명 주소를 선택했을 경우
-                            addr = data.roadAddress;
-                        } else { // 지번 주소를 선택했을 경우(J)
-                            addr = data.jibunAddress;
-                        }
-
-                        try {
-                            console.log("Android에 전달할 주소:", addr);
-                            
-                            // 주소 데이터를 Android로 전달
-                            window.Android.setAddress(addr);
-                            console.log("setAddress 함수 호출 완료");
-                        } catch (e) {
-                            console.error("Android 인터페이스 호출 오류:", e);
-                            alert("주소 데이터 전달 중 오류가 발생했습니다.");
-                        }
-                    },
-                    width: '100%',
-                    height: '100%',
-                    animation: true,
-                    shorthand: false,
-                    autoMapping: true
-                }).embed(element);
-                
-                console.log("우편번호 서비스 로드 완료");
-            } catch (e) {
-                console.error("우편번호 서비스 로드 오류:", e);
-                alert("우편번호 서비스를 불러오는데 실패했습니다.");
+        // Android 인터페이스 확인
+        function checkAndroidInterface() {
+            if (window.Android) {
+                console.log('Android 인터페이스 있음');
+                return true;
+            } else {
+                console.log('Android 인터페이스 없음');
+                return false;
             }
         }
+        
+        // 주소 선택 완료 후 호출될 함수
+        function handleAddress(data) {
+            console.log('주소 선택 완료:', JSON.stringify(data));
+            
+            // 주소 가져오기
+            var addr = '';
+            if (data.userSelectedType === 'R') {
+                addr = data.roadAddress;
+            } else {
+                addr = data.jibunAddress;
+            }
+            
+            // Android로 주소 전달
+            if (checkAndroidInterface()) {
+                try {
+                    console.log('setAddress 호출 시도');
+                    window.Android.setAddress(addr);
+                } catch (e) {
+                    console.error('setAddress 오류:', e);
+                    
+                    try {
+                        console.log('processDATA 호출 시도');
+                        window.Android.processDATA(JSON.stringify(data));
+                    } catch (e2) {
+                        console.error('processDATA 오류:', e2);
+                        alert('주소 선택됨: ' + addr + '\n\n앱과 통신 중 오류가 발생했습니다.');
+                    }
+                }
+            } else {
+                alert('주소 선택됨: ' + addr);
+            }
+        }
+        
+        // Daum 우편번호 서비스 스크립트 로드
+        var script = document.createElement('script');
+        script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+        script.onload = function() {
+            console.log('Daum 우편번호 스크립트 로드 완료');
+            new daum.Postcode({
+                oncomplete: handleAddress,
+                width: '100%',
+                height: '100%',
+                animation: true,
+                hideEngBtn: false,
+                hideMapBtn: false,
+                alwaysShowEngAddr: false,
+                pleaseReadGuide: 0,
+                pleaseReadGuideTimer: 1.5,
+                maxSuggestItems: 10,
+            }).embed(document.getElementById('daumPostContainer'));
+            
+            console.log('우편번호 검색 시작');
+        };
+        script.onerror = function() {
+            console.error('Daum 우편번호 스크립트 로드 오류');
+            alert('주소 검색 기능을 불러오는데 실패했습니다.');
+        };
+        document.head.appendChild(script);
     </script>
 </body>
 </html>
