@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.maite.repository.AuthRepository
 import com.example.maite.databinding.FragmentSignupBinding
+import com.example.maite.model.SignupDataHolder
 import kotlinx.coroutines.launch
 
 class SignupFragment : Fragment() {
@@ -211,10 +212,16 @@ class SignupFragment : Fragment() {
     }
     
     private fun handleSignup() {
-        // Here you would implement the actual signup process
-        // For now, we'll just move to the next step in the signup flow
+        // 이메일과 비밀번호를 SignupDataHolder에 저장
+        val email = binding.etEmail.text.toString().trim()
+        val password = binding.etPassword.text.toString().trim()
         
-        // Navigate to profile information input screen
+        // 로컬 데이터 홀더에 저장
+        SignupDataHolder.saveAccountInfo(email, password)
+        
+        Log.d(TAG, "이메일과 비밀번호 저장 완료: $email")
+        
+        // 다음 화면으로 이동 (프로필 정보 입력 화면)
         val signupProfileFragment = SignupProfileFragment()
         requireActivity().supportFragmentManager.beginTransaction()
             .replace(android.R.id.content, signupProfileFragment)

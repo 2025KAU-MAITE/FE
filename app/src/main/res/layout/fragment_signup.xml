@@ -133,7 +133,7 @@
         android:layout_marginBottom="24dp"
         android:background="@null"
         android:backgroundTint="@color/mainColor"
-        android:text="회원가입"
+        android:text="다음"
         android:textColor="@color/white"
         android:textSize="16sp"
         android:textStyle="bold"
