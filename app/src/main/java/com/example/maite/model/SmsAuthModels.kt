@@ -17,5 +17,6 @@ data class SmsAuthResponse(
 )
 
 data class SmsAuthResult(
-    val message: String
+    val message: String,
+    val status: Boolean = false // 인증 성공 여부 (verify API에서 사용)
 )

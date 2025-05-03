@@ -55,60 +55,74 @@ class AuthRepository {
     }
     
     /**
-     * SMS 인증번호 발송 (로컬 구현)
+     * SMS 인증번호 발송 (서버 API 연동)
      */
     suspend fun sendSmsAuth(phoneNumber: String): SmsAuthResponse {
         return withContext(Dispatchers.IO) {
-            // 네트워크 요청 시뮬레이션
-            delay(1000)
-            
-            Log.d(TAG, "로컬 SMS 인증번호 발송: $phoneNumber -> $testVerificationCode")
-            
-            // 응답 생성
-            SmsAuthResponse(
-                isSuccess = true,
-                code = "COMMON200",
-                message = "성공입니다.",
-                result = SmsAuthResult(
-                    message = "인증번호가 발송되었습니다. (테스트 코드: $testVerificationCode)"
+            try {
+                Log.d(TAG, "서버 SMS 인증번호 발송 API 호출: $phoneNumber")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = SmsAuthSendRequest(phoneNumber = phoneNumber)
+                
+                // 실제 API 호출
+                val response = authApi.sendSmsAuth(request)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                
+                response
+            } catch (e: Exception) {
+                Log.e(TAG, "SMS 인증번호 발송 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                SmsAuthResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = SmsAuthResult(
+                        message = "SMS 인증번호 발송 중 오류가 발생했습니다"
+                    )
                 )
-            )
-            
-            // 실제 API 구현은 주석 처리
-            // authApi.sendSmsAuth(SmsAuthSendRequest(phoneNumber))
+            }
         }
     }
     
     /**
-     * SMS 인증번호 확인 (로컬 구현)
+     * SMS 인증번호 확인 (서버 API 연동)
      */
     suspend fun verifySmsAuth(phoneNumber: String, verificationCode: String): SmsAuthResponse {
         return withContext(Dispatchers.IO) {
-            // 네트워크 요청 시뮬레이션
-            delay(1000)
-            
-            Log.d(TAG, "로컬 SMS 인증번호 확인: $phoneNumber, 입력코드: $verificationCode, 예상코드: $testVerificationCode")
-            
-            // 테스트용 인증번호와 비교
-            val isVerified = verificationCode == testVerificationCode
-            val message = if (isVerified) {
-                "인증이 완료되었습니다."
-            } else {
-                "인증번호가 일치하지 않습니다."
-            }
-            
-            // 응답 생성
-            SmsAuthResponse(
-                isSuccess = isVerified,
-                code = if (isVerified) "COMMON200" else "AUTH001",
-                message = if (isVerified) "성공입니다." else "인증 실패",
-                result = SmsAuthResult(
-                    message = message
+            try {
+                Log.d(TAG, "서버 SMS 인증번호 확인 API 호출: 전화번호=$phoneNumber, 인증번호=$verificationCode")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = SmsAuthVerifyRequest(
+                    phoneNumber = phoneNumber,
+                    verificationCode = verificationCode
                 )
-            )
-            
-            // 실제 API 구현은 주석 처리
-            // authApi.verifySmsAuth(SmsAuthVerifyRequest(phoneNumber, verificationCode))
+                
+                // 실제 API 호출
+                val response = authApi.verifySmsAuth(request)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                if (response.result != null) {
+                    Log.d(TAG, "결과: message=${response.result.message}")
+                }
+                
+                response
+            } catch (e: Exception) {
+                Log.e(TAG, "SMS 인증번호 확인 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                SmsAuthResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = SmsAuthResult(
+                        message = "SMS 인증번호 확인 중 오류가 발생했습니다"
+                    )
+                )
+            }
         }
     }
 }
