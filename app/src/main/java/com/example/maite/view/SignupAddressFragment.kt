@@ -45,9 +45,13 @@ class SignupAddressFragment : Fragment() {
             javaScriptEnabled = true
             domStorageEnabled = true
             javaScriptCanOpenWindowsAutomatically = true
-            loadWithOverviewMode = true
-            useWideViewPort = true
             setSupportMultipleWindows(true)
+            useWideViewPort = true  // HTML 컨텐츠가 웹뷰에 맞게 표시됨
+            loadWithOverviewMode = true  // 화면에 맞게 크기 조정
+            setSupportZoom(true)   // 확대/축소 지원
+            builtInZoomControls = true // 빌트인 확대/축소 컨트롤 활성화
+            displayZoomControls = false // 화면에 확대/축소 컨트롤 표시 안함
+            setGeolocationEnabled(true) // 위치 정보 사용 허용
         }
         
         // JavaScript 인터페이스 추가
@@ -57,6 +61,7 @@ class SignupAddressFragment : Fragment() {
         // WebView 클라이언트 설정
         binding.webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                Log.d(TAG, "URL 로드 시도: ${request?.url}")
                 return false // 기본 WebView에서 URL 처리
             }
             
@@ -77,9 +82,13 @@ class SignupAddressFragment : Fragment() {
         binding.webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 consoleMessage?.let {
-                    Log.d(TAG, "WebView 콘솔: ${it.message()} -- ${it.lineNumber()}")
+                    Log.d(TAG, "WebView 콘솔: ${it.message()} (${it.lineNumber()})")
                 }
                 return true
+            }
+            
+            override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: android.webkit.GeolocationPermissions.Callback?) {
+                callback?.invoke(origin, true, false)
             }
         }
         
@@ -98,6 +107,11 @@ class SignupAddressFragment : Fragment() {
             showAddressWebView()
         }
         
+        // WebView 닫기 버튼
+        binding.btnCloseWebView.setOnClickListener {
+            hideAddressWebView()
+        }
+        
         // 다음 버튼 클릭 시 입력된 주소 저장 후 다음 화면으로 이동
         binding.btnContinue.setOnClickListener {
             if (validateAddress()) {
@@ -107,17 +121,33 @@ class SignupAddressFragment : Fragment() {
     }
     
     private fun showAddressWebView() {
-        // WebView 컨테이너와 프로그레스바 표시
+        // WebView 컨테이너를 전체 화면으로 표시
         binding.webViewContainer.visibility = View.VISIBLE
         binding.progressBar.visibility = View.VISIBLE
         
-        // assets 폴더의 HTML 파일 로드
-        binding.webView.loadUrl("file:///android_asset/daum_address.html")
-        Log.d(TAG, "주소 검색 WebView 로드")
+        // 다음 버튼 숨기기
+        binding.btnContinue.visibility = View.GONE
+        
+        try {
+            // WebView 캐시 삭제 및 리셋
+            binding.webView.clearCache(true)
+            binding.webView.clearHistory()
+            
+            // assets 폴더의 daum_address.html 파일을 로드
+            binding.webView.loadUrl("file:///android_asset/daum_address.html")
+            Log.d(TAG, "daum_address.html 로드 시도")
+        } catch (e: Exception) {
+            Log.e(TAG, "WebView 로드 오류: ${e.message}")
+            Toast.makeText(requireContext(), "주소 검색 기능을 로드하는데 문제가 발생했습니다.", Toast.LENGTH_SHORT).show()
+            hideAddressWebView()
+        }
     }
     
     private fun hideAddressWebView() {
         binding.webViewContainer.visibility = View.GONE
+        
+        // 다음 버튼 다시 표시
+        binding.btnContinue.visibility = View.VISIBLE
     }
     
     private fun validateAddress(): Boolean {
@@ -173,15 +203,22 @@ class SignupAddressFragment : Fragment() {
             }
         }
         
-        // 이전 함수명도 유지 (호환성 위해)
         @JavascriptInterface
         fun setAddress(address: String) {
             Log.d(TAG, "setAddress 호출됨: $address")
-            // UI 스레드에서 주소 텍스트 업데이트
-            activity?.runOnUiThread {
-                binding.tvAddress.text = address
-                hideAddressWebView()
-                Toast.makeText(requireContext(), "주소가 선택되었습니다", Toast.LENGTH_SHORT).show()
+            if (address.isNotEmpty()) {
+                // UI 스레드에서 주소 텍스트 업데이트
+                activity?.runOnUiThread {
+                    binding.tvAddress.text = address
+                    hideAddressWebView()
+                    Toast.makeText(requireContext(), "주소가 선택되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "선택된 주소: $address")
+                }
+            } else {
+                Log.e(TAG, "빈 주소가 전달됨")
+                activity?.runOnUiThread {
+                    Toast.makeText(requireContext(), "유효한 주소가 선택되지 않았습니다", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
