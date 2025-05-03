@@ -6,11 +6,14 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
-import androidx.core.content.ContextCompat // ContextCompat import 확인
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.setFragmentResultListener
 import com.example.maite.databinding.BottomSheetCreateMaiteBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.example.maite.R // R import 확인
+import com.example.maite.R
 
 class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
 
@@ -19,13 +22,17 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
 
     private var isDoneButtonEnabled = false
 
-    // TextWatcher 인스턴스를 멤버 변수로 저장 (onDestroyView에서 제거하기 위함)
     private val textWatcher = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         override fun afterTextChanged(s: Editable?) {
             checkInputsAndUpdateButtonState()
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setupFragmentResultListener()
     }
 
     override fun onCreateView(
@@ -39,55 +46,96 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // EditText에 TextWatcher 연결
         binding.titleEditText.addTextChangedListener(textWatcher)
         binding.introEditText.addTextChangedListener(textWatcher)
 
-        // 초기 버튼 상태 설정
         checkInputsAndUpdateButtonState()
 
-        // addBtn 클릭 리스너
         binding.addBtn.setOnClickListener {
             val inviteBottomSheet = InviteBottomSheet.newInstance()
-            inviteBottomSheet.show(parentFragmentManager, "InviteBottomSheetTag")
+            inviteBottomSheet.show(parentFragmentManager, InviteBottomSheet::class.java.simpleName)
         }
 
-        // doneBtn 클릭 리스너
         binding.doneBtn.setOnClickListener {
             if (isDoneButtonEnabled) {
+                val title = binding.titleEditText.text.toString()
+                val intro = binding.introEditText.text.toString()
+
                 dismiss()
                 Toast.makeText(requireContext(), "MAITE 생성 완료", Toast.LENGTH_SHORT).show()
             }
         }
+        updateInvitedUsersUI(0)
     }
 
-    // 입력 상태 확인 및 버튼 상태 업데이트 함수
+    private fun setupFragmentResultListener() {
+        setFragmentResultListener(InviteBottomSheet.REQUEST_KEY) { requestKey, bundle ->
+            if (requestKey == InviteBottomSheet.REQUEST_KEY) {
+                val selectedCount = bundle.getInt(InviteBottomSheet.KEY_SELECTED_COUNT, 0)
+                updateInvitedUsersUI(selectedCount)
+            }
+        }
+    }
+
+    private fun updateInvitedUsersUI(count: Int) {
+        val childrenToRemove = mutableListOf<View>()
+        for (i in 0 until binding.invitedUsersLayout.childCount) {
+            val child = binding.invitedUsersLayout.getChildAt(i)
+            if (child is ImageView && child.id != R.id.addBtn) {
+                childrenToRemove.add(child)
+            }
+        }
+        childrenToRemove.forEach { binding.invitedUsersLayout.removeView(it) }
+
+        if (count > 0) {
+            val imageSize = resources.getDimensionPixelSize(R.dimen.invited_profile_img_size)
+//            val imageMarginEnd = resources.getDimensionPixelSize(R.dimen.invited_profile_img_size)
+            val desiredMarginDp = 8
+            val imageMarginEnd = (desiredMarginDp * resources.displayMetrics.density).toInt()
+
+            val addBtn = binding.invitedUsersLayout.findViewById<ImageView>(R.id.addBtn)
+            val addBtnIndex = if (addBtn != null) binding.invitedUsersLayout.indexOfChild(addBtn) else 0
+
+            for (i in 0 until count) {
+                val imageView = ImageView(requireContext())
+                val layoutParams = LinearLayout.LayoutParams(imageSize, imageSize)
+
+                layoutParams.marginEnd = imageMarginEnd
+
+                imageView.layoutParams = layoutParams
+                imageView.setImageResource(R.drawable.img_profile_default)
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+
+                binding.invitedUsersLayout.addView(imageView, addBtnIndex + i)
+            }
+        }
+        binding.invitedUsersScrollView.post {
+            binding.invitedUsersScrollView.fullScroll(View.FOCUS_RIGHT)
+        }
+    }
+
+
     private fun checkInputsAndUpdateButtonState() {
         val title = binding.titleEditText.text.toString().trim()
         val intro = binding.introEditText.text.toString().trim()
-
         isDoneButtonEnabled = title.isNotEmpty() && intro.isNotEmpty()
-
         updateDoneButtonAppearance(isDoneButtonEnabled)
     }
 
     private fun updateDoneButtonAppearance(isEnabled: Boolean) {
         val context = requireContext()
+        binding.doneBtn.isClickable = isEnabled
         if (isEnabled) {
-            binding.doneBtn.isClickable = true // 이거 없어도 잘 작동은 함
             binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.mainColor))
             binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
         } else {
-            binding.doneBtn.isClickable = false
             binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.btn_inactive))
-            binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.black))
+            binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
         }
     }
 
-
     override fun onDestroyView() {
         super.onDestroyView()
-        // TextWatcher 제거
         binding.titleEditText.removeTextChangedListener(textWatcher)
         binding.introEditText.removeTextChangedListener(textWatcher)
         _binding = null
