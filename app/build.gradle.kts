@@ -97,6 +97,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    
+    // CircleImageView 추가
+    implementation("de.hdodenhof:circleimageview:3.1.0")
 }
 
 configurations.all {
