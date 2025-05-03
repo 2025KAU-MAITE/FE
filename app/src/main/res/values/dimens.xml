@@ -1,4 +1,5 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 시간표 셀의 기본 높이 -->
     <dimen name="timetable_cell_height">30dp</dimen>
+    <dimen name="invited_profile_img_size">50dp</dimen>
+    <dimen name="invited_profile_img_margin_end">100dp</dimen>
 </resources>
