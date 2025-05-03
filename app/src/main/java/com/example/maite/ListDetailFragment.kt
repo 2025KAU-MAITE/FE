@@ -94,6 +94,13 @@ class ListDetailFragment : Fragment() {
             suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
         }
 
+        binding.recentHamberger.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, MeetListFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
         createTimetable() // 시간표 생성 호출
     }
 
