@@ -204,10 +204,17 @@ class SignupProfileFragment : Fragment() {
     private fun verifyAuthNumber() {
         val phoneNumber = binding.etPhoneNumber.text.toString().trim()
         val authCode = getAuthCode()
+        val name = binding.etName.text.toString().trim()
         
         // 인증번호가 6자리인지 확인
         if (authCode.length != 6) {
             Toast.makeText(requireContext(), "인증번호 6자리를 입력해주세요", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // 이름 검증
+        if (name.isEmpty()) {
+            binding.etName.error = "이름을 입력해주세요"
             return
         }
         
@@ -234,8 +241,13 @@ class SignupProfileFragment : Fragment() {
                     // 인증 입력 UI 비활성화
                     disableAuthFields()
                     
-                    // 계속 버튼 활성화
-                    binding.btnContinue.visibility = View.VISIBLE
+                    // 이름과 전화번호 저장 후 바로 다음 화면으로 이동
+                    SignupDataHolder.name = name
+                    SignupDataHolder.phoneNumber = phoneNumber
+                    Log.d(TAG, "이름과 전화번호 저장 완료: 이름=$name, 전화번호=$phoneNumber")
+                    
+                    // 다음 화면으로 이동
+                    navigateToAddressScreen()
                 } else {
                     // 인증 실패
                     Toast.makeText(
