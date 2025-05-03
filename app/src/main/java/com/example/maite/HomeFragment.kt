@@ -222,7 +222,7 @@ class HomeFragment : Fragment() {
                 val cell = LinearLayout(requireContext()).apply {
                     layoutParams = TableRow.LayoutParams().apply {
                         width = 0
-                        height = 35 // 30분 단위이므로 높이 조정
+                        height = 35
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
@@ -232,20 +232,53 @@ class HomeFragment : Fragment() {
                         setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
 
-                        // 일정 시작 시간인 경우에만 제목 표시
-                        val isStartTime = (
-                                currentTimeInMinutes == entry.startHour * 60 + entry.startMinute
+                        val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
+                        val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
+
+                        // 시작 시간의 다음 셀 (30분 후)
+                        val isTitleCell = (
+                                currentTimeInMinutes == startTimeInMinutes + 30
                                 )
 
-                        if (isStartTime) {
+                        // 종료 시간의 이전 셀 (30분 전)
+                        val isLocationCell = (
+                                currentTimeInMinutes == endTimeInMinutes - 30
+                                )
+
+                        // 최소 길이 체크 (적어도 1시간 이상이어야 제목/장소 표시)
+                        val isLongEnough = (endTimeInMinutes - startTimeInMinutes) >= 60
+
+                        if (isLongEnough && isTitleCell) {
                             addView(TextView(requireContext()).apply {
                                 text = entry.title
-                                textSize = 11f // 폰트 크기 증가
+                                textSize = 11f
                                 gravity = Gravity.CENTER
                                 setTextColor(Color.WHITE)
                                 ellipsize = android.text.TextUtils.TruncateAt.END
                                 maxLines = 1
-                                setPadding(2, 2, 2, 2)
+                                setPadding(2, 0, 2, 0)
+                            })
+                        } else if (isLongEnough && isLocationCell && !entry.location.isNullOrEmpty()) {
+                            addView(TextView(requireContext()).apply {
+                                text = "장소:${entry.location}"
+                                textSize = 7f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 0, 2, 0)
+                            })
+                        }
+                        // 1시간 미만인 경우 첫 번째 셀에 제목만 표시
+                        else if (!isLongEnough && currentTimeInMinutes == startTimeInMinutes) {
+                            addView(TextView(requireContext()).apply {
+                                text = entry.title
+                                textSize = 11f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 0, 2, 0)
                             })
                         }
                     } else {
