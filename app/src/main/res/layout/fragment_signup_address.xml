@@ -22,8 +22,6 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Title Text -->
-
-    <!-- Address input field -->
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="0dp"
@@ -38,6 +36,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/btnBack" />
 
+    <!-- Address input field - clickable TextView -->
     <TextView
         android:id="@+id/tvAddress"
         android:layout_width="0dp"
@@ -47,7 +46,7 @@
         android:clickable="true"
         android:focusable="true"
         android:gravity="center_vertical"
-        android:hint="주소"
+        android:hint="주소 입력"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:textColor="@color/black"
@@ -77,6 +76,13 @@
             android:layout_height="match_parent"
             android:layout_margin="16dp"
             android:background="@color/white" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
     </FrameLayout>
 
     <!-- Continue Button -->

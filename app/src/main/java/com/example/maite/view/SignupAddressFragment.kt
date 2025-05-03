@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -33,83 +34,156 @@ class SignupAddressFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        setupWebView()
         setupListeners()
     }
     
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebView() {
+        // WebView 설정
+        binding.webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            javaScriptCanOpenWindowsAutomatically = true
+            loadWithOverviewMode = true
+            useWideViewPort = true
+            setSupportMultipleWindows(true)
+        }
+        
+        // JavaScript 인터페이스 추가
+        binding.webView.addJavascriptInterface(WebViewInterface(), "Android")
+        Log.d(TAG, "JavaScript 인터페이스 설정 완료")
+        
+        // WebView 클라이언트 설정
+        binding.webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                return false // 기본 WebView에서 URL 처리
+            }
+            
+            override fun onPageFinished(view: WebView?, url: String?) {
+                // 페이지 로딩 완료 시 프로그레스바 숨기기
+                binding.progressBar.visibility = View.GONE
+                Log.d(TAG, "페이지 로딩 완료: $url")
+                super.onPageFinished(view, url)
+            }
+            
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                Log.e(TAG, "WebView 오류 발생: ${error?.description}")
+                super.onReceivedError(view, request, error)
+            }
+        }
+        
+        // 디버깅 메시지를 보기 위한 WebChromeClient 설정
+        binding.webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                consoleMessage?.let {
+                    Log.d(TAG, "WebView 콘솔: ${it.message()} -- ${it.lineNumber()}")
+                }
+                return true
+            }
+        }
+        
+        // 초기에 WebView 컨테이너 숨기기
+        binding.webViewContainer.visibility = View.GONE
+    }
+    
     private fun setupListeners() {
-        // Back button click listener
+        // 뒤로가기 버튼
         binding.btnBack.setOnClickListener {
             requireActivity().supportFragmentManager.popBackStack()
         }
         
-        // Address field click listener - open Kakao address search
+        // 주소 입력 필드 클릭 시 주소 검색 WebView 표시
         binding.tvAddress.setOnClickListener {
-            openKakaoAddressSearch()
+            showAddressWebView()
         }
         
-        // Continue button click listener
+        // 다음 버튼 클릭 시 입력된 주소 저장 후 다음 화면으로 이동
         binding.btnContinue.setOnClickListener {
-            if (binding.tvAddress.text.toString() == binding.tvAddress.hint.toString() || 
-                binding.tvAddress.text.isNullOrEmpty()) {
-                Toast.makeText(requireContext(), "주소를 입력해주세요", Toast.LENGTH_SHORT).show()
-            } else {
-                // Save address and navigate to the next screen
+            if (validateAddress()) {
                 saveAddressAndNavigate()
             }
         }
     }
     
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun openKakaoAddressSearch() {
-        // WebView를 표시할 컨테이너 보이게 설정
+    private fun showAddressWebView() {
+        // WebView 컨테이너와 프로그레스바 표시
         binding.webViewContainer.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.VISIBLE
         
-        // WebView 설정
-        binding.webView.settings.javaScriptEnabled = true
-        binding.webView.addJavascriptInterface(WebViewInterface(), "Android")
-        
-        // WebViewClient 설정
-        binding.webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                view.loadUrl(url)
-                return true
-            }
-        }
-        
-        // 카카오 우편번호 서비스 로드
-        binding.webView.loadUrl("https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js")
-        binding.webView.loadUrl("https://ddaaee.github.io/daum-post-code/")
+        // assets 폴더의 HTML 파일 로드
+        binding.webView.loadUrl("file:///android_asset/daum_address.html")
+        Log.d(TAG, "주소 검색 WebView 로드")
     }
     
-    // JavaScript 인터페이스 클래스
-    inner class WebViewInterface {
-        @JavascriptInterface
-        fun processDATA(address: String) {
-            activity?.runOnUiThread {
-                // 주소 텍스트뷰에 선택한 주소 표시
-                binding.tvAddress.text = address
-                
-                // WebView 컨테이너 숨기기
-                binding.webViewContainer.visibility = View.GONE
-                
-                Log.d(TAG, "주소 선택 완료: $address")
-            }
+    private fun hideAddressWebView() {
+        binding.webViewContainer.visibility = View.GONE
+    }
+    
+    private fun validateAddress(): Boolean {
+        val address = binding.tvAddress.text.toString().trim()
+        if (address.isEmpty() || address == "주소 입력") {
+            Toast.makeText(requireContext(), "주소를 입력해주세요", Toast.LENGTH_SHORT).show()
+            return false
         }
+        return true
     }
     
     private fun saveAddressAndNavigate() {
-        // 주소 저장
-        val address = binding.tvAddress.text.toString()
-        SignupDataHolder.address = address
+        val address = binding.tvAddress.text.toString().trim()
         
+        // 주소 정보 저장
+        SignupDataHolder.address = address
         Log.d(TAG, "주소 저장 완료: $address")
         
-        // Navigate to the profile picture screen
+        // 다음 화면으로 이동 (프로필 이미지 설정 화면)
         val signupProfilePictureFragment = SignupProfilePictureFragment()
         requireActivity().supportFragmentManager.beginTransaction()
             .replace(android.R.id.content, signupProfilePictureFragment)
             .addToBackStack(null)
             .commit()
+    }
+    
+    // WebView와 안드로이드 간 통신을 위한 인터페이스
+    inner class WebViewInterface {
+        @JavascriptInterface
+        fun processDATA(jsonData: String) {
+            Log.d(TAG, "주소 데이터 수신: $jsonData")
+            try {
+                // JSON 파싱
+                val data = org.json.JSONObject(jsonData)
+                val address = if (data.getString("userSelectedType") == "R") {
+                    data.getString("roadAddress")
+                } else {
+                    data.getString("jibunAddress")
+                }
+                
+                // UI 스레드에서 주소 텍스트 업데이트
+                activity?.runOnUiThread {
+                    binding.tvAddress.text = address
+                    hideAddressWebView()
+                    Toast.makeText(requireContext(), "주소가 선택되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "선택된 주소: $address")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "주소 데이터 처리 중 오류 발생: ${e.message}")
+                activity?.runOnUiThread {
+                    Toast.makeText(requireContext(), "주소 정보를 가져오는데 실패했습니다", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        // 이전 함수명도 유지 (호환성 위해)
+        @JavascriptInterface
+        fun setAddress(address: String) {
+            Log.d(TAG, "setAddress 호출됨: $address")
+            // UI 스레드에서 주소 텍스트 업데이트
+            activity?.runOnUiThread {
+                binding.tvAddress.text = address
+                hideAddressWebView()
+                Toast.makeText(requireContext(), "주소가 선택되었습니다", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     
     override fun onDestroyView() {
