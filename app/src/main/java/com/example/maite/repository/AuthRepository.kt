@@ -24,36 +24,33 @@ class AuthRepository {
     private val testVerificationCode = "123456"
     
     /**
-     * 이메일 중복 확인 (로컬 구현)
+     * 이메일 중복 확인 (서버 API 연동)
      */
     suspend fun checkEmailDuplicate(email: String): EmailCheckResponse {
         return withContext(Dispatchers.IO) {
-            // 네트워크 요청 시뮬레이션
-            delay(1000)
-            
-            Log.d(TAG, "로컬 이메일 중복 확인: $email")
-            
-            // 테스트용 이메일 목록에 있는지 확인
-            val isDuplicated = usedEmails.contains(email)
-            val message = if (isDuplicated) {
-                "$email 이미 사용 중인 이메일입니다."
-            } else {
-                "$email 사용 가능한 이메일입니다."
-            }
-            
-            // 응답 생성
-            EmailCheckResponse(
-                isSuccess = true,
-                code = "COMMON200",
-                message = "성공입니다.",
-                result = EmailCheckResult(
-                    message = message,
-                    duplicated = isDuplicated
+            try {
+                Log.d(TAG, "서버 이메일 중복 확인 API 호출: $email")
+                
+                // 실제 API 호출
+                val response = authApi.checkEmailDuplicate(email)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}, duplicated=${response.result.duplicated}")
+                
+                response
+            } catch (e: Exception) {
+                Log.e(TAG, "이메일 중복 확인 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                EmailCheckResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = EmailCheckResult(
+                        message = "이메일 중복 확인 중 오류가 발생했습니다",
+                        duplicated = false
+                    )
                 )
-            )
-            
-            // 실제 API 구현은 주석 처리
-            // authApi.checkEmailDuplicate(email)
+            }
         }
     }
     
