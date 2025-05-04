@@ -1,11 +1,11 @@
 package com.example.maite.model
 
 data class SmsAuthSendRequest(
-    val phoneNumber: String
+    val phonenumber: String
 )
 
 data class SmsAuthVerifyRequest(
-    val phoneNumber: String,
+    val phonenumber: String,
     val verificationCode: String
 )
 
