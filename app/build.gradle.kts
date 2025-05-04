@@ -114,6 +114,10 @@ dependencies {
     
     // CircleImageView 추가
     implementation("de.hdodenhof:circleimageview:3.1.0")
+    
+    // Add Glide for image loading
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 }
 
 configurations.all {
