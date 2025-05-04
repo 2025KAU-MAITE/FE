@@ -56,7 +56,8 @@ data class EventDto(
     val day: String,
     val color: String?,  // nullable로 변경
     val startTime: String,
-    val endTime: String
+    val endTime: String,
+    val place: String? = ""  // location 대신 place 필드 추가
 )
 
 data class CreateEventRequest(
@@ -64,7 +65,8 @@ data class CreateEventRequest(
     val day: String,
     val color: String,
     val startTime: String,
-    val endTime: String
+    val endTime: String,
+    val place: String? = ""  // place 필드 추가
 )
 
 data class EventResponse(

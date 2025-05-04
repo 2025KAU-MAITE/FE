@@ -99,8 +99,11 @@ class TimetableRepository(private val context: Context) {
                         day = getDayString(entry.dayOfWeek),
                         color = entry.colorHex,
                         startTime = String.format("%02d:%02d", entry.startHour, entry.startMinute),
-                        endTime = String.format("%02d:%02d", entry.endHour, entry.endMinute)
+                        endTime = String.format("%02d:%02d", entry.endHour, entry.endMinute),
+                        place = entry.location  // location을 place로 전달
                     )
+                    
+                    Log.d(TAG, "이벤트 저장 요청: title=${entry.title}, place=${entry.location}")
 
                     val response = timetableApi.createEvent(timetableId, eventRequest)
                     if (!response.isSuccessful) {
@@ -138,7 +141,7 @@ class TimetableRepository(private val context: Context) {
                     Log.d(TAG, "Loaded ${events.size} events from server")
                     
                     val timetableEntries = events.map { eventDto ->
-                        Log.d(TAG, "Converting event: ${eventDto.title}, ${eventDto.day}, ${eventDto.startTime} - ${eventDto.endTime}")
+                        Log.d(TAG, "Converting event: ${eventDto.title}, ${eventDto.day}, ${eventDto.startTime} - ${eventDto.endTime}, place=${eventDto.place}")
                         convertEventDtoToTimetableEntry(eventDto)
                     }
                     
@@ -230,7 +233,7 @@ class TimetableRepository(private val context: Context) {
             startMinute = startTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
             endHour = endTimeParts[0].toIntOrNull() ?: 0,
             endMinute = endTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
-            location = "", // API에 location 필드가 없음
+            location = eventDto.place ?: "", // place를 location으로 변환
             colorHex = color
         )
     }

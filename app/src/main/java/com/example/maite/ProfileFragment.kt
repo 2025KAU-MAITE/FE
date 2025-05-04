@@ -181,8 +181,25 @@ class ProfileFragment : Fragment() {
                 val cell = LinearLayout(context).apply {
                     layoutParams = TableRow.LayoutParams(0, cellHeight, 1f)
                     gravity = Gravity.CENTER
+                    orientation = LinearLayout.VERTICAL
 
                     if (matched != null) {
+                        // 일정 시작 시간과 종료 시간 (분 단위)
+                        val startTimeInMinutes = matched.startHour * 60 + matched.startMinute
+                        val endTimeInMinutes = matched.endHour * 60 + matched.endMinute
+
+                        // 시작 시간의 다음 셀 (30분 후)
+                        val isTitleCell = (
+                                currentTimeInMinutes == startTimeInMinutes + 30
+                        )
+
+                        // 종료 시간의 이전 셀 (30분 전)
+                        val isLocationCell = (
+                                currentTimeInMinutes == endTimeInMinutes - 30
+                        )
+
+                        // 최소 길이 확인 (적어도 1시간 이상이어야 제목/장소 표시)
+                        val isLongEnough = (endTimeInMinutes - startTimeInMinutes) >= 60
                         // 일정이 있는 경우
                         setBackgroundColor(Color.parseColor(matched.colorHex))
                         alpha = 0.85f
@@ -192,7 +209,27 @@ class ProfileFragment : Fragment() {
                                 currentTimeInMinutes == matched.startHour * 60 + matched.startMinute
                                 )
 
-                        if (isStartTime) {
+                        if (isLongEnough && isTitleCell) {
+                            addView(TextView(context).apply {
+                                text = matched.title
+                                textSize = 11f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 2, 2, 2)
+                            })
+                        } else if (isLongEnough && isLocationCell && !matched.location.isNullOrEmpty()) {
+                            addView(TextView(context).apply {
+                                text = "장소:${matched.location}"
+                                textSize = 7f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 0, 2, 0)
+                            })
+                        } else if (!isLongEnough && currentTimeInMinutes == startTimeInMinutes) {
                             addView(TextView(context).apply {
                                 text = matched.title
                                 textSize = 11f
