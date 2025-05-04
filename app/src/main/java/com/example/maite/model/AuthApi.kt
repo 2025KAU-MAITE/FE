@@ -26,4 +26,8 @@ interface AuthApi {
     // ✅ 회원가입 API (POST /auth/signup)
     @POST("auth/signup")
     suspend fun signup(@Body request: SignupRequest): SignupResponse
+    
+    // ✅ 로그인 API (POST /auth/login)
+    @POST("auth/login")
+    suspend fun login(@Body request: LoginRequest): LoginResponse
 }

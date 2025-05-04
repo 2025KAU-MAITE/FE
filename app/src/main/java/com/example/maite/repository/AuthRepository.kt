@@ -11,6 +11,9 @@ import com.example.maite.model.SmsAuthResponse
 import com.example.maite.model.SmsAuthResult
 import com.example.maite.model.SmsAuthSendRequest
 import com.example.maite.model.SmsAuthVerifyRequest
+import com.example.maite.model.LoginRequest
+import com.example.maite.model.LoginResponse
+import com.example.maite.model.LoginResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -170,6 +173,46 @@ class AuthRepository {
                         registeredAt = "",
                         message = "회원가입 처리 중 오류가 발생했습니다",
                         registered = false
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * 로그인 처리 (서버 API 연동)
+     */
+    suspend fun login(email: String, password: String): LoginResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "로그인 API 호출: 이메일=$email")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = LoginRequest(
+                    email = email,
+                    password = password
+                )
+                
+                // 실제 API 호출
+                val response = authApi.login(request)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                if (response.result != null) {
+                    Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
+                }
+                
+                response
+            } catch (e: Exception) {
+                Log.e(TAG, "로그인 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                LoginResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = LoginResult(
+                        accessToken = "",
+                        message = "로그인 처리 중 오류가 발생했습니다"
                     )
                 )
             }
