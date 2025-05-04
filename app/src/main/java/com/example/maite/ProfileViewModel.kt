@@ -1,5 +1,7 @@
 package com.example.maite.ui.profile
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -7,11 +9,19 @@ import androidx.lifecycle.viewModelScope
 import com.example.maite.data.TimetableDataHolder
 import com.example.maite.model.TimetableEntry
 import com.example.maite.model.UserInfo
+import com.example.maite.repository.TimetableRepository
+import com.example.maite.repository.UserRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val timetableRepository = TimetableRepository(application)
+    private val userRepository = UserRepository(application)
+
+    // 현재 사용자 ID 저장
+    private var currentUserId: Long? = null
 
     // 사용자 정보
     private val _userInfo = MutableLiveData<UserInfo>().apply {
@@ -136,33 +146,52 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
-    // TODO: 서버에 시간표 저장
-    fun saveTimetableToServer() {
-        // API 연동 로직
-        // val repository = TimetableRepository()
-        // viewModelScope.launch {
-        //     try {
-        //         repository.saveTimetable(_timetable.value ?: emptyList())
-        //         _timetableEvent.emit(TimetableEvent.SavedToServer)
-        //     } catch (e: Exception) {
-        //         _timetableEvent.emit(TimetableEvent.Error("서버에 저장하는 중 오류가 발생했습니다: ${e.message}"))
-        //     }
-        // }
+    // 서버에 시간표 저장 - userId 파라미터 추가
+    fun saveTimetableToServer(userId: Long) {
+        currentUserId = userId
+        viewModelScope.launch {
+            try {
+                val success = timetableRepository.saveTimetable(userId, _timetable.value ?: emptyList())
+                if (success) {
+                    _timetableEvent.emit(TimetableEvent.SavedToServer)
+                } else {
+                    _timetableEvent.emit(TimetableEvent.Error("시간표 저장에 실패했습니다"))
+                }
+            } catch (e: Exception) {
+                _timetableEvent.emit(TimetableEvent.Error("서버에 저장하는 중 오류가 발생했습니다: ${e.message}"))
+            }
+        }
     }
 
-    // TODO: 서버에서 시간표 로드
-    fun loadTimetableFromServer() {
-        // API 연동 로직
-        // val repository = TimetableRepository()
-        // viewModelScope.launch {
-        //     try {
-        //         val serverData = repository.loadTimetable()
-        //         _timetable.value = serverData
-        //         TimetableDataHolder.updateTimetable(serverData)
-        //     } catch (e: Exception) {
-        //         _timetableEvent.emit(TimetableEvent.Error("서버에서 로드하는 중 오류가 발생했습니다: ${e.message}"))
-        //     }
-        // }
+    // 서버에서 시간표 로드 - userId 파라미터 추가
+    fun loadTimetableFromServer(userId: Long) {
+        currentUserId = userId
+        viewModelScope.launch {
+            try {
+                val serverData = timetableRepository.loadTimetable(userId)
+                _timetable.value = serverData
+                TimetableDataHolder.updateTimetable(serverData)
+            } catch (e: Exception) {
+                _timetableEvent.emit(TimetableEvent.Error("서버에서 로드하는 중 오류가 발생했습니다: ${e.message}"))
+            }
+        }
+    }
+
+    // 사용자 정보 로드 메서드 추가
+    fun loadUserInfo(userId: Long) {
+        currentUserId = userId
+        viewModelScope.launch {
+            try {
+                val userInfo = userRepository.getUserInfo(userId)
+                if (userInfo != null) {
+                    _userInfo.value = userInfo
+                } else {
+                    _timetableEvent.emit(TimetableEvent.Error("사용자 정보를 찾을 수 없습니다"))
+                }
+            } catch (e: Exception) {
+                _timetableEvent.emit(TimetableEvent.Error("사용자 정보를 로드하는 중 오류가 발생했습니다: ${e.message}"))
+            }
+        }
     }
 
     // 시간표 관련 이벤트 봉인 클래스

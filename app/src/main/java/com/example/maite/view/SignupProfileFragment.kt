@@ -24,8 +24,8 @@ class SignupProfileFragment : Fragment() {
     private var isAuthSent = false
     private var isAuthVerified = false
     
-    // AuthRepository 인스턴스 생성
-    private val authRepository = AuthRepository()
+    // AuthRepository 인스턴스 생성 - lazy initialization으로 변경
+    private val authRepository by lazy { AuthRepository(requireContext()) }
     
     override fun onCreateView(
         inflater: LayoutInflater,

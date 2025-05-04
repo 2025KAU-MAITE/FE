@@ -15,6 +15,7 @@ import com.example.maite.model.SignupDataHolder
 import com.example.maite.repository.AuthRepository
 import kotlinx.coroutines.launch
 
+
 class SignupCompletionFragment : Fragment() {
 
     private val TAG = "SignupCompletionFragment"
@@ -22,7 +23,7 @@ class SignupCompletionFragment : Fragment() {
     private val binding get() = _binding!!
     
     // Repository 인스턴스
-    private val authRepository = AuthRepository()
+    private val authRepository by lazy { AuthRepository(requireContext()) }
     
     override fun onCreateView(
         inflater: LayoutInflater,

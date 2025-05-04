@@ -19,13 +19,17 @@ import com.example.maite.model.UserInfo
 import com.example.maite.ui.profile.EditTimetableFragment
 import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
+import android.util.Log
+import androidx.lifecycle.ViewModelProvider
 
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: ProfileViewModel by activityViewModels()
+    private val viewModel: ProfileViewModel by activityViewModels {
+        ViewModelProvider.AndroidViewModelFactory.getInstance(requireActivity().application)
+    }
 
     private val weekDays = arrayOf("", "월", "화", "수", "목", "금", "토", "일")
 
@@ -39,6 +43,18 @@ class ProfileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        val preferencesUtil = PreferencesUtil(requireContext())
+        val userId = preferencesUtil.getUserId()
+
+        if (userId != null) {
+            // 서버에서 시간표 불러오기
+            viewModel.loadTimetableFromServer(userId)
+            // 사용자 정보 불러오기
+            viewModel.loadUserInfo(userId)
+        } else {
+            Log.e("ProfileFragment", "User ID not found")
+        }
 
         // 사용자 정보 관찰
         viewModel.userInfo.observe(viewLifecycleOwner) { userInfo: UserInfo? ->

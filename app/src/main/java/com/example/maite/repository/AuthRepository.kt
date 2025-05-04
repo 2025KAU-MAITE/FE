@@ -18,10 +18,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import android.util.Log
+import android.content.Context
+import com.example.maite.UserInfoResponse
+import com.example.maite.UserInfoResult
 
-class AuthRepository {
+class AuthRepository(private val context: Context) {
     private val TAG = "AuthRepository"
-    private val authApi = ApiClient.retrofit.create(AuthApi::class.java)
+    private val authApi = ApiClient.getClient(context).create(AuthApi::class.java)
     
     // 테스트용 이메일 목록 (사용 중인 이메일로 간주)
     private val usedEmails = listOf("test@example.com", "used@gmail.com", "taken@naver.com")
@@ -213,6 +216,25 @@ class AuthRepository {
                     result = LoginResult(
                         accessToken = "",
                         message = "로그인 처리 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun getUserInfo(token: String): UserInfoResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                authApi.getUserInfo("Bearer $token")
+            } catch (e: Exception) {
+                UserInfoResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "사용자 정보 조회 실패: ${e.message}",
+                    result = UserInfoResult(
+                        userId = 0L,
+                        email = "",
+                        name = ""
                     )
                 )
             }
