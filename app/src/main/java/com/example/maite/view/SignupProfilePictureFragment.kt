@@ -2,9 +2,11 @@ package com.example.maite.view
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,9 +16,11 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.maite.R
 import com.example.maite.databinding.FragmentSignupProfilePictureBinding
+import com.example.maite.model.SignupDataHolder
 
 class SignupProfilePictureFragment : Fragment() {
 
+    private val TAG = "SignupProfilePictureFragment"
     private var _binding: FragmentSignupProfilePictureBinding? = null
     private val binding get() = _binding!!
     private var selectedImageUri: Uri? = null
@@ -65,16 +69,20 @@ class SignupProfilePictureFragment : Fragment() {
         
         // Skip button click listener
         binding.btnSkip.setOnClickListener {
+            // 기본 이미지 설정 (프로필 기본 사람 모양 사진)
+            saveDefaultProfilePicture()
             navigateToNextScreen()
         }
         
         // Continue button click listener (previously Add button)
         binding.btnContinue.setOnClickListener {
-            // Save profile picture if selected and navigate to the next screen
+            // 선택한 이미지가 있으면 저장하고 다음 화면으로 이동
             if (selectedImageUri != null) {
-                saveProfilePicture()
+                saveSelectedProfilePicture()
+                navigateToNextScreen()
+            } else {
+                Toast.makeText(requireContext(), "프로필 사진을 선택해주세요", Toast.LENGTH_SHORT).show()
             }
-            navigateToNextScreen()
         }
     }
     
@@ -83,9 +91,26 @@ class SignupProfilePictureFragment : Fragment() {
         pickImageLauncher.launch(intent)
     }
     
-    private fun saveProfilePicture() {
-        // TODO: Save the profile picture to local storage or upload to server
-        Toast.makeText(requireContext(), "프로필 사진이 저장되었습니다", Toast.LENGTH_SHORT).show()
+    /**
+     * 건너뛰기 버튼 클릭 시 기본 프로필 이미지를 저장
+     */
+    private fun saveDefaultProfilePicture() {
+        // 기본 이미지 URL 또는 리소스 ID를 SignupDataHolder에 저장
+        SignupDataHolder.profileImageUrl = "default_profile_image"
+        Log.d(TAG, "기본 프로필 이미지 저장 완료")
+        Toast.makeText(requireContext(), "기본 프로필 이미지가 설정되었습니다", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * 사용자가 선택한 프로필 이미지를 저장
+     */
+    private fun saveSelectedProfilePicture() {
+        // 선택한 이미지의 URI를 SignupDataHolder에 저장
+        selectedImageUri?.let { uri ->
+            SignupDataHolder.profileImageUrl = uri.toString()
+            Log.d(TAG, "선택한 프로필 이미지 저장 완료: $uri")
+            Toast.makeText(requireContext(), "프로필 이미지가 저장되었습니다", Toast.LENGTH_SHORT).show()
+        }
     }
     
     private fun navigateToNextScreen() {

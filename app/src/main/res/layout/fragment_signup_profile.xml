@@ -71,6 +71,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/etName" />
 
+    <!-- ProgressBar for loading states -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="16dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@+id/btnSendAuth"
+        app:layout_constraintEnd_toEndOf="@+id/btnSendAuth"
+        app:layout_constraintStart_toStartOf="@+id/btnSendAuth"
+        app:layout_constraintTop_toTopOf="@+id/btnSendAuth" />
+
     <!-- Send Authentication Number Button -->
     <Button
         android:id="@+id/btnSendAuth"
