@@ -1,14 +1,36 @@
 package com.example.maite.model
 
+import android.util.Log
+import com.example.maite.MaiteRetrofitClient
+
 class MaiteListRepository {
 
-    fun getMaiteList(): List<MaiteListItem> {
-        // 시연을 위한 더미 데이터
-        return listOf(
-            MaiteListItem("김정훈의 MAITE", "김정훈", "산학 프로젝트 파이팅!"),
-            MaiteListItem("안성진의 MAITE", "안성진", "안드로이드 개발 중!"),
-            MaiteListItem("이민우의 MAITE", "이민우", "UI 디자인 작업 중!"),
-            MaiteListItem("박지원의 MAITE", "박지원", "백엔드 개발 진행 중!")
-        )
+    // API를 호출하여 MaiteListItem 리스트를 반환하는 suspend 함수
+    suspend fun getMaiteList(): List<MaiteListItem> {
+        return try {
+            // Retrofit을 통해 getMyRooms API 호출
+            val response = MaiteRetrofitClient.instance.getMyRooms()
+
+            if (response.isSuccessful) {
+                // 응답 성공 시: 응답 본문(List<RoomItem>)을 가져와서
+                // 각 RoomItem을 MaiteListItem으로 변환(map)
+                // 응답 본문이 null일 경우 빈 리스트 반환 (?: emptyList())
+                response.body()?.map { roomItem ->
+                    MaiteListItem(
+                        title = roomItem.name,       // RoomItem의 name을 title로 사용
+                        name = roomItem.hostEmail,   // RoomItem의 hostEmail을 name으로 사용 (혹은 적절한 필드 선택)
+                        intro = roomItem.description // RoomItem의 description을 intro로 사용
+                    )
+                } ?: emptyList()
+            } else {
+                // 응답 실패 시: 에러 로그 출력 후 빈 리스트 반환
+                Log.e("MaiteListRepository", "방 목록 가져오기 오류: ${response.code()} ${response.message()}")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            // 네트워크 오류 등 예외 발생 시: 에러 로그 출력 후 빈 리스트 반환
+            Log.e("MaiteListRepository", "방 목록 가져오기 중 예외 발생", e)
+            emptyList()
+        }
     }
 }

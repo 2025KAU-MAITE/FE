@@ -73,6 +73,21 @@ class ListFragment : Fragment() {
             adapter.submitList(maiteList)
         }
 
+        viewModel.maiteList.observe(viewLifecycleOwner) { maiteList ->
+            // 리스트가 비어있는지 확인
+            if (maiteList.isNullOrEmpty()) {
+                // 비어있으면: RecyclerView 숨기고, emptyTextView 보이기
+                binding.listRV.visibility = View.GONE
+                binding.emptyTextView.visibility = View.VISIBLE
+            } else {
+                // 데이터가 있으면: RecyclerView 보이고, emptyTextView 숨기기
+                binding.listRV.visibility = View.VISIBLE
+                binding.emptyTextView.visibility = View.GONE
+            }
+            // 어댑터에 리스트 제출 (리스트가 비어있어도 호출해야 함)
+            adapter.submitList(maiteList)
+        }
+
         binding.doneBtn.setOnClickListener {
             val bottomSheet = CreateMaiteBottomSheet.newInstance()
             bottomSheet.show(childFragmentManager, CreateMaiteBottomSheet.TAG)

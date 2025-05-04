@@ -7,6 +7,18 @@
     tools:context=".view.ListFragment"
     android:background="@color/white">
 
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:text="내 MAITE"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:textSize="24dp"
+        android:textStyle="bold"/>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/listRV"
         android:layout_width="0dp"
@@ -21,17 +33,20 @@
         app:layout_constraintTop_toBottomOf="@+id/textView"
         tools:listitem="@layout/item_maite_list" />
 
+    <!-- 데이터 없을 때 보여줄 TextView 추가 -->
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/emptyTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:text="내 MAITE"
+        android:text="생성된 MAITE가 없습니다."
+        android:textSize="18sp"
+        android:textColor="@android:color/darker_gray"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@+id/textView"
+        app:layout_constraintBottom_toTopOf="@+id/doneBtn"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:textSize="24dp"
-        android:textStyle="bold"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible"/>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/doneBtn"
@@ -42,6 +57,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
+        <!-- ... (기존 버튼 레이아웃 내용) ... -->
         <ImageView
             android:id="@+id/btnBg"
             android:layout_width="wrap_content"
