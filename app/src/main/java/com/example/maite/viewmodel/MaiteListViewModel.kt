@@ -4,11 +4,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.maite.model.MaiteListItem
-import com.example.maite.model.MaiteRepository
+import com.example.maite.model.MaiteListRepository
 
 class MaiteListViewModel : ViewModel() {
 
-    private val repository = MaiteRepository()
+    private val repository = MaiteListRepository()
 
     private val _maiteList = MutableLiveData<List<MaiteListItem>>()
     val maiteList: LiveData<List<MaiteListItem>> = _maiteList

@@ -17,6 +17,7 @@ import com.example.maite.model.TimetableEntry
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.math.ceil
 
 class EditTimetableFragment : Fragment() {
 
@@ -210,26 +211,26 @@ class EditTimetableFragment : Fragment() {
         // 선택한 요일 인덱스 (1: 월, 2: 화, ..., 7:일)
         val dayIndex = binding.spinnerDay.selectedItemPosition + 1
 
-        // TimetableEntry 생성
+        // TimetableEntry 생성 (수정된 버전 - 분 정보 포함)
         val entry = TimetableEntry(
             title = title,
             dayOfWeek = dayIndex,
             startHour = selectedStartHour,
+            startMinute = selectedStartMinute,
             endHour = selectedEndHour,
+            endMinute = selectedEndMinute,
             colorHex = defaultColor,
             location = location
         )
 
-        // 임시 시간표에 충돌 검사 후 추가
+        // 임시 시간표에 충돌 검사 후 추가 (수정된 충돌 검사 로직 - 분 단위)
         val conflictingEntry = temporaryEntries.find { existing ->
-            existing.dayOfWeek == entry.dayOfWeek && (
-                    // 새 일정이 기존 일정과 겹치는지 확인
-                    (entry.startHour < existing.endHour && entry.endHour > existing.startHour) ||
-                            // 기존 일정이 새 일정을 포함하는지 확인
-                            (existing.startHour <= entry.startHour && existing.endHour >= entry.endHour) ||
-                            // 새 일정이 기존 일정을 포함하는지 확인
-                            (entry.startHour <= existing.startHour && entry.endHour >= existing.endHour)
-                    )
+            existing.dayOfWeek == entry.dayOfWeek && isTimeConflict(
+                entryStart = entry.startHour * 60 + entry.startMinute,
+                entryEnd = entry.endHour * 60 + entry.endMinute,
+                existingStart = existing.startHour * 60 + existing.startMinute,
+                existingEnd = existing.endHour * 60 + existing.endMinute
+            )
         }
 
         if (conflictingEntry != null) {
@@ -242,6 +243,23 @@ class EditTimetableFragment : Fragment() {
             updateTimetablePreview()
             Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // 시간 충돌 여부 확인 (분 단위)
+    private fun isTimeConflict(
+        entryStart: Int,
+        entryEnd: Int,
+        existingStart: Int,
+        existingEnd: Int
+    ): Boolean {
+        return (
+                // 새 일정이 기존 일정과 겹치는지 확인
+                (entryStart < existingEnd && entryEnd > existingStart) ||
+                        // 기존 일정이 새 일정을 포함하는지 확인
+                        (existingStart <= entryStart && existingEnd >= entryEnd) ||
+                        // 새 일정이 기존 일정을 포함하는지 확인
+                        (entryStart <= existingStart && entryEnd >= existingEnd)
+                )
     }
 
     // 바텀 시트 방식 시간 선택
@@ -262,7 +280,7 @@ class EditTimetableFragment : Fragment() {
     }
 
     private fun updateTimeDisplay() {
-        // 시간 형식 포맷팅 (09:00 형식)
+        // 시간 형식 포맷팅 (09:00 또는 09:30 형식)
         val startFormatted = String.format("%02d:%02d", selectedStartHour, selectedStartMinute)
         val endFormatted = String.format("%02d:%02d", selectedEndHour, selectedEndMinute)
 
@@ -277,27 +295,33 @@ class EditTimetableFragment : Fragment() {
         // 시간표 생성을 위한 데이터
         val entries = temporaryEntries
 
-        // 동적 시간 범위 계산하되 최소 9시부터 20시까지 표시
-        var minTime = 9
-        var maxTime = 23
+
+        var minHour = 9
+        var maxHour = 24
 
         // 일정이 있는 경우에만 범위 조정
         if (entries.isNotEmpty()) {
-            val startTimes = entries.map { it.startHour }
-            val endTimes = entries.map { it.endHour }
-
-            if (startTimes.min() < minTime) {
-                minTime = startTimes.min()
+            // 시작 시간 최소값 (시간 + 분/60으로 소수점 시간)
+            val startTimes = entries.map {
+                it.startHour + (it.startMinute / 60.0)
+            }
+            // 종료 시간 최대값 (시간 + 분/60으로 소수점 시간)
+            val endTimes = entries.map {
+                it.endHour + (it.endMinute / 60.0)
             }
 
-            if (endTimes.max() > maxTime) {
-                maxTime = endTimes.max()
+            if (startTimes.minOrNull()?.toInt() ?: minHour < minHour) {
+                minHour = (startTimes.minOrNull() ?: minHour.toDouble()).toInt()
+            }
+
+            if (ceil(endTimes.maxOrNull() ?: maxHour.toDouble()).toInt() > maxHour) {
+                maxHour = ceil(endTimes.maxOrNull() ?: maxHour.toDouble()).toInt()
             }
         }
 
         // 시간 범위가 넘어가면 제한 (0-23 범위 내로)
-        minTime = minTime.coerceIn(0, 23)
-        maxTime = maxTime.coerceIn(minTime + 1, 23)
+        minHour = minHour.coerceIn(0, 23)
+        maxHour = maxHour.coerceIn(minHour + 1, 23)
 
         // 시간표 테이블 생성
         val tableLayout = TableLayout(requireContext()).apply {
@@ -348,33 +372,43 @@ class EditTimetableFragment : Fragment() {
         }
         tableLayout.addView(headerRow)
 
-        // 시간대별 행 추가
-        for (hour in minTime..maxTime) {
+        // 시간대별 행 추가 (30분 단위로 변경)
+        for (timeSlot in (minHour * 2)..(maxHour * 2)) {
+            val hour = timeSlot / 2
+            val minute = (timeSlot % 2) * 30
+            val currentTimeInMinutes = hour * 60 + minute
+
             val row = TableRow(requireContext())
 
             // 시간 셀
             val timeCell = TextView(requireContext()).apply {
-                text = hour.toString()
+                text = String.format("%02d:%02d", hour, minute)
                 textSize = 10f
                 gravity = Gravity.CENTER
                 setBackgroundColor(Color.parseColor("#F5F5F5"))
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 40
-                    height = 52 // 미리보기이므로 높이를 좀 더 작게
+                    height = 30 // 30분 단위이므로 높이 조정
                 }
             }
             row.addView(timeCell)
 
             // 요일별 셀
             for (day in 1 until weekDays.size) {
-                val entry = entries.find {
-                    (hour in it.startHour until it.endHour) && it.dayOfWeek == day
+                // 현재 시간대의 일정 찾기
+                val entry = entries.find { e ->
+                    val startTimeInMinutes = e.startHour * 60 + e.startMinute
+                    val endTimeInMinutes = e.endHour * 60 + e.endMinute
+
+                    e.dayOfWeek == day &&
+                            currentTimeInMinutes >= startTimeInMinutes &&
+                            currentTimeInMinutes < endTimeInMinutes
                 }
 
                 val cell = LinearLayout(requireContext()).apply {
                     layoutParams = TableRow.LayoutParams().apply {
                         width = 0
-                        height = 52 // 미리보기이므로 높이를 좀 더 작게
+                        height = 30 // 30분 단위이므로 높이 조정
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
@@ -384,12 +418,42 @@ class EditTimetableFragment : Fragment() {
                         setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
 
+                        // 일정 시작 시간인 경우에만 제목 표시
+                        val isStartTime = (
+                                currentTimeInMinutes == entry.startHour * 60 + entry.startMinute
+                                )
+
+                        if (isStartTime) {
+                            addView(TextView(requireContext()).apply {
+                                text = entry.title
+                                textSize = 9f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 2, 2, 2)
+                            })
+                        }
+
                         // 선택 가능하도록 설정
                         setOnClickListener {
                             // 이전에 선택된 항목이 있으면 강조 해제
                             selectedEntry?.let { prevEntry ->
-                                val prevCell = findCell(tableLayout, prevEntry)
-                                prevCell?.alpha = 0.85f
+                                // 모든 셀을 찾아서 강조 해제 (findCell 사용 안 함)
+                                val childCount = tableLayout.childCount
+                                for (i in 0 until childCount) {
+                                    val tableRow = tableLayout.getChildAt(i) as? TableRow
+                                    tableRow?.let { r ->
+                                        val cellIndex = prevEntry.dayOfWeek
+                                        if (cellIndex < r.childCount) {
+                                            // 셀이 일정에 해당하면 알파값 원복
+                                            val cell = r.getChildAt(cellIndex)
+                                            if (cell is LinearLayout && cell.background != null) {
+                                                cell.alpha = 0.85f
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             // 새 항목 선택 및 강조
@@ -397,17 +461,6 @@ class EditTimetableFragment : Fragment() {
                             alpha = 1.0f
                             Toast.makeText(context, "${entry.title} 선택됨", Toast.LENGTH_SHORT).show()
                         }
-
-                        // 일정 제목 표시 (미리보기이므로 글자 크기 작게)
-                        addView(TextView(requireContext()).apply {
-                            text = entry.title
-                            textSize = 9f
-                            gravity = Gravity.CENTER
-                            setTextColor(Color.WHITE)
-                            ellipsize = android.text.TextUtils.TruncateAt.END
-                            maxLines = 1
-                            setPadding(2, 2, 2, 2)
-                        })
                     } else {
                         // 빈 셀
                         setBackgroundResource(R.drawable.timetable_cell_border)
@@ -421,23 +474,6 @@ class EditTimetableFragment : Fragment() {
         }
 
         timetableLayout.addView(tableLayout)
-    }
-
-    // 특정 항목에 해당하는 셀 찾기
-    private fun findCell(tableLayout: TableLayout, entry: TimetableEntry): View? {
-        for (hour in entry.startHour until entry.endHour) {
-            val rowIndex = hour - 9 + 1 // 9시가 첫번째 행이므로 +1 (헤더 행 고려)
-            if (rowIndex >= 0 && rowIndex < tableLayout.childCount) {
-                val row = tableLayout.getChildAt(rowIndex) as? TableRow
-                row?.let {
-                    val cellIndex = entry.dayOfWeek // 요일 인덱스 사용
-                    if (cellIndex < it.childCount) {
-                        return it.getChildAt(cellIndex)
-                    }
-                }
-            }
-        }
-        return null
     }
 
     private fun showConflictDialog(existing: TimetableEntry, new: TimetableEntry) {

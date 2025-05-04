@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.maite.CreateMaiteBottomSheet
 import com.example.maite.ListDetailFragment
 import com.example.maite.R
 import com.example.maite.viewmodel.MaiteListViewModel
@@ -72,11 +73,9 @@ class ListFragment : Fragment() {
             adapter.submitList(maiteList)
         }
 
-        // "MAITE 만들기" 버튼 클릭 리스너 설정
         binding.doneBtn.setOnClickListener {
-            // 여기서 새 MAITE를 만드는 프래그먼트나 액티비티로 이동할 수 있습니다
-            // 예:
-            // findNavController().navigate(R.id.action_listFragment_to_createMaiteFragment)
+            val bottomSheet = CreateMaiteBottomSheet.newInstance()
+            bottomSheet.show(childFragmentManager, CreateMaiteBottomSheet.TAG)
         }
     }
 
