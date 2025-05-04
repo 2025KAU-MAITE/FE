@@ -3,10 +3,10 @@ package com.example.maite.view
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.maite.util.AuthTokenManager
 import com.example.maite.MainActivity
 import com.example.maite.databinding.ActivityLoginBinding
 import com.example.maite.repository.AuthRepository
@@ -133,18 +133,10 @@ class LoginActivity : AppCompatActivity() {
         binding.etEmail.isEnabled = !isLoading
         binding.etPassword.isEnabled = !isLoading
     }
-    
-    // 액세스 토큰 저장 (실제 구현에서는 SharedPreferences나 암호화된 저장소 사용)
+
     private fun saveAccessToken(token: String) {
-        // TODO: 안전한 저장소에 토큰 저장 구현
-        Log.d(TAG, "액세스 토큰 저장: ${token.take(10)}...")
-        
-        // 예시) SharedPreferences에 저장
-        val sharedPref = getSharedPreferences("maite_prefs", MODE_PRIVATE)
-        with(sharedPref.edit()) {
-            putString("access_token", token)
-            apply()
-        }
+        Log.d(TAG, "액세스 토큰 저장 (AuthTokenManager 사용): ${token.take(10)}...")
+        AuthTokenManager.saveToken(token) // AuthTokenManager를 통해 저장
     }
     
     // MainActivity로 이동
