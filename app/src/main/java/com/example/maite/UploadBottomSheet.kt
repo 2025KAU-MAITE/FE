@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +22,7 @@ import com.example.maite.databinding.BottomSheetUploadBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive // isActive import 추가
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -44,6 +45,8 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
     private lateinit var loadingDialog: LoadingDialog
     private var uploadJob: Job? = null
 
+    private var originalDimAmount: Float = 0.6f
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -55,15 +58,15 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
             uri?.let {
                 selectedFileUri = it
                 updateFileName(it)
-                updateDoneButtonState() // 상태 업데이트 함수 호출 방식 변경
+                updateDoneButtonState()
             } ?: run {
                 selectedFileUri = null
                 binding.file.text = "파일을 선택해주세요"
-                context?.let { ctx -> // context null 체크 추가
+                context?.let { ctx ->
                     binding.file.setTextColor(ContextCompat.getColor(ctx, R.color.gray))
                     Toast.makeText(ctx, "파일이 선택되지 않았습니다.", Toast.LENGTH_SHORT).show()
                 }
-                updateDoneButtonState() // 상태 업데이트 함수 호출 방식 변경
+                updateDoneButtonState()
             }
         }
     }
@@ -73,8 +76,7 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = BottomSheetUploadBinding.inflate(inflater, container, false)
-        // 다이얼로그가 취소되지 않도록 설정 (선택 사항)
-        // isCancelable = false
+        originalDimAmount = dialog?.window?.attributes?.dimAmount ?: 0.6f
         return binding.root
     }
 
@@ -89,7 +91,10 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
         binding.doneBtn.setOnClickListener {
             handleUpload()
         }
-        updateDoneButtonState() // 초기 상태 업데이트
+        updateDoneButtonState()
+        if (originalDimAmount == 0.6f) {
+            originalDimAmount = dialog?.window?.attributes?.dimAmount ?: 0.6f
+        }
     }
 
     private fun updateFileName(uri: Uri) {
@@ -115,16 +120,13 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    // UI 요소 활성화/비활성화 헬퍼 함수
     private fun setUiEnabled(enabled: Boolean) {
-        binding.doneBtn.isEnabled = enabled && selectedFileUri != null // 파일 선택 여부도 고려
+        binding.doneBtn.isEnabled = enabled && selectedFileUri != null
         binding.doneBtn.isClickable = enabled && selectedFileUri != null
         binding.fileCardView.isEnabled = enabled
         binding.fileCardView.isClickable = enabled
         binding.titleEditText.isEnabled = enabled
-
-        // 완료 버튼 스타일 업데이트
-        updateDoneButtonState() // 로직 통합
+        updateDoneButtonState()
     }
 
     private fun handleUpload() {
@@ -149,15 +151,15 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
             return
         }
 
-        // --- 1. dismiss() 호출 제거 ---
+        setUiEnabled(false)
 
-        // 2. UI 비활성화 및 LoadingDialog 표시
-        setUiEnabled(false) // UI 비활성화
+        dialog?.window?.setDimAmount(0f)
+
         loadingDialog.show()
 
         Log.d(TAG, "업로드 시작 (코루틴 실행 전): finalTopic='$finalTopic', uri=$currentSelectedFileUri")
 
-        uploadJob?.cancel() // 이전 작업 취소
+        uploadJob?.cancel()
         uploadJob = viewLifecycleOwner.lifecycleScope.launch {
             var uploadSuccess = false
             var responseMessage: String? = null
@@ -175,7 +177,7 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                     apiService.uploadAudioSummary(finalTopic, filePart)
                 }
 
-                if (!isActive) { // 코루틴 취소 확인
+                if (!isActive) {
                     Log.w(TAG, "API 호출 후 코루틴 취소됨")
                     errorMessage = "업로드가 취소되었습니다."
                     return@launch
@@ -202,31 +204,28 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                 }
             } finally {
                 Log.d(TAG, "API 호출 완료 (코루틴 finally)")
-                // 로딩 다이얼로그 닫기
                 loadingDialog.dismiss()
 
-                // --- 3. 로딩 완료 후 BottomSheet 닫기 및 UI 상태 복구 ---
                 Handler(Looper.getMainLooper()).post {
-                    // Toast 메시지 표시 (safeContext 사용)
+                    try {
+                        dialog?.window?.setDimAmount(originalDimAmount)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "DimAmount 복원 중 오류 발생", e)
+                    }
+
                     if (uploadSuccess) {
                         Toast.makeText(safeContext, "파일 업로드 성공!", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(safeContext, errorMessage ?: "업로드 처리 중 문제가 발생했습니다.", Toast.LENGTH_LONG).show()
                     }
 
-                    // BottomSheet 닫기
-                    // dismiss() 호출 시 Fragment가 detached될 수 있으므로,
-                    // UI 상태 복구는 dismiss 이전에 하거나, dismissAllowingStateLoss 사용 고려
-                    // 여기서는 dismiss 전에 UI 상태 복구 시도
                     try {
-                        if (isAdded) { // Fragment가 아직 attached 상태인지 확인
-                            setUiEnabled(true) // UI 활성화 복구
-                            dismiss() // BottomSheet 닫기
+                        if (isAdded) {
+                            setUiEnabled(true)
+                            dismiss()
                         }
                     } catch (e: IllegalStateException) {
-                        // dismiss() 호출 시 드물게 발생할 수 있는 예외 처리
                         Log.e(TAG, "BottomSheet dismiss 중 오류 발생", e)
-                        // 필요한 경우 dismissAllowingStateLoss() 사용 고려
                         try {
                             dismissAllowingStateLoss()
                         } catch (ignored: Exception) {}
@@ -237,7 +236,6 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
     }
 
     private suspend fun createMultipartBodyPartFromUri(uri: Uri, context: Context): MultipartBody.Part? {
-        // ... (이전과 동일) ...
         return withContext(Dispatchers.IO) {
             try {
                 val contentResolver = context.contentResolver
@@ -279,14 +277,13 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    // updateDoneButtonState 함수 통합 및 수정
     private fun updateDoneButtonState() {
         val safeContext = context ?: return
-        if (_binding == null) return // binding null 체크
+        if (_binding == null) return
 
         val isLoading = ::loadingDialog.isInitialized && loadingDialog.isDialogShowing
         val isFileSelected = selectedFileUri != null
-        val isEnabled = !isLoading && isFileSelected // 로딩 중이 아니고 파일이 선택되었을 때만 활성화
+        val isEnabled = !isLoading && isFileSelected
 
         binding.doneBtn.isEnabled = isEnabled
         binding.doneBtn.isClickable = isEnabled
@@ -308,12 +305,16 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
         uploadJob = null
         if (::loadingDialog.isInitialized && loadingDialog.isDialogShowing) {
             loadingDialog.dismiss()
+            try {
+                dialog?.window?.setDimAmount(originalDimAmount)
+            } catch (e: Exception) {
+                Log.w(TAG, "onDestroyView에서 DimAmount 복원 중 오류 발생", e)
+            }
         }
         _binding = null
     }
 
     companion object {
-        // ... (이전과 동일) ...
         const val TAG = "UploadBottomSheet"
         private const val ARG_DEFAULT_TOPIC = "default_topic"
         const val REQUEST_KEY_UPLOAD = "uploadResultRequest"

@@ -1,5 +1,6 @@
 package com.example.maite
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Color
 import android.os.Handler
@@ -7,22 +8,26 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
-import androidx.fragment.app.FragmentActivity
+import android.widget.FrameLayout // FrameLayout 추가
 import com.example.maite.databinding.LoadingDialogBinding
 
 class LoadingDialog(private val context: Context) {
-    private lateinit var binding: LoadingDialogBinding
+
+    // contentViewBinding으로 이름 변경
+    private lateinit var contentViewBinding: LoadingDialogBinding
     private val handler = Handler(Looper.getMainLooper())
     private var currentDots = 0
     private val loadingTexts = arrayOf("로딩중", "로딩중.", "로딩중..", "로딩중...")
-    private var loadingView: View? = null
+
+    // 배경 뷰와 콘텐츠 뷰 분리
+    private var backgroundView: View? = null
+    private var contentView: View? = null
     private var isShowing = false
 
     private val updateLoadingText = object : Runnable {
         override fun run() {
-            if (isShowing) {  // 로딩 뷰가 표시 중일 때만 실행
-                binding.loadingTextView.text = loadingTexts[currentDots]
+            if (isShowing && ::contentViewBinding.isInitialized) { // contentViewBinding 사용
+                contentViewBinding.loadingTextView.text = loadingTexts[currentDots]
                 currentDots = (currentDots + 1) % loadingTexts.size
                 handler.postDelayed(this, 500)
             }
@@ -31,54 +36,62 @@ class LoadingDialog(private val context: Context) {
 
     fun show() {
         if (isShowing) return
+        val activity = context as? Activity ?: return
+        val decorView = activity.window.decorView as ViewGroup
+        val rootView = decorView.findViewById<ViewGroup>(android.R.id.content)
 
-        val activity = context as FragmentActivity
-        val rootView = activity.findViewById<FrameLayout>(R.id.main_frm)
+        // 뷰들이 null이면 처음 생성
+        if (backgroundView == null || contentView == null) {
+            // 1. 배경 뷰 생성 및 설정
+            backgroundView = FrameLayout(context).apply { // FrameLayout으로 배경 뷰 생성
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+                setBackgroundColor(Color.parseColor("#99000000")) // 반투명 배경 설정
+                isClickable = true // 클릭 이벤트 가로채기
+                isFocusable = true
+            }
 
-        if (loadingView == null) {
-            binding = LoadingDialogBinding.inflate(LayoutInflater.from(context))
-            loadingView = binding.root
-
-            // 배경을 반투명하게 설정
-            binding.root.setBackgroundColor(Color.parseColor("#99000000")) // 반투명 배경
+            // 2. 콘텐츠 뷰 생성 (기존 binding 로직 활용)
+            contentViewBinding = LoadingDialogBinding.inflate(LayoutInflater.from(context))
+            contentView = contentViewBinding.root
+            // 중요: 콘텐츠 뷰 자체에는 배경색을 설정하지 않음!
         }
 
-        // 이미 부모 뷰가 있다면 제거
-        (loadingView?.parent as? ViewGroup)?.removeView(loadingView)
+        // 이전 뷰 제거 (메모리 누수 방지)
+        (backgroundView?.parent as? ViewGroup)?.removeView(backgroundView)
+        (contentView?.parent as? ViewGroup)?.removeView(contentView)
 
-        // main_frm에 로딩 뷰 추가 (bottomNavigationView는 가리지 않음)
-        rootView.addView(loadingView)
+        // 루트 뷰에 배경 뷰와 콘텐츠 뷰 순서대로 추가
+        rootView.addView(backgroundView)
+        rootView.addView(contentView) // 콘텐츠 뷰를 배경 뷰 위에 추가
         isShowing = true
 
-        // 애니메이션 시작
         currentDots = 0
         startLoadingAnimation()
     }
 
     private fun startLoadingAnimation() {
-        handler.removeCallbacks(updateLoadingText)  // 기존 콜백 제거
-        handler.post(updateLoadingText)  // 새로운 애니메이션 시작
+        handler.removeCallbacks(updateLoadingText)
+        handler.post(updateLoadingText)
     }
 
     fun dismiss() {
         if (!isShowing) return
-
         handler.removeCallbacks(updateLoadingText)
+        val activity = context as? Activity ?: return
+        val decorView = activity.window.decorView as ViewGroup
+        val rootView = decorView.findViewById<ViewGroup>(android.R.id.content)
 
-        val activity = context as FragmentActivity
-        val rootView = activity.findViewById<FrameLayout>(R.id.main_frm)
-        rootView.removeView(loadingView)
+        // 루트 뷰에서 배경 뷰와 콘텐츠 뷰 제거
+        rootView.removeView(backgroundView)
+        rootView.removeView(contentView)
 
         isShowing = false
-    }
-
-    // 기존 메소드는 호환성을 위해 빈 구현으로 유지
-    fun showBottomSheetBackground() {
-        // 빈 구현
-    }
-
-    fun hideBottomSheetBackground() {
-        // 빈 구현
+        // 필요에 따라 뷰 재사용 안 할 경우 null 설정
+        // backgroundView = null
+        // contentView = null
     }
 
     val isDialogShowing: Boolean
