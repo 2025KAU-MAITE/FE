@@ -69,16 +69,30 @@ class AuthRepository {
                 Log.d(TAG, "서버 SMS 인증번호 발송 API 호출: $phoneNumber")
                 
                 // POST 요청에 필요한 데이터 생성
-                val request = SmsAuthSendRequest(phoneNumber = phoneNumber)
+                val request = SmsAuthSendRequest(phonenumber = phoneNumber)
+                Log.d(TAG, "SMS 인증 요청 데이터: $request")
+                
+                // 실제 API 호출 전 로그
+                Log.d(TAG, "API 호출 시작: auth/signup/send-code 엔드포인트로 요청 전송")
                 
                 // 실제 API 호출
                 val response = authApi.sendSmsAuth(request)
                 
-                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                // API 응답 상세 로깅
+                Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, code=${response.code}, message=${response.message}")
+                if (response.result != null) {
+                    Log.d(TAG, "응답 결과 상세: ${response.result}")
+                } else {
+                    Log.d(TAG, "응답 결과가 null입니다.")
+                }
                 
                 response
             } catch (e: Exception) {
                 Log.e(TAG, "SMS 인증번호 발송 API 오류: ${e.message}", e)
+                Log.e(TAG, "상세 예외 정보: ${e.javaClass.name}")
+                if (e.cause != null) {
+                    Log.e(TAG, "원인 예외: ${e.cause?.message}", e.cause)
+                }
                 
                 // API 호출 실패 시 오류 응답 생성
                 SmsAuthResponse(
@@ -103,7 +117,7 @@ class AuthRepository {
                 
                 // POST 요청에 필요한 데이터 생성
                 val request = SmsAuthVerifyRequest(
-                    phoneNumber = phoneNumber,
+                    phonenumber = phoneNumber,
                     verificationCode = verificationCode
                 )
                 
