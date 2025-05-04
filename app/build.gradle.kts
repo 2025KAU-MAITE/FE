@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-parcelize")
+    id("kotlin-kapt") // Add kapt plugin for proper data binding
 }
 
 android {
@@ -49,6 +50,21 @@ android {
         viewBinding = true
         dataBinding = true
     }
+
+    // Add this to prevent duplicate class issues
+    packagingOptions {
+        resources {
+            excludes.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/LICENSE")
+            excludes.add("META-INF/LICENSE.txt")
+            excludes.add("META-INF/license.txt")
+            excludes.add("META-INF/NOTICE")
+            excludes.add("META-INF/NOTICE.txt")
+            excludes.add("META-INF/notice.txt")
+            excludes.add("META-INF/ASL2.0")
+            excludes.add("META-INF/*.kotlin_module")
+        }
+    }
 }
 
 dependencies {
@@ -78,11 +94,10 @@ dependencies {
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
 
-
-
     // ✅ Retrofit + Gson
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") // 로깅 인터셉터 추가
 
     // ✅ Coroutine
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
@@ -99,6 +114,13 @@ dependencies {
 
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
+    
+    // CircleImageView 추가
+    implementation("de.hdodenhof:circleimageview:3.1.0")
+    
+    // Add Glide for image loading
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 }
 
 configurations.all {

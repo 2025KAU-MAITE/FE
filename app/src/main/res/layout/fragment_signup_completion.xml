@@ -5,33 +5,43 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    android:padding="24dp"
     tools:context=".view.SignupCompletionFragment">
 
-    <!-- Maite Logo -->
+    <!-- 가운데 Maite 로고 이미지 -->
     <ImageView
-        android:id="@+id/ivMaiteLogo"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:src="@drawable/maite"
+        android:id="@+id/ivLogo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_maite_logo"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Start Button -->
+    <!-- 가입 완료 버튼 -->
     <Button
-        android:id="@+id/btnStart"
+        android:id="@+id/btnSignup"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:layout_marginBottom="24dp"
-        android:background="@null"
-        android:backgroundTint="@color/mainColor"
-        android:text="시작하기"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="48dp"
+        android:backgroundTint="#5B79F6"
+        android:text="가입 완료"
         android:textColor="@color/white"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:cornerRadius="12dp"
+        android:textSize="18sp"
+        app:cornerRadius="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- 하단 인디케이터 라인 -->
+    <View
+        android:id="@+id/indicator"
+        android:layout_width="48dp"
+        android:layout_height="4dp"
+        android:layout_marginBottom="8dp"
+        android:background="#5B79F6"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
