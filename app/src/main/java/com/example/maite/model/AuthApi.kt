@@ -22,4 +22,8 @@ interface AuthApi {
     // ✅ SMS 인증번호 확인 API (POST /auth/signup/verify-code)
     @POST("auth/signup/verify-code")
     suspend fun verifySmsAuth(@Body request: SmsAuthVerifyRequest): SmsAuthResponse
+    
+    // ✅ 회원가입 API (POST /auth/signup)
+    @POST("auth/signup")
+    suspend fun signup(@Body request: SignupRequest): SignupResponse
 }

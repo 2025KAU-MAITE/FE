@@ -4,6 +4,9 @@ import com.example.maite.ApiClient
 import com.example.maite.model.AuthApi
 import com.example.maite.model.EmailCheckResponse
 import com.example.maite.model.EmailCheckResult
+import com.example.maite.model.SignupRequest
+import com.example.maite.model.SignupResponse
+import com.example.maite.model.SignupResult
 import com.example.maite.model.SmsAuthResponse
 import com.example.maite.model.SmsAuthResult
 import com.example.maite.model.SmsAuthSendRequest
@@ -46,8 +49,8 @@ class AuthRepository {
                     code = "ERROR",
                     message = "서버 연결 오류: ${e.message}",
                     result = EmailCheckResult(
-                        message = "이메일 중복 확인 중 오류가 발생했습니다",
-                        duplicated = false
+                        duplicated = false,
+                        message = "이메일 중복 확인 중 오류가 발생했습니다"
                     )
                 )
             }
@@ -120,6 +123,53 @@ class AuthRepository {
                     message = "서버 연결 오류: ${e.message}",
                     result = SmsAuthResult(
                         message = "SMS 인증번호 확인 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * 회원가입 처리 (서버 API 연동)
+     */
+    suspend fun signup(email: String, password: String, name: String, phoneNumber: String, address: String): SignupResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "회원가입 API 호출: 이메일=$email, 이름=$name, 전화번호=$phoneNumber, 주소=$address")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = SignupRequest(
+                    email = email,
+                    password = password,
+                    name = name,
+                    phoneNumber = phoneNumber,
+                    address = address
+                )
+                
+                // 실제 API 호출
+                val response = authApi.signup(request)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                if (response.result != null) {
+                    Log.d(TAG, "회원가입 결과: userId=${response.result.userId}, email=${response.result.email}, registered=${response.result.registered}")
+                }
+                
+                response
+            } catch (e: Exception) {
+                Log.e(TAG, "회원가입 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                SignupResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = SignupResult(
+                        userId = 0,
+                        email = email,
+                        name = name,
+                        registeredAt = "",
+                        message = "회원가입 처리 중 오류가 발생했습니다",
+                        registered = false
                     )
                 )
             }
