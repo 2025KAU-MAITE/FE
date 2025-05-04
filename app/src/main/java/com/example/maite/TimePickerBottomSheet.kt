@@ -138,7 +138,7 @@ class TimePickerBottomSheet : BottomSheetDialogFragment() {
             Log.d("TimePicker", "ViewModel 업데이트 완료 후 dismiss 호출")
             dismiss() // 바텀 시트 닫기
         }
-        binding.btnText.text = "선택 완료" // 버튼 텍스트 설정
+        binding.btnText.text = "완료" // 버튼 텍스트 설정
 
         // 초기 로드 시 유효성 검사 및 버튼 상태 설정
         Log.d("TimePicker", "초기 유효성 검사 시작.")
