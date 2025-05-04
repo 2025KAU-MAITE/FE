@@ -150,143 +150,70 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="24dp"
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="16dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/textView24"
-                app:layout_constraintBottom_toBottomOf="parent">
+                app:layout_constraintTop_toBottomOf="@+id/textView24">
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="#F5F5F7"
-                    android:paddingBottom="16dp">
+                    android:minHeight="200dp"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="32dp">
 
                     <TextView
-                        android:id="@+id/tabMinutes"
+                        android:id="@+id/textViewMinutesPlaceholder"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="등록된 회의록이 없어요"
+                        app:layout_constraintBottom_toTopOf="@+id/recordBtn"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintVertical_chainStyle="packed" />
+
+                    <ImageView
+                        android:id="@+id/recordBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:src="@drawable/btn_record"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@+id/uploadBtn"
+                        app:layout_constraintHorizontal_chainStyle="packed"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/textViewMinutesPlaceholder" />
+
+                    <ImageView
+                        android:id="@+id/uploadBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:src="@drawable/btn_upload"
+                        app:layout_constraintBottom_toBottomOf="@+id/recordBtn"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toEndOf="@+id/recordBtn"
+                        app:layout_constraintTop_toTopOf="@+id/recordBtn" />
+
+                    <TextView
+                        android:id="@+id/summerizedText"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginEnd="8dp"
-                        android:background="@drawable/tab_unselected_background"
-                        android:gravity="center"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:text="회의록"
-                        android:textStyle="bold"
-                        app:layout_constraintEnd_toStartOf="@+id/tabSummary"
-                        app:layout_constraintHorizontal_bias="0.5"
+                        android:layout_marginEnd="16dp"
+                        android:text="TextView"
+                        android:visibility="gone"
+                        app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent" />
-
-                    <TextView
-                        android:id="@+id/tabSummary"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginEnd="16dp"
-                        android:background="@drawable/tab_unselected_background"
-                        android:gravity="center"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:text="요약본"
-                        android:textStyle="bold"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintHorizontal_bias="0.5"
-                        app:layout_constraintStart_toEndOf="@+id/tabMinutes"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <androidx.constraintlayout.widget.ConstraintLayout
-                        android:id="@+id/minutesContentContainer"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:minHeight="200dp"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:visibility="gone"
-                        app:layout_constraintEnd_toEndOf="@id/tabSummary"
-                        app:layout_constraintStart_toStartOf="@id/tabMinutes"
-                        app:layout_constraintTop_toBottomOf="@id/tabMinutes">
-
-                        <TextView
-                            android:id="@+id/textViewMinutesPlaceholder"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
-                            android:text="등록된 회의록이 없어요"
-                            app:layout_constraintBottom_toTopOf="@+id/recordBtn"
-                            app:layout_constraintEnd_toEndOf="parent"
-                            app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toTopOf="parent"
-                            app:layout_constraintVertical_chainStyle="packed" />
-
-                        <ImageView
-                            android:id="@+id/recordBtn"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="16dp"
-                            android:src="@drawable/btn_record"
-                            app:layout_constraintBottom_toBottomOf="parent"
-                            app:layout_constraintEnd_toStartOf="@+id/uploadBtn"
-                            app:layout_constraintHorizontal_chainStyle="packed"
-                            app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toBottomOf="@+id/textViewMinutesPlaceholder" />
-
-                        <ImageView
-                            android:id="@+id/uploadBtn"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:src="@drawable/btn_upload"
-                            app:layout_constraintBottom_toBottomOf="@+id/recordBtn"
-                            app:layout_constraintEnd_toEndOf="parent"
-                            app:layout_constraintStart_toEndOf="@+id/recordBtn"
-                            app:layout_constraintTop_toTopOf="@+id/recordBtn" />
-
-                    </androidx.constraintlayout.widget.ConstraintLayout>
-
-                    <androidx.constraintlayout.widget.ConstraintLayout
-                        android:id="@+id/summaryContentContainer"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:minHeight="200dp"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:visibility="gone"
-                        app:layout_constraintEnd_toEndOf="@id/tabSummary"
-                        app:layout_constraintStart_toStartOf="@id/tabMinutes"
-                        app:layout_constraintTop_toBottomOf="@id/tabMinutes">
-
-                        <TextView
-                            android:id="@+id/textViewSummaryPlaceholder"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:text="생성된 요약본이 없어요"
-                            app:layout_constraintBottom_toTopOf="@+id/summurizeBtn"
-                            app:layout_constraintEnd_toEndOf="parent"
-                            app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toTopOf="parent"
-                            app:layout_constraintVertical_chainStyle="packed" />
-
-                        <ImageView
-                            android:id="@+id/summurizeBtn"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:src="@drawable/btn_summerize"
-                            app:layout_constraintBottom_toBottomOf="parent"
-                            app:layout_constraintEnd_toEndOf="parent"
-                            app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toBottomOf="@+id/textViewSummaryPlaceholder" />
-
-                    </androidx.constraintlayout.widget.ConstraintLayout>
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
