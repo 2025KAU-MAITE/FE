@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daum 우편번호 서비스</title>
+    <style>
+        body, html {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        #daumPostContainer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div id="daumPostContainer"></div>
+    
+    <script>
+        // Android 인터페이스 확인
+        function checkAndroidInterface() {
+            if (window.Android) {
+                console.log('Android 인터페이스 있음');
+                return true;
+            } else {
+                console.log('Android 인터페이스 없음');
+                return false;
+            }
+        }
+        
+        // 주소 선택 완료 후 호출될 함수
+        function handleAddress(data) {
+            console.log('주소 선택 완료:', JSON.stringify(data));
+            
+            // 주소 가져오기
+            var addr = '';
+            if (data.userSelectedType === 'R') {
+                addr = data.roadAddress;
+            } else {
+                addr = data.jibunAddress;
+            }
+            
+            // Android로 주소 전달
+            if (checkAndroidInterface()) {
+                try {
+                    console.log('setAddress 호출 시도');
+                    window.Android.setAddress(addr);
+                } catch (e) {
+                    console.error('setAddress 오류:', e);
+                    
+                    try {
+                        console.log('processDATA 호출 시도');
+                        window.Android.processDATA(JSON.stringify(data));
+                    } catch (e2) {
+                        console.error('processDATA 오류:', e2);
+                        alert('주소 선택됨: ' + addr + '\n\n앱과 통신 중 오류가 발생했습니다.');
+                    }
+                }
+            } else {
+                alert('주소 선택됨: ' + addr);
+            }
+        }
+        
+        // Daum 우편번호 서비스 스크립트 로드
+        var script = document.createElement('script');
+        script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+        script.onload = function() {
+            console.log('Daum 우편번호 스크립트 로드 완료');
+            new daum.Postcode({
+                oncomplete: handleAddress,
+                width: '100%',
+                height: '100%',
+                animation: true,
+                hideEngBtn: false,
+                hideMapBtn: false,
+                alwaysShowEngAddr: false,
+                pleaseReadGuide: 0,
+                pleaseReadGuideTimer: 1.5,
+                maxSuggestItems: 10,
+            }).embed(document.getElementById('daumPostContainer'));
+            
+            console.log('우편번호 검색 시작');
+        };
+        script.onerror = function() {
+            console.error('Daum 우편번호 스크립트 로드 오류');
+            alert('주소 검색 기능을 불러오는데 실패했습니다.');
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

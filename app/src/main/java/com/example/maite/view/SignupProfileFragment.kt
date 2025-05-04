@@ -1,21 +1,31 @@
 package com.example.maite.view
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.maite.databinding.FragmentSignupProfileBinding
+import com.example.maite.repository.AuthRepository
+import com.example.maite.model.SignupDataHolder
+import kotlinx.coroutines.launch
 
 class SignupProfileFragment : Fragment() {
 
+    private val TAG = "SignupProfileFragment"
+    
     private var _binding: FragmentSignupProfileBinding? = null
     private val binding get() = _binding!!
     
     // Authentication flow state variables
     private var isAuthSent = false
     private var isAuthVerified = false
+    
+    // AuthRepository 인스턴스 생성
+    private val authRepository = AuthRepository()
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -86,43 +96,205 @@ class SignupProfileFragment : Fragment() {
     }
     
     private fun sendAuthNumber() {
-        // Simulate sending authentication code
-        // In a real app, you would make an API call to send SMS
+        val phoneNumber = binding.etPhoneNumber.text.toString().trim()
         
-        // Show authentication views
-        showAuthenticationViews()
+        // 전화번호 입력 필드 비활성화 (인증 과정 중 변경 방지)
+        binding.etPhoneNumber.isEnabled = false
         
-        // Update state
-        isAuthSent = true
+        // 로딩 상태 표시
+        binding.progressBar.visibility = View.VISIBLE
+        binding.btnSendAuth.isEnabled = false
         
-        Toast.makeText(requireContext(), "인증번호가 발송되었습니다", Toast.LENGTH_SHORT).show()
-        
-        // 인증번호 입력창이 나타난 후 인증하기 버튼이 바로 클릭되지 않도록 이전 검증 상태 초기화
-        isAuthVerified = false
+        // API 호출로 인증번호 발송
+        lifecycleScope.launch {
+            try {
+                Log.d(TAG, "SMS 인증번호 발송 API 호출 시작: $phoneNumber")
+                val response = authRepository.sendSmsAuth(phoneNumber)
+                
+                // API 응답 디버깅 로그
+                Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, message=${response.message}")
+                
+                if (response.isSuccess) {
+                    // 인증번호 발송 성공
+                    Toast.makeText(requireContext(), "인증번호가 발송되었습니다", Toast.LENGTH_SHORT).show()
+                    
+                    // 인증 입력 UI 표시
+                    showAuthenticationViews()
+                    
+                    // 상태 업데이트
+                    isAuthSent = true
+                    isAuthVerified = false
+                    
+                    // 전화번호 SignupDataHolder에 저장
+                    SignupDataHolder.phoneNumber = phoneNumber
+                } else {
+                    // 인증번호 발송 실패
+                    Toast.makeText(
+                        requireContext(), 
+                        "인증번호 발송 실패: ${response.message}", 
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    
+                    // 전화번호 입력 필드 다시 활성화
+                    binding.etPhoneNumber.isEnabled = true
+                }
+            } catch (e: Exception) {
+                // 네트워크 오류 등의 예외 처리
+                Log.e(TAG, "API 호출 중 예외 발생", e)
+                Toast.makeText(
+                    requireContext(),
+                    "네트워크 오류가 발생했습니다: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                
+                // 전화번호 입력 필드 다시 활성화
+                binding.etPhoneNumber.isEnabled = true
+            } finally {
+                // 로딩 상태 종료
+                binding.progressBar.visibility = View.GONE
+                binding.btnSendAuth.isEnabled = true
+            }
+        }
     }
     
     private fun resendAuthNumber() {
-        // Simulate resending authentication code
-        Toast.makeText(requireContext(), "인증번호가 재발송되었습니다", Toast.LENGTH_SHORT).show()
+        val phoneNumber = binding.etPhoneNumber.text.toString().trim()
+        
+        // 로딩 상태 표시
+        binding.progressBar.visibility = View.VISIBLE
+        binding.tvResendAuth.isEnabled = false
+        
+        // API 호출로 인증번호 재발송
+        lifecycleScope.launch {
+            try {
+                Log.d(TAG, "SMS 인증번호 재발송 API 호출 시작: $phoneNumber")
+                val response = authRepository.sendSmsAuth(phoneNumber)
+                
+                if (response.isSuccess) {
+                    // 인증번호 재발송 성공
+                    Toast.makeText(requireContext(), "인증번호가 재발송되었습니다", Toast.LENGTH_SHORT).show()
+                    
+                    // 인증 코드 초기화
+                    clearAuthCodeFields()
+                    binding.etAuthCode1.requestFocus()
+                } else {
+                    // 인증번호 재발송 실패
+                    Toast.makeText(
+                        requireContext(), 
+                        "인증번호 재발송 실패: ${response.message}", 
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                // 네트워크 오류 등의 예외 처리
+                Log.e(TAG, "API 호출 중 예외 발생", e)
+                Toast.makeText(
+                    requireContext(),
+                    "네트워크 오류가 발생했습니다: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                // 로딩 상태 종료
+                binding.progressBar.visibility = View.GONE
+                binding.tvResendAuth.isEnabled = true
+            }
+        }
     }
     
-    private fun verifyAuthNumber(): Boolean {
-        // Since API isn't implemented yet, automatically consider verification successful
-        Toast.makeText(requireContext(), "인증이 완료되었습니다", Toast.LENGTH_SHORT).show()
-        isAuthVerified = true
-        
-        // 이름이 입력되어 있는지만 확인한 후, 다음 화면으로 넘어갑니다
+    private fun verifyAuthNumber() {
+        val phoneNumber = binding.etPhoneNumber.text.toString().trim()
+        val authCode = getAuthCode()
         val name = binding.etName.text.toString().trim()
         
-        if (name.isEmpty()) {
-            binding.etName.error = "이름을 입력해주세요"
-            return false
+        // 인증번호가 6자리인지 확인
+        if (authCode.length != 6) {
+            Toast.makeText(requireContext(), "인증번호 6자리를 입력해주세요", Toast.LENGTH_SHORT).show()
+            return
         }
         
-        // 이름이 올바르게 입력되었다면 다음 화면으로 이동
-        navigateToAddressScreen()
+        // 이름 검증
+        if (name.isEmpty()) {
+            binding.etName.error = "이름을 입력해주세요"
+            return
+        }
         
-        return true
+        // 로딩 상태 표시
+        binding.progressBar.visibility = View.VISIBLE
+        binding.btnVerifyAuth.isEnabled = false
+        
+        // API 호출로 인증번호 확인
+        lifecycleScope.launch {
+            try {
+                Log.d(TAG, "SMS 인증번호 확인 API 호출 시작")
+                val response = authRepository.verifySmsAuth(phoneNumber, authCode)
+                
+                // API 응답 디버깅 로그
+                Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, message=${response.message}")
+                
+                if (response.isSuccess) {
+                    // 인증 성공
+                    Toast.makeText(requireContext(), "인증이 완료되었습니다", Toast.LENGTH_SHORT).show()
+                    
+                    // 상태 업데이트
+                    isAuthVerified = true
+                    
+                    // 인증 입력 UI 비활성화
+                    disableAuthFields()
+                    
+                    // 이름과 전화번호 저장 후 바로 다음 화면으로 이동
+                    SignupDataHolder.name = name
+                    SignupDataHolder.phoneNumber = phoneNumber
+                    Log.d(TAG, "이름과 전화번호 저장 완료: 이름=$name, 전화번호=$phoneNumber")
+                    
+                    // 다음 화면으로 이동
+                    navigateToAddressScreen()
+                } else {
+                    // 인증 실패
+                    Toast.makeText(
+                        requireContext(), 
+                        "인증번호가 일치하지 않습니다", 
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    
+                    // 인증 코드 초기화
+                    clearAuthCodeFields()
+                    binding.etAuthCode1.requestFocus()
+                }
+            } catch (e: Exception) {
+                // 네트워크 오류 등의 예외 처리
+                Log.e(TAG, "API 호출 중 예외 발생", e)
+                Toast.makeText(
+                    requireContext(),
+                    "네트워크 오류가 발생했습니다: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                // 로딩 상태 종료
+                binding.progressBar.visibility = View.GONE
+                binding.btnVerifyAuth.isEnabled = true
+            }
+        }
+    }
+    
+    private fun disableAuthFields() {
+        // 인증 관련 필드 비활성화
+        binding.etAuthCode1.isEnabled = false
+        binding.etAuthCode2.isEnabled = false
+        binding.etAuthCode3.isEnabled = false
+        binding.etAuthCode4.isEnabled = false
+        binding.etAuthCode5.isEnabled = false
+        binding.etAuthCode6.isEnabled = false
+        binding.btnVerifyAuth.isEnabled = false
+        binding.tvResendAuth.isEnabled = false
+    }
+    
+    private fun clearAuthCodeFields() {
+        binding.etAuthCode1.setText("")
+        binding.etAuthCode2.setText("")
+        binding.etAuthCode3.setText("")
+        binding.etAuthCode4.setText("")
+        binding.etAuthCode5.setText("")
+        binding.etAuthCode6.setText("")
     }
     
     private fun getAuthCode(): String {
@@ -194,6 +366,16 @@ class SignupProfileFragment : Fragment() {
     }
     
     private fun navigateToAddressScreen() {
+        // 사용자 이름 저장
+        val name = binding.etName.text.toString().trim()
+        val phoneNumber = binding.etPhoneNumber.text.toString().trim()
+        
+        // 로컬 데이터 홀더에 이름과 전화번호 저장
+        SignupDataHolder.name = name
+        SignupDataHolder.phoneNumber = phoneNumber
+        
+        Log.d(TAG, "이름과 전화번호 저장 완료: 이름=$name, 전화번호=$phoneNumber")
+        
         // Navigate to address input screen
         val signupAddressFragment = SignupAddressFragment()
         requireActivity().supportFragmentManager.beginTransaction()

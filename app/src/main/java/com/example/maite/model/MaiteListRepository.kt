@@ -1,7 +1,6 @@
 package com.example.maite.model
 
-// 실제 앱에서는 데이터베이스나 네트워크에서 데이터를 가져올 가능성이 높습니다
-class MaiteRepository {
+class MaiteListRepository {
 
     fun getMaiteList(): List<MaiteListItem> {
         // 시연을 위한 더미 데이터

@@ -94,7 +94,21 @@ class ListDetailFragment : Fragment() {
             suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
         }
 
-        createTimetable() // 시간표 생성 호출
+        binding.recentHamberger.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, MeetListFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
+        binding.propHamberger.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, PropMeetFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
+        createTimetable()
     }
 
     // 시간표 생성 함수 (수정됨: 동적 시간 범위)
