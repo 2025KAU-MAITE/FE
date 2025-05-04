@@ -46,9 +46,12 @@ class ProfileFragment : Fragment() {
 
         val preferencesUtil = PreferencesUtil(requireContext())
         val userId = preferencesUtil.getUserId()
+        
+        Log.d("ProfileFragment", "User ID from preferences: $userId")
 
         if (userId != null) {
             // 서버에서 시간표 불러오기
+            Log.d("ProfileFragment", "Loading timetable for userId: $userId")
             viewModel.loadTimetableFromServer(userId)
             // 사용자 정보 불러오기
             viewModel.loadUserInfo(userId)
@@ -74,6 +77,7 @@ class ProfileFragment : Fragment() {
 
         // 시간표 데이터 관찰
         viewModel.timetable.observe(viewLifecycleOwner) { timetableList ->
+            Log.d("ProfileFragment", "Timetable data observed: ${timetableList.size} entries")
             createTimetable(timetableList)
         }
 
@@ -93,6 +97,8 @@ class ProfileFragment : Fragment() {
 
     // 30분 단위로 시간표를 표시하도록 수정
     private fun createTimetable(entries: List<TimetableEntry>) {
+        Log.d("ProfileFragment", "createTimetable called with ${entries.size} entries")
+        
         val tableLayout = binding.timetableLayout
         tableLayout.removeAllViews()
 

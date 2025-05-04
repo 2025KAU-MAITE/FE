@@ -49,6 +49,9 @@ class HomeViewModel : ViewModel() {
                 _timetableEntries.value = entries
             }
             .launchIn(viewModelScope)
+            
+        // 현재 TimetableDataHolder에 한 값이 있으면 즉시 반영
+        _timetableEntries.value = TimetableDataHolder.timetableEntries.value
     }
 
     fun acceptProposal(proposal: MeetingProposal) {

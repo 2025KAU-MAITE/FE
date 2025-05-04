@@ -14,8 +14,11 @@ import com.example.maite.repository.UserRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import android.util.Log
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val TAG = "ProfileViewModel"
 
     private val timetableRepository = TimetableRepository(application)
     private val userRepository = UserRepository(application)
@@ -166,12 +169,27 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     // 서버에서 시간표 로드 - userId 파라미터 추가
     fun loadTimetableFromServer(userId: Long) {
         currentUserId = userId
+        Log.d(TAG, "loadTimetableFromServer called with userId: $userId")
+        
         viewModelScope.launch {
             try {
                 val serverData = timetableRepository.loadTimetable(userId)
+                Log.d(TAG, "Loaded ${serverData.size} timetable entries from repository")
+                
+                // 로드된 데이터 상세 로그
+                serverData.forEach { entry ->
+                    Log.d(TAG, "Entry: ${entry.title} on day ${entry.dayOfWeek} from ${entry.startHour}:${entry.startMinute} to ${entry.endHour}:${entry.endMinute}")
+                }
+                
                 _timetable.value = serverData
+                // DataHolder 업데이트 전에 로그 추가
+                Log.d(TAG, "Updating DataHolder with ${serverData.size} entries")
                 TimetableDataHolder.updateTimetable(serverData)
+                
+                // 업데이트 후 DataHolder 상태 확인
+                Log.d(TAG, "DataHolder now has ${TimetableDataHolder.timetableEntries.value.size} entries")
             } catch (e: Exception) {
+                Log.e(TAG, "서버에서 로드하는 중 오류 발생", e)
                 _timetableEvent.emit(TimetableEvent.Error("서버에서 로드하는 중 오류가 발생했습니다: ${e.message}"))
             }
         }

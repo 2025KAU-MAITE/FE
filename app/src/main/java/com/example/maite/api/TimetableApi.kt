@@ -54,7 +54,7 @@ data class EventDto(
     val id: Long,
     val title: String,
     val day: String,
-    val color: String,
+    val color: String?,  // nullable로 변경
     val startTime: String,
     val endTime: String
 )

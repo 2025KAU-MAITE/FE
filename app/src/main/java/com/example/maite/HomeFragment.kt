@@ -18,7 +18,9 @@ import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
 import com.example.maite.model.TimetableEntry
 import com.example.maite.ui.home.HomeViewModel
+import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
+import android.util.Log
 
 class HomeFragment : Fragment() {
 
@@ -27,6 +29,8 @@ class HomeFragment : Fragment() {
 
     // ViewModel을 Activity 범위로 공유하여 상태 유지
     private val viewModel: HomeViewModel by activityViewModels()
+    private val profileViewModel: ProfileViewModel by activityViewModels()
+    private val preferencesUtil by lazy { PreferencesUtil(requireContext()) }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,6 +42,17 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // 사용자 ID를 가져와서 시간표 로드
+        val userId = preferencesUtil.getUserId()
+        Log.d("HomeFragment", "User ID from preferences: $userId")
+        
+        if (userId != null) {
+            Log.d("HomeFragment", "Loading timetable for userId: $userId")
+            profileViewModel.loadTimetableFromServer(userId)
+        } else {
+            Log.e("HomeFragment", "User ID not found")
+        }
 
         // 시간표 관찰 및 표시
         viewModel.timetableEntries.observe(viewLifecycleOwner) { entries ->
@@ -106,6 +121,8 @@ class HomeFragment : Fragment() {
 
     // 시간표 렌더링 메서드 (30분 단위로 수정)
     private fun renderTimetable(entries: List<TimetableEntry>) {
+        Log.d("HomeFragment", "Rendering timetable with ${entries.size} entries")
+        
         val timetableLayout = binding.flTimetable
         timetableLayout.removeAllViews()
 
