@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-parcelize")
+    id("kotlin-kapt") // Add kapt plugin for proper data binding
 }
 
 android {
@@ -48,6 +49,21 @@ android {
     buildFeatures {
         viewBinding = true
         dataBinding = true
+    }
+
+    // Add this to prevent duplicate class issues
+    packagingOptions {
+        resources {
+            excludes.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/LICENSE")
+            excludes.add("META-INF/LICENSE.txt")
+            excludes.add("META-INF/license.txt")
+            excludes.add("META-INF/NOTICE")
+            excludes.add("META-INF/NOTICE.txt")
+            excludes.add("META-INF/notice.txt")
+            excludes.add("META-INF/ASL2.0")
+            excludes.add("META-INF/*.kotlin_module")
+        }
     }
 }
 
