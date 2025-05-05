@@ -131,6 +131,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
         // 공유 데이터 홀더 업데이트
         TimetableDataHolder.updateTimetable(emptyList())
+        
+        Log.d(TAG, "시간표 초기화 완료")
 
         viewModelScope.launch {
             _timetableEvent.emit(TimetableEvent.Cleared)
@@ -173,21 +175,66 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         
         viewModelScope.launch {
             try {
-                val serverData = timetableRepository.loadTimetable(userId)
-                Log.d(TAG, "Loaded ${serverData.size} timetable entries from repository")
+                // 로딩 이벤트 발행
+                _timetableEvent.emit(TimetableEvent.Loading("시간표를 불러오는 중..."))
                 
-                // 로드된 데이터 상세 로그
-                serverData.forEach { entry ->
-                    Log.d(TAG, "Entry: ${entry.title} on day ${entry.dayOfWeek} from ${entry.startHour}:${entry.startMinute} to ${entry.endHour}:${entry.endMinute}")
+                // 3번 연속 시도 (동기화 신뢰성 향상)
+                var serverData = emptyList<TimetableEntry>()
+                var retryCount = 0
+                var lastError: Exception? = null
+                
+                while (serverData.isEmpty() && retryCount < 3) {
+                    try {
+                        // 시간표 로드 시도
+                        serverData = timetableRepository.loadTimetable(userId)
+                        if (serverData.isNotEmpty()) {
+                            Log.d(TAG, "[시도 ${retryCount + 1}] 시간표 로드 성공: ${serverData.size}개 항목")
+                            break
+                        }
+                        Log.w(TAG, "[시도 ${retryCount + 1}] 빈 시간표가 로드됨, 재시도...")
+                        retryCount++
+                        kotlinx.coroutines.delay(500) // 재시도 전 약간의 지연
+                    } catch (e: Exception) {
+                        lastError = e
+                        Log.e(TAG, "[시도 ${retryCount + 1}] 시간표 로드 오류", e)
+                        retryCount++
+                        kotlinx.coroutines.delay(500) // 재시도 전 약간의 지연
+                    }
                 }
                 
-                _timetable.postValue(serverData)  // postValue 사용
-                // DataHolder 업데이트 전에 로그 추가
-                Log.d(TAG, "Updating DataHolder with ${serverData.size} entries")
-                TimetableDataHolder.updateTimetable(serverData)
-                
-                // 업데이트 후 DataHolder 상태 확인
-                Log.d(TAG, "DataHolder now has ${TimetableDataHolder.timetableEntries.value.size} entries")
+                // 로드된 데이터가 있으면 처리
+                if (serverData.isNotEmpty()) {
+                    Log.d(TAG, "Loaded ${serverData.size} timetable entries from repository")
+                    
+                    // 로드된 데이터 상세 로그
+                    serverData.forEach { entry ->
+                        Log.d(TAG, "Entry: ${entry.title} on day ${entry.dayOfWeek} from ${entry.startHour}:${entry.startMinute} to ${entry.endHour}:${entry.endMinute}")
+                    }
+                    
+                    // ViewModel 상태 업데이트
+                    _timetable.postValue(serverData)  // postValue 사용
+                    
+                    // 중요: DataHolder 업데이트 전에 로그 추가
+                    Log.d(TAG, "Updating DataHolder with ${serverData.size} entries")
+                    TimetableDataHolder.updateTimetable(serverData)
+                    
+                    // 업데이트 후 DataHolder 상태 확인
+                    Log.d(TAG, "DataHolder now has ${TimetableDataHolder.timetableEntries.value.size} entries")
+                    
+                    // 성공 이벤트 발행
+                    _timetableEvent.emit(TimetableEvent.Loaded(serverData.size))
+                } else {
+                    // 로드 실패 - 이벤트 발행
+                    if (lastError != null) {
+                        Log.e(TAG, "모든 시도 후 시간표 로드 실패", lastError)
+                        _timetableEvent.emit(TimetableEvent.Error("시간표를 가져올 수 없습니다: ${lastError.message}"))
+                    } else {
+                        Log.w(TAG, "모든 시도 후 빈 시간표 반환됨")
+                        _timetable.postValue(emptyList())  // 빈 시간표 설정
+                        TimetableDataHolder.updateTimetable(emptyList())  // DataHolder도 업데이트
+                        _timetableEvent.emit(TimetableEvent.Loaded(0))
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "서버에서 로드하는 중 오류 발생", e)
                 _timetableEvent.emit(TimetableEvent.Error("서버에서 로드하는 중 오류가 발생했습니다: ${e.message}"))
@@ -220,5 +267,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         object Cleared : TimetableEvent()
         object SavedToServer : TimetableEvent()
         data class Error(val message: String) : TimetableEvent()
+        // 시간표 로딩 중 상태를 위한 이벤트 추가
+        data class Loading(val message: String) : TimetableEvent()
+        // 시간표 로딩 완료 이벤트 추가
+        data class Loaded(val count: Int) : TimetableEvent()
+        // 동기화 관련 이벤트 추가
+        data class SyncStarted(val message: String) : TimetableEvent()
+        data class SyncCompleted(val success: Boolean, val message: String) : TimetableEvent()
     }
 }

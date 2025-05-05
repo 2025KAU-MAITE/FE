@@ -11,13 +11,19 @@ import android.widget.LinearLayout
 import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
+import android.widget.Toast
+import com.google.android.material.snackbar.Snackbar
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import com.example.maite.databinding.FragmentHomeBinding
 import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
+import com.example.maite.data.model.ProposalType
 import com.example.maite.model.TimetableEntry
 import com.example.maite.ui.home.HomeViewModel
+import com.example.maite.ui.home.HomeViewModelFactory
 import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
 import android.util.Log
@@ -27,8 +33,10 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
-    // ViewModel을 Activity 범위로 공유하여 상태 유지
-    private val viewModel: HomeViewModel by activityViewModels()
+    // ViewModel 초기화
+    private val viewModel by viewModels<HomeViewModel> {
+        HomeViewModelFactory(requireContext())
+    }
     private val profileViewModel: ProfileViewModel by activityViewModels()
     private val preferencesUtil by lazy { PreferencesUtil(requireContext()) }
 
@@ -83,10 +91,34 @@ class HomeFragment : Fragment() {
             if (proposals.isNotEmpty()) {
                 val proposal = proposals.first()
                 binding.cardProposal.visibility = View.VISIBLE
-                binding.tvProposalTitle.text = proposal.title
-                binding.tvProposalDate.text = "날짜: ${proposal.date}"
-                binding.tvProposalTime.text = "시간: ${proposal.time}"
-                binding.tvProposalLocation.text = "장소: ${proposal.location}"
+                
+                // 회의방 초대인지 회의 제안인지 구분하여 표시 (디자인 개선)
+                if (proposal.type == ProposalType.ROOM_INVITE) {
+                    // 회의방 초대 표시
+                    binding.tvProposalTitle.text = "${proposal.fromUser}님의 회의방 초대"
+                    binding.tvProposalDate.text = "회의방: ${proposal.roomName ?: ""}"
+                    binding.tvProposalTime.visibility = View.GONE
+                    binding.tvProposalLocation.visibility = View.GONE
+                    
+                    // 회의방 초대의 경우 카드 배경색 변경
+                    binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.colorRoomInvite, null))
+                    binding.ivInviteIcon.setImageResource(R.drawable.ic_room_invite)
+                    binding.ivInviteIcon.visibility = View.VISIBLE
+                } else {
+                    // 회의 제안 표시
+                    binding.tvProposalTitle.text = proposal.title
+                    binding.tvProposalDate.text = "날짜: ${proposal.date ?: ""}"
+                    binding.tvProposalTime.text = "시간: ${proposal.time ?: ""}"
+                    binding.tvProposalLocation.text = "장소: ${proposal.location ?: ""}"
+                    binding.tvProposalTime.visibility = View.VISIBLE
+                    binding.tvProposalLocation.visibility = View.VISIBLE
+                    
+                    // 회의 제안의 경우 기본 카드 배경색 유지
+                    binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
+                    binding.ivInviteIcon.setImageResource(R.drawable.ic_meeting_invite)
+                    binding.ivInviteIcon.visibility = View.VISIBLE
+                }
+                
                 binding.tvNoProposals.visibility = View.GONE
             } else {
                 binding.cardProposal.visibility = View.GONE
@@ -115,6 +147,51 @@ class HomeFragment : Fragment() {
                     .setCustomAnimations(R.anim.slide_in_right, 0)
                     .add(R.id.main_frm, NotificationFragment(), NotificationFragment.TAG)
                     .commit()
+            }
+        }
+        
+        // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
+        viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->
+            if (roomName != null) {
+                Toast.makeText(
+                    requireContext(),
+                    "'$roomName' 회의방에 참가하였습니다.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                
+                // 이벤트 처리후 초기화 - 직접 접근하지 않고 ViewModel의 메서드 사용
+                try {
+                    // 이벤트 처리후 초기화
+                    viewModel.clearRoomJoinEvent()
+                } catch (e: Exception) {
+                    Log.e("HomeFragment", "Error clearing room join event", e)
+                }
+            }
+        }
+        
+        // 로딩 상태 관찰
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+        
+        // 오류 메시지 관찰
+        viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
+            errorMessage?.let {
+                Log.d("HomeFragment", "오류 메시지 표시: $it")
+                
+                // JSON 파싱 오류인 경우 좀 더 사용자 친화적인 메시지로 변경
+                val displayMessage = if (it.contains("malformed") || it.contains("JsonReader") || it.contains("parsing")) {
+                    "서버와의 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+                } else {
+                    it
+                }
+                
+                Snackbar.make(binding.root, displayMessage, Snackbar.LENGTH_LONG)
+                    .setAction("확인") {
+                        viewModel.clearError()
+                    }
+                    .setActionTextColor(resources.getColor(R.color.mainColor, null))
+                    .show()
             }
         }
     }
@@ -331,9 +408,43 @@ class HomeFragment : Fragment() {
             .setInterpolator(AccelerateDecelerateInterpolator())
             .withEndAction {
                 if (isAccepted) {
+                    // UI 업데이트 진행중 표시
+                    val loadingDialog = LoadingDialog(requireContext())
+                    loadingDialog.show()
+                    
+                    // 제안 수락 처리 - 실제 API 호출
                     viewModel.acceptProposal(proposal)
+                    
+                    // 제안 유형에 따라 다른 처리
+                    if (proposal.type == ProposalType.MEETING) {
+                        // 회의 제안이면 회의 목록 갱신
+                        // 잠시 대기 후 서버에서 업데이트 된 회의 목록을 가져오기
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            viewModel.loadNearestMeeting()
+                            Log.d("HomeFragment", "회의 목록 새로 가져오기 완료")
+                        }, 500) // 0.5초 대기 후 새로고침
+                        
+                        // 성공 메시지 표시
+                        Toast.makeText(
+                            requireContext(),
+                            "회의 제안을 수락했습니다. 회의 목록을 업데이트합니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    // ROOM_INVITE인 경우는 roomJoinEvent로 처리됨 (별도의 토스트 메시지 관찰자로)
+                    
+                    // 잠시 후 로딩 닫기
+                    loadingDialog.dismiss()
                 } else {
+                    // 제안 거절 처리 - 실제 API 호출
                     viewModel.declineProposal(proposal)
+                    
+                    // 거절 메시지 표시
+                    Toast.makeText(
+                        requireContext(),
+                        "제안을 거절했습니다",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
                 // 뷰 초기화
