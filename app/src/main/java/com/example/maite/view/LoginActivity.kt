@@ -12,12 +12,14 @@ import com.example.maite.databinding.ActivityLoginBinding
 import com.example.maite.repository.AuthRepository
 import kotlinx.coroutines.launch
 import com.example.maite.PreferencesUtil
+import com.example.maite.ApiClient
 
 class LoginActivity : AppCompatActivity() {
 
     private val TAG = "LoginActivity"
     private lateinit var binding: ActivityLoginBinding
     private val authRepository by lazy { AuthRepository(this) }
+    private val preferencesUtil by lazy { PreferencesUtil(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +95,12 @@ class LoginActivity : AppCompatActivity() {
         // 로딩 표시 (별도의 프로그래스바가 없을 경우 버튼 비활성화로 처리)
         setLoading(true)
         
+        // 로그인 전에 기존 토큰 제거
+        preferencesUtil.clearAccessToken()
+        
+        // API 클라이언트 초기화
+        ApiClient.resetClient(this)
+        
         lifecycleScope.launch {
             try {
                 Log.d(TAG, "로그인 시도: $email")
@@ -155,9 +163,6 @@ class LoginActivity : AppCompatActivity() {
         val preferencesUtil = PreferencesUtil(this)
         preferencesUtil.saveAccessToken(token)
         Log.d(TAG, "액세스 토큰 저장: ${token.take(10)}...")
-        
-
-
     }
     
     // MainActivity로 이동
