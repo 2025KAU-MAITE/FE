@@ -56,10 +56,10 @@ class EditTimePickerBottomSheet : BottomSheetDialogFragment() {
         val initialMinute = if (arguments?.getInt(KEY_INITIAL_MINUTE, 0) ?: 0 >= 30) 30 else 0
 
         // --- NumberPicker 설정 ---
-        binding.hourPicker.minValue = 0
+        binding.hourPicker.minValue = 8
         binding.hourPicker.maxValue = 23
         binding.hourPicker.setFormatter { String.format("%02d", it) }
-        binding.hourPicker.value = initialHour.coerceIn(0, 23)
+        binding.hourPicker.value = initialHour.coerceIn(8, 23)
 
         // 30분 단위 설정 (0, 30)
         binding.minutePicker.minValue = 0

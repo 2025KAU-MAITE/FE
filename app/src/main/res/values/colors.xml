@@ -8,4 +8,8 @@
     <color name="gray">#9E9E9E</color>
     <color name="border_default">#C7C7C7</color>
     <color name="btn_inactive">#C4C4C4</color>
+    
+    <!-- Invite cards -->
+    <color name="colorRoomInvite">#F9F2FF</color> <!-- 연한 보라색 배경 -->
+    <color name="colorMeetingInvite">#FFFFFF</color> <!-- 흰색 배경 -->
 </resources>

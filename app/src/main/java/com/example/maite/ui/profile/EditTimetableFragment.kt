@@ -2,6 +2,7 @@ package com.example.maite.ui.profile
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -14,11 +15,17 @@ import androidx.lifecycle.lifecycleScope
 import com.example.maite.R
 import com.example.maite.databinding.FragmentEditTimetableBinding
 import com.example.maite.model.TimetableEntry
+import com.example.maite.ui.profile.ProfileViewModel
+import com.example.maite.ui.profile.EditTimeSelectionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import kotlin.math.ceil
 import com.example.maite.PreferencesUtil
+import com.example.maite.ui.profile.LoadingDialog
 
 class EditTimetableFragment : Fragment() {
 
@@ -134,14 +141,118 @@ class EditTimetableFragment : Fragment() {
             // 임시 시간표를 실제 시간표로 적용
             viewModel.updateTimetable(temporaryEntries)
 
+            // 저장 전 로딩 다이얼로그 표시
+            val loadingDialog = LoadingDialog(requireContext())
+            loadingDialog.show()
+            
             // 서버에 저장
-            val userId = PreferencesUtil(requireContext()).getUserId()
+            val preferencesUtil = PreferencesUtil(requireContext())
+            val userId = preferencesUtil.getUserId()
+            val accessToken = preferencesUtil.getAccessToken()
+            
             if (userId != null) {
-                viewModel.saveTimetableToServer(userId)
+                // accessToken 없을 때 처리
+                if (accessToken == null) {
+                    loadingDialog.dismiss()
+                    Toast.makeText(requireContext(), "처음 저장 시에는 로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                    // 여기서 로그인 화면으로 이동 로직을 추가하거나 별도 절차 필요
+                } else {
+                    Log.d("EditTimetableFragment", "Saving timetable for userId: $userId with token: $accessToken")
+                    // 저장 시도 (3번 재시도)
+                    var saveSuccess = false
+                    var retryCount = 0
+                    var saveComplete = false
+                    
+                    lifecycleScope.launch {
+                        try {
+                            // 저장 이벤트 감시 설정
+                            val saveJob = launch {
+                                try {
+                                    viewModel.timetableEvent.collect { event ->
+                                        when (event) {
+                                            is ProfileViewModel.TimetableEvent.SavedToServer -> {
+                                                saveSuccess = true
+                                                saveComplete = true
+                                                Log.d("EditTimetableFragment", "서버 저장 성공")
+                                            }
+                                            is ProfileViewModel.TimetableEvent.Error -> {
+                                                saveSuccess = false
+                                                saveComplete = true
+                                                Log.e("EditTimetableFragment", "서버 저장 오류: ${event.message}")
+                                            }
+                                            is ProfileViewModel.TimetableEvent.SyncCompleted -> {
+                                                saveSuccess = event.success
+                                                saveComplete = true
+                                                Log.d("EditTimetableFragment", "동기화 완료: ${event.message}")
+                                            }
+                                            else -> {
+                                                // 다른 이벤트 무시
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("EditTimetableFragment", "이벤트 감시 오류", e)
+                                }
+                            }
+                            
+                            // 저장 시도 (3번 시도)
+                            while (!saveComplete && retryCount < 3) {
+                                try {
+                                    viewModel.saveTimetableToServer(userId)
+                                    delay(1500) // 응답 기다리기
+                                    if (saveComplete) break
+                                    
+                                    retryCount++
+                                    if (retryCount < 3) {
+                                        Log.d("EditTimetableFragment", "저장 재시도 ${retryCount}...")
+                                        delay(500)
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("EditTimetableFragment", "저장 시도 오류", e)
+                                    retryCount++
+                                    delay(500)
+                                }
+                            }
+                            
+                            // 저장 완료 후 이벤트 수집 아제
+                            saveJob.cancel()
+                            
+                            // 로딩 다이얼로그 제거
+                            loadingDialog.dismiss()
+                            
+                            // 저장 결과 표시
+                            withContext(Dispatchers.Main) {
+                                if (saveSuccess) {
+                                    // 저장 성공 메시지
+                                    Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                                    
+                                    // 다른 디바이스 동기화 위해 잠시 대기 후 다시 불러오기
+                                    delay(500)
+                                    viewModel.loadTimetableFromServer(userId)
+                                    
+                                    // 화면 닫기
+                                    parentFragmentManager.popBackStack()
+                                } else {
+                                    // 저장 실패 메시지
+                                    Toast.makeText(requireContext(), "시간표 저장 중 오류가 발생했지만 로컬에 저장되었습니다. 다시 시도해주세요.", Toast.LENGTH_LONG).show()
+                                    
+                                    // 화면 닫기 (UI에서는 저장이 완료된 것처럼 처리)
+                                    parentFragmentManager.popBackStack()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("EditTimetableFragment", "저장 처리 중 예외 발생", e)
+                            loadingDialog.dismiss()
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(requireContext(), "시간표 저장 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            } else {
+                loadingDialog.dismiss()
+                Toast.makeText(requireContext(), "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.", Toast.LENGTH_SHORT).show()
             }
-
-            Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
-            parentFragmentManager.popBackStack()
         }
 
         // 초기화 버튼
@@ -302,7 +413,7 @@ class EditTimetableFragment : Fragment() {
         val entries = temporaryEntries
 
 
-        var minHour = 9
+        var minHour = 8  // 8시부터 시작 (기본값 변경)
         var maxHour = 24
 
         // 일정이 있는 경우에만 범위 조정
