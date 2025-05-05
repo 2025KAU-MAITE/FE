@@ -22,6 +22,7 @@ import kotlin.math.ceil
 import android.util.Log
 import androidx.lifecycle.ViewModelProvider
 
+
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
@@ -92,6 +93,18 @@ class ProfileFragment : Fragment() {
         // 상단 설정 버튼 클릭 이벤트 (추가 기능)
         binding.ivSettings.setOnClickListener {
             // TODO: 설정 화면으로 이동 또는 설정 메뉴 표시
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        // 화면이 다시 보일 때마다 시간표 갱신
+        val preferencesUtil = PreferencesUtil(requireContext())
+        val userId = preferencesUtil.getUserId()
+        if (userId != null) {
+            Log.d("ProfileFragment", "onResume: Loading timetable for userId: $userId")
+            viewModel.loadTimetableFromServer(userId)
         }
     }
 

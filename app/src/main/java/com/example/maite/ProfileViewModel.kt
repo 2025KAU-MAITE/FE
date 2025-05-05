@@ -181,7 +181,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     Log.d(TAG, "Entry: ${entry.title} on day ${entry.dayOfWeek} from ${entry.startHour}:${entry.startMinute} to ${entry.endHour}:${entry.endMinute}")
                 }
                 
-                _timetable.value = serverData
+                _timetable.postValue(serverData)  // postValue 사용
                 // DataHolder 업데이트 전에 로그 추가
                 Log.d(TAG, "Updating DataHolder with ${serverData.size} entries")
                 TimetableDataHolder.updateTimetable(serverData)
