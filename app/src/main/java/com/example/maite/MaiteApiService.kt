@@ -1,5 +1,6 @@
 package com.example.maite
 
+import com.example.maite.model.RoomItem
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -14,4 +15,7 @@ interface MaiteApiService {
         @Query("topic") topic: String,
         @Part file: MultipartBody.Part
     ): Response<ResponseBody>
+
+    @GET("rooms")
+    suspend fun getMyRooms(): Response<List<RoomItem>>
 }
