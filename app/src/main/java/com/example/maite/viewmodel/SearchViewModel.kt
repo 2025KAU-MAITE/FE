@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+
 class SearchViewModel(private val userRepository: UserRepository) : ViewModel() {
     
     private val _searchResults = MutableLiveData<List<User>>()

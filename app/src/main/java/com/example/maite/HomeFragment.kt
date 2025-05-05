@@ -18,7 +18,9 @@ import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
 import com.example.maite.model.TimetableEntry
 import com.example.maite.ui.home.HomeViewModel
+import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
+import android.util.Log
 
 class HomeFragment : Fragment() {
 
@@ -27,6 +29,8 @@ class HomeFragment : Fragment() {
 
     // ViewModel을 Activity 범위로 공유하여 상태 유지
     private val viewModel: HomeViewModel by activityViewModels()
+    private val profileViewModel: ProfileViewModel by activityViewModels()
+    private val preferencesUtil by lazy { PreferencesUtil(requireContext()) }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,6 +42,17 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // 사용자 ID를 가져와서 시간표 로드
+        val userId = preferencesUtil.getUserId()
+        Log.d("HomeFragment", "User ID from preferences: $userId")
+        
+        if (userId != null) {
+            Log.d("HomeFragment", "Loading timetable for userId: $userId")
+            profileViewModel.loadTimetableFromServer(userId)
+        } else {
+            Log.e("HomeFragment", "User ID not found")
+        }
 
         // 시간표 관찰 및 표시
         viewModel.timetableEntries.observe(viewLifecycleOwner) { entries ->
@@ -106,6 +121,8 @@ class HomeFragment : Fragment() {
 
     // 시간표 렌더링 메서드 (30분 단위로 수정)
     private fun renderTimetable(entries: List<TimetableEntry>) {
+        Log.d("HomeFragment", "Rendering timetable with ${entries.size} entries")
+        
         val timetableLayout = binding.flTimetable
         timetableLayout.removeAllViews()
 
@@ -226,8 +243,25 @@ class HomeFragment : Fragment() {
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
+                    orientation = LinearLayout.VERTICAL
 
                     if (entry != null) {
+                        // 일정 시작 시간 및 종료 시간 (분 단위)
+                        val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
+                        val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
+
+                        // 시작 시간의 다음 셀 (30분 후)
+                        val isTitleCell = (
+                                currentTimeInMinutes == startTimeInMinutes + 30
+                        )
+
+                        // 종료 시간의 이전 셀 (30분 전)
+                        val isLocationCell = (
+                                currentTimeInMinutes == endTimeInMinutes - 30
+                        )
+
+                        // 최소 길이 확인 (적어도 1시간 이상이어야 제목/장소 표시)
+                        val isLongEnough = (endTimeInMinutes - startTimeInMinutes) >= 60
                         // 일정이 있는 경우
                         setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
@@ -237,10 +271,30 @@ class HomeFragment : Fragment() {
                                 currentTimeInMinutes == entry.startHour * 60 + entry.startMinute
                                 )
 
-                        if (isStartTime) {
+                        if (isLongEnough && isTitleCell) {
                             addView(TextView(requireContext()).apply {
                                 text = entry.title
-                                textSize = 11f // 폰트 크기 증가
+                                textSize = 11f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 2, 2, 2)
+                            })
+                        } else if (isLongEnough && isLocationCell && !entry.location.isNullOrEmpty()) {
+                            addView(TextView(requireContext()).apply {
+                                text = "장소:${entry.location}"
+                                textSize = 7f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 0, 2, 0)
+                            })
+                        } else if (!isLongEnough && currentTimeInMinutes == startTimeInMinutes) {
+                            addView(TextView(requireContext()).apply {
+                                text = entry.title
+                                textSize = 11f
                                 gravity = Gravity.CENTER
                                 setTextColor(Color.WHITE)
                                 ellipsize = android.text.TextUtils.TruncateAt.END

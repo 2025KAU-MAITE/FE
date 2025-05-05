@@ -4,10 +4,12 @@ import com.example.maite.model.EmailCheckResponse
 import com.example.maite.model.SmsAuthResponse
 import com.example.maite.model.SmsAuthSendRequest
 import com.example.maite.model.SmsAuthVerifyRequest
+import com.example.maite.UserInfoResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
+import retrofit2.http.Header
 
 interface AuthApi {
 
@@ -30,4 +32,8 @@ interface AuthApi {
     // ✅ 로그인 API (POST /auth/login)
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
+
+    @GET("auth/me")
+    suspend fun getUserInfo(@Header("Authorization") token: String): UserInfoResponse
+
 }

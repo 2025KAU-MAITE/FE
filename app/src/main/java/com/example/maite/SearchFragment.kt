@@ -14,13 +14,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.maite.adapter.SearchAdapter
-import com.example.maite.api.UserApiService
 import com.example.maite.repository.UserRepository
 import com.example.maite.viewmodel.SearchViewModel
 import com.example.maite.viewmodel.SearchViewModelFactory
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+
 
 class SearchFragment : Fragment() {
     private lateinit var searchViewModel: SearchViewModel
@@ -52,14 +50,8 @@ class SearchFragment : Fragment() {
     }
 
     private fun setupViewModel() {
-        // In a real app, you'd use dependency injection to provide these dependencies
-        val retrofit = Retrofit.Builder()
-            .baseUrl("https://your-api-base-url.com/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        val userApiService = retrofit.create(UserApiService::class.java)
-        val userRepository = UserRepository(userApiService)
+        // Use context instead of UserApiService
+        val userRepository = UserRepository(requireContext())
         val factory = SearchViewModelFactory(userRepository)
         
         searchViewModel = ViewModelProvider(this, factory)[SearchViewModel::class.java]

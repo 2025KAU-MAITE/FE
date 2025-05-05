@@ -11,12 +11,13 @@ import com.example.maite.MainActivity
 import com.example.maite.databinding.ActivityLoginBinding
 import com.example.maite.repository.AuthRepository
 import kotlinx.coroutines.launch
+import com.example.maite.PreferencesUtil
 
 class LoginActivity : AppCompatActivity() {
 
     private val TAG = "LoginActivity"
     private lateinit var binding: ActivityLoginBinding
-    private val authRepository = AuthRepository()
+    private val authRepository by lazy { AuthRepository(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,6 +106,20 @@ class LoginActivity : AppCompatActivity() {
                     
                     // 토큰 저장 등의 처리
                     saveAccessToken(response.result.accessToken)
+
+                    try {
+                        val userInfoResponse = authRepository.getUserInfo(response.result.accessToken)
+                        if (userInfoResponse.isSuccess) {
+                            val preferencesUtil = PreferencesUtil(this@LoginActivity)
+                            preferencesUtil.saveUserInfo(
+                                userInfoResponse.result.userId,
+                                userInfoResponse.result.name,
+                                userInfoResponse.result.email
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "사용자 정보 조회 실패", e)
+                    }
                     
                     // MainActivity로 이동
                     navigateToMainActivity()
@@ -137,14 +152,12 @@ class LoginActivity : AppCompatActivity() {
     // 액세스 토큰 저장 (실제 구현에서는 SharedPreferences나 암호화된 저장소 사용)
     private fun saveAccessToken(token: String) {
         // TODO: 안전한 저장소에 토큰 저장 구현
+        val preferencesUtil = PreferencesUtil(this)
+        preferencesUtil.saveAccessToken(token)
         Log.d(TAG, "액세스 토큰 저장: ${token.take(10)}...")
         
-        // 예시) SharedPreferences에 저장
-        val sharedPref = getSharedPreferences("maite_prefs", MODE_PRIVATE)
-        with(sharedPref.edit()) {
-            putString("access_token", token)
-            apply()
-        }
+
+
     }
     
     // MainActivity로 이동

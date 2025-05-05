@@ -18,6 +18,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.ceil
+import com.example.maite.PreferencesUtil
 
 class EditTimetableFragment : Fragment() {
 
@@ -132,9 +133,14 @@ class EditTimetableFragment : Fragment() {
         binding.btnSave.setOnClickListener {
             // 임시 시간표를 실제 시간표로 적용
             viewModel.updateTimetable(temporaryEntries)
-            Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
 
-            // 프로필 화면으로 돌아가기
+            // 서버에 저장
+            val userId = PreferencesUtil(requireContext()).getUserId()
+            if (userId != null) {
+                viewModel.saveTimetableToServer(userId)
+            }
+
+            Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
             parentFragmentManager.popBackStack()
         }
 
@@ -412,8 +418,25 @@ class EditTimetableFragment : Fragment() {
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
+                    orientation = LinearLayout.VERTICAL  // 수직 방향으로 설정
 
                     if (entry != null) {
+                        // 일정 시작 시간 및 종료 시간 (분 단위)
+                        val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
+                        val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
+
+                        // 시작 시간의 다음 셀 (30분 후)
+                        val isTitleCell = (
+                                currentTimeInMinutes == startTimeInMinutes + 30
+                        )
+
+                        // 종료 시간의 이전 셀 (30분 전)
+                        val isLocationCell = (
+                                currentTimeInMinutes == endTimeInMinutes - 30
+                        )
+
+                        // 최소 길이 확인 (적어도 1시간 이상이어야 제목/장소 표시)
+                        val isLongEnough = (endTimeInMinutes - startTimeInMinutes) >= 60
                         // 일정이 있는 경우
                         setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
@@ -423,7 +446,27 @@ class EditTimetableFragment : Fragment() {
                                 currentTimeInMinutes == entry.startHour * 60 + entry.startMinute
                                 )
 
-                        if (isStartTime) {
+                        if (isLongEnough && isTitleCell) {
+                            addView(TextView(requireContext()).apply {
+                                text = entry.title
+                                textSize = 9f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 2, 2, 2)
+                            })
+                        } else if (isLongEnough && isLocationCell && !entry.location.isNullOrEmpty()) {
+                            addView(TextView(requireContext()).apply {
+                                text = "장소:${entry.location}"
+                                textSize = 7f
+                                gravity = Gravity.CENTER
+                                setTextColor(Color.WHITE)
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                maxLines = 1
+                                setPadding(2, 0, 2, 0)
+                            })
+                        } else if (!isLongEnough && currentTimeInMinutes == startTimeInMinutes) {
                             addView(TextView(requireContext()).apply {
                                 text = entry.title
                                 textSize = 9f

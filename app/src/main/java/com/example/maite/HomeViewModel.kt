@@ -46,9 +46,12 @@ class HomeViewModel : ViewModel() {
         // TimetableDataHolder에서 데이터 변경 감지
         TimetableDataHolder.timetableEntries
             .onEach { entries ->
-                _timetableEntries.value = entries
+                _timetableEntries.postValue(entries)  // postValue 사용
             }
             .launchIn(viewModelScope)
+            
+        // 현재 TimetableDataHolder에 한 값이 있으면 즉시 반영
+        _timetableEntries.postValue(TimetableDataHolder.timetableEntries.value)
     }
 
     fun acceptProposal(proposal: MeetingProposal) {

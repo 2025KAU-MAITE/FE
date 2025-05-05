@@ -13,6 +13,7 @@ import com.example.maite.databinding.FragmentSignupBinding
 import com.example.maite.model.SignupDataHolder
 import kotlinx.coroutines.launch
 
+
 class SignupFragment : Fragment() {
 
     private val TAG = "SignupFragment" // 로깅을 위한 태그 추가
@@ -23,8 +24,8 @@ class SignupFragment : Fragment() {
     // Flag to track if email has been verified
     private var isEmailVerified = false
     
-    // AuthRepository 인스턴스 생성
-    private val authRepository = AuthRepository()
+    // AuthRepository 인스턴스 생성 - lazy initialization으로 변경
+    private val authRepository by lazy { AuthRepository(requireContext()) }
 
     override fun onCreateView(
         inflater: LayoutInflater,
