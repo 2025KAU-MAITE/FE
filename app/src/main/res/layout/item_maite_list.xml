@@ -84,6 +84,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="32dp"
                 android:text="산학 프로젝트 파이팅!"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:singleLine="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="@+id/name"
                 app:layout_constraintTop_toTopOf="@+id/textView5" />

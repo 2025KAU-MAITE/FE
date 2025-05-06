@@ -3,8 +3,8 @@ package com.example.maite
 import com.example.maite.model.ApiResponse
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
+import com.example.maite.model.CreateRoomRequest
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -23,4 +23,9 @@ interface MaiteApiService {
 
     @GET("api/mates")
     suspend fun getMates(): Response<ApiResponse<List<MateItem>>>
+
+    @POST("rooms")
+    suspend fun createRoom(
+        @Body request: CreateRoomRequest
+    ): Response<ResponseBody>
 }
