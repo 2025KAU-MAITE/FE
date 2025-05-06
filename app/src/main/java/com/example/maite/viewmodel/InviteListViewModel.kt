@@ -3,37 +3,50 @@ package com.example.maite.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.maite.MaiteRetrofitClient
 import com.example.maite.model.InviteListItem
 import com.example.maite.model.InviteRepository
+import kotlinx.coroutines.launch
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 
-class InviteListViewModel : ViewModel() {
+class InviteListViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = InviteRepository()
+    private val apiService = MaiteRetrofitClient.getInstance(application)
+    private val repository = InviteRepository(apiService)
 
     private val _inviteList = MutableLiveData<List<InviteListItem>>()
     val inviteList: LiveData<List<InviteListItem>> = _inviteList
+
+    private val _error = MutableLiveData<String?>()
+    val error: LiveData<String?> = _error
 
     init {
         loadInviteList()
     }
 
-    private fun loadInviteList() {
-        // In a real app, this might be done in a background thread
-        _inviteList.value = repository.getInviteList()
+    fun loadInviteList() {
+        viewModelScope.launch {
+            _error.value = null
+
+            repository.getInviteList()
+                .onSuccess { list ->
+                    _inviteList.value = list
+                }
+                .onFailure { error ->
+                    _error.value = "데이터 로드 실패: ${error.message}"
+                }
+        }
     }
 
-    // Add a new invite to the list
+    // Add a new invite to the list (이 기능은 서버와 연동 필요시 추가 수정 필요)
     fun addInvite(name: String) {
-        val newInvite = InviteListItem(name)
-        val currentList = _inviteList.value?.toMutableList() ?: mutableListOf()
-        currentList.add(newInvite)
-        _inviteList.value = currentList
+        // 실제 API 연동 필요시 구현
     }
 
-    // Remove an invite from the list
+    // Remove an invite from the list (이 기능은 서버와 연동 필요시 추가 수정 필요)
     fun removeInvite(inviteItem: InviteListItem) {
-        val currentList = _inviteList.value?.toMutableList() ?: mutableListOf()
-        currentList.remove(inviteItem)
-        _inviteList.value = currentList
+        // 실제 API 연동 필요시 구현
     }
 }
