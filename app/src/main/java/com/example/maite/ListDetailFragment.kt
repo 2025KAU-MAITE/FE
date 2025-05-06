@@ -13,8 +13,11 @@ import android.widget.TableRow
 import android.widget.TextView
 import android.widget.LinearLayout
 import android.view.Gravity
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.activityViewModels
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
 import com.example.maite.databinding.FragmentListDetailBinding
 import com.example.maite.model.MaiteListItem
 
@@ -58,6 +61,9 @@ class ListDetailFragment : Fragment() {
     // 사용 가능한 요일 Set
     private lateinit var availableDaysOfWeek: Set<Int>
 
+    // 참가자 이메일 리스트
+    private var participantEmails: List<String> = emptyList()
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -77,6 +83,13 @@ class ListDetailFragment : Fragment() {
 
         binding.title.text = maiteListItem?.title
         binding.intro.text = maiteListItem?.intro
+
+        // 참가자 이메일 리스트 가져오기
+        participantEmails = maiteListItem?.participantEmails ?: emptyList()
+        Log.d("ListDetailFragment", "참가자 이메일 목록: $participantEmails")
+
+        // 프로필 이미지 동적 추가
+        updateParticipantProfiles()
 
         binding.backBtn.setOnClickListener {
             parentFragmentManager.popBackStack()
@@ -109,6 +122,63 @@ class ListDetailFragment : Fragment() {
         }
 
         createTimetable()
+    }
+
+    // 참가자 프로필 이미지 업데이트 함수
+    private fun updateParticipantProfiles() {
+        // 기존 프로필 이미지 초기화 (addBtn 제외)
+        val participantsLayout = binding.invitedUsersLayout
+        val childrenToRemove = mutableListOf<View>()
+
+        for (i in 0 until participantsLayout.childCount) {
+            val child = participantsLayout.getChildAt(i)
+            if (child is ImageView && child.id != R.id.addBtn) {
+                childrenToRemove.add(child)
+            }
+        }
+        childrenToRemove.forEach { participantsLayout.removeView(it) }
+
+        // 참가자 프로필 추가
+        val imageSize = resources.getDimensionPixelSize(R.dimen.invited_profile_img_size)
+        val desiredMarginDp = 8
+        val imageMarginEnd = (desiredMarginDp * resources.displayMetrics.density).toInt()
+
+        // addBtn의 인덱스 찾기
+        val addBtn = participantsLayout.findViewById<ImageView>(R.id.addBtn)
+        val addBtnIndex = if (addBtn != null) participantsLayout.indexOfChild(addBtn) else 0
+
+        // 각 참가자 이메일에 대해 프로필 이미지 추가
+        for (i in participantEmails.indices) {
+            val email = participantEmails[i]
+
+            val imageView = ImageView(requireContext())
+            val layoutParams = LinearLayout.LayoutParams(imageSize, imageSize)
+            layoutParams.marginEnd = imageMarginEnd
+            imageView.layoutParams = layoutParams
+
+            // 프로필 이미지 설정 (간단한 예시, 실제로는 참가자 프로필 URL을 API에서 받아와야 함)
+            Glide.with(requireContext())
+                .load(R.drawable.img_profile_default) // 기본 이미지 사용, 실제로는 프로필 URL 사용
+                .apply(RequestOptions.circleCropTransform())
+                .into(imageView)
+
+            // 이메일 정보를 이미지 태그에 저장
+            imageView.tag = email
+            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+
+            // 클릭 리스너 추가 (선택 사항)
+            imageView.setOnClickListener {
+                Toast.makeText(requireContext(), "참가자: $email", Toast.LENGTH_SHORT).show()
+            }
+
+            // 레이아웃에 이미지 추가
+            participantsLayout.addView(imageView, i)
+        }
+
+        // 스크롤 뷰를 오른쪽으로 스크롤
+        binding.invitedUsersScrollView.post {
+            binding.invitedUsersScrollView.fullScroll(View.FOCUS_RIGHT)
+        }
     }
 
     // 시간표 생성 함수 (수정됨: 동적 시간 범위)

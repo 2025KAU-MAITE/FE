@@ -28,4 +28,9 @@ interface MaiteApiService {
     suspend fun createRoom(
         @Body request: CreateRoomRequest
     ): Response<ResponseBody>
+
+    @GET("rooms/{roomId}")
+    suspend fun getRoomDetail(
+        @Path("roomId") roomId: Long
+    ): Response<RoomItem>
 }
