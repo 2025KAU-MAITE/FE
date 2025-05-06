@@ -16,15 +16,35 @@
         app:layout_constraintVertical_bias="0.35">
 
         <ImageView
+            android:id="@+id/leftImageView"
+            android:layout_width="75dp"
+            android:layout_height="75dp"
+            android:layout_marginEnd="24dp"
+            android:src="@drawable/ic_people"
+            app:layout_constraintBottom_toBottomOf="@+id/loadingImageView"
+            app:layout_constraintEnd_toStartOf="@+id/loadingImageView"
+            app:layout_constraintTop_toTopOf="@+id/loadingImageView" />
+
+        <ImageView
             android:id="@+id/loadingImageView"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/hi_maite"
+            android:layout_width="65dp"
+            android:layout_height="65dp"
+            android:src="@drawable/ic_pencil"
             app:layout_constraintBottom_toTopOf="@+id/loadingTextView"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_chainStyle="packed" />
+
+        <ImageView
+            android:id="@+id/rightImageView"
+            android:layout_width="55dp"
+            android:layout_height="60dp"
+            android:layout_marginStart="30dp"
+            android:src="@drawable/ic_book"
+            app:layout_constraintBottom_toBottomOf="@+id/loadingImageView"
+            app:layout_constraintStart_toEndOf="@+id/loadingImageView"
+            app:layout_constraintTop_toTopOf="@+id/loadingImageView" />
 
         <TextView
             android:id="@+id/loadingTextView"

@@ -3,12 +3,15 @@ package com.example.maite
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
+import android.graphics.PorterDuff
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout // FrameLayout 추가
+import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.core.content.ContextCompat
 import com.example.maite.databinding.LoadingDialogBinding
 
 class LoadingDialog(private val context: Context) {
@@ -17,7 +20,8 @@ class LoadingDialog(private val context: Context) {
     private lateinit var contentViewBinding: LoadingDialogBinding
     private val handler = Handler(Looper.getMainLooper())
     private var currentDots = 0
-    private val loadingTexts = arrayOf("로딩중", "로딩중.", "로딩중..", "로딩중...")
+    private var currentImageHighlight = 0 // 현재 하이라이트된 이미지 인덱스
+    private val loadingTexts = arrayOf("로딩중.", "로딩중..", "로딩중...")
 
     // 배경 뷰와 콘텐츠 뷰 분리
     private var backgroundView: View? = null
@@ -32,6 +36,45 @@ class LoadingDialog(private val context: Context) {
                 handler.postDelayed(this, 500)
             }
         }
+    }
+
+    // 이미지 색상 업데이트를 위한 Runnable
+    private val updateImageColors = object : Runnable {
+        override fun run() {
+            if (isShowing && ::contentViewBinding.isInitialized) {
+                // 모든 이미지 색상을 기본 색상으로 초기화
+                resetAllImageColors()
+
+                // 현재 하이라이트할 이미지 선택
+                val highlightedImageView = when (currentImageHighlight) {
+                    0 -> contentViewBinding.leftImageView
+                    1 -> contentViewBinding.loadingImageView
+                    2 -> contentViewBinding.rightImageView
+                    else -> contentViewBinding.leftImageView
+                }
+
+                // 선택된 이미지에 메인 색상 적용
+                setImageColor(highlightedImageView, ContextCompat.getColor(context, R.color.mainColor))
+
+                // 다음 이미지 인덱스로 업데이트
+                currentImageHighlight = (currentImageHighlight + 1) % 3
+
+                // 반복 실행
+                handler.postDelayed(this, 500)
+            }
+        }
+    }
+
+    // 모든 이미지 색상 초기화
+    private fun resetAllImageColors() {
+        setImageColor(contentViewBinding.leftImageView, Color.WHITE)
+        setImageColor(contentViewBinding.loadingImageView, Color.WHITE)
+        setImageColor(contentViewBinding.rightImageView, Color.WHITE)
+    }
+
+    // 이미지 색상 설정 함수
+    private fun setImageColor(imageView: ImageView, color: Int) {
+        imageView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
     }
 
     fun show() {
@@ -69,17 +112,21 @@ class LoadingDialog(private val context: Context) {
         isShowing = true
 
         currentDots = 0
+        currentImageHighlight = 0 // 이미지 하이라이트 인덱스 초기화
         startLoadingAnimation()
     }
 
     private fun startLoadingAnimation() {
         handler.removeCallbacks(updateLoadingText)
+        handler.removeCallbacks(updateImageColors) // 이미지 색상 애니메이션 제거
         handler.post(updateLoadingText)
+        handler.post(updateImageColors) // 이미지 색상 애니메이션 시작
     }
 
     fun dismiss() {
         if (!isShowing) return
         handler.removeCallbacks(updateLoadingText)
+        handler.removeCallbacks(updateImageColors) // 이미지 색상 애니메이션 제거
         val activity = context as? Activity ?: return
         val decorView = activity.window.decorView as ViewGroup
         val rootView = decorView.findViewById<ViewGroup>(android.R.id.content)
