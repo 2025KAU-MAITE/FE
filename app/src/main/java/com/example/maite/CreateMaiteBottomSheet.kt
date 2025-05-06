@@ -11,12 +11,18 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
+import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.setFragmentResultListener
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import com.example.maite.databinding.BottomSheetCreateMaiteBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.example.maite.R
+import com.example.maite.model.CreateRoomRequest
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
 
@@ -31,6 +37,9 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
     private val selectedUserProfileUrls = ArrayList<String>()
     private val selectedUserEmails = ArrayList<String>()
 
+    // API 서비스 인스턴스
+    private lateinit var apiService: MaiteApiService
+
     private val textWatcher = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -42,6 +51,8 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setupFragmentResultListener()
+        // API 서비스 초기화
+        apiService = MaiteRetrofitClient.getInstance(requireContext())
     }
 
     override fun onCreateView(
@@ -71,19 +82,76 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
 
         binding.doneBtn.setOnClickListener {
             if (isDoneButtonEnabled) {
-                val title = binding.titleEditText.text.toString()
-                val intro = binding.introEditText.text.toString()
-
-                // 여기에서 선택된 이메일 정보를 활용할 수 있음
-                // 예: API 호출 시 초대할 사용자 이메일 목록 전달
-
-                dismiss()
-                Toast.makeText(requireContext(), "MAITE 생성 완료", Toast.LENGTH_SHORT).show()
+                createRoom()
             }
         }
 
         // 초기 UI 업데이트 (선택된 사용자가 없는 상태)
         updateInvitedUsersUI(0, emptyList(), emptyList())
+    }
+
+    // 새로운 함수: 룸 생성 API 호출
+    private fun createRoom() {
+        // UI에서 데이터 가져오기
+        val name = binding.titleEditText.text.toString().trim()
+        val description = binding.introEditText.text.toString().trim()
+
+        // 로딩 표시 - 버튼 비활성화
+        showLoading(true)
+
+        // 선택된 이메일 로그 출력
+        Log.d(TAG, "Creating room with name: $name, description: $description")
+        Log.d(TAG, "Inviting emails: $selectedUserEmails")
+
+        // API 요청 생성
+        val request = CreateRoomRequest(
+            name = name,
+            description = description,
+            inviteEmails = selectedUserEmails
+        )
+
+        // API 호출
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    apiService.createRoom(request)
+                }
+
+                // 메인 스레드에서 응답 처리
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Room created successfully: HTTP ${response.code()}")
+
+                    // 방 생성 완료 결과를 ListFragment에 전달
+                    setFragmentResult(ROOM_CREATED_REQUEST_KEY, bundleOf(ROOM_CREATED_RESULT_KEY to true))
+
+                    Toast.makeText(requireContext(), "MAITE 생성 완료", Toast.LENGTH_SHORT).show()
+                    dismiss()
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e(TAG, "Failed to create room: $errorBody")
+                    Toast.makeText(requireContext(), "MAITE 생성 실패: $errorBody", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "API call failed", e)
+                Toast.makeText(requireContext(), "오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                showLoading(false)
+            }
+        }
+    }
+
+    // 로딩 상태 표시/숨김
+    private fun showLoading(isLoading: Boolean) {
+        // 로딩 중에는 버튼 비활성화
+        binding.doneBtn.isEnabled = !isLoading
+        binding.doneBtn.isClickable = !isLoading
+
+        if (isLoading) {
+            binding.btnBg.setColorFilter(ContextCompat.getColor(requireContext(), R.color.btn_inactive))
+            binding.btnText.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+        } else {
+            updateDoneButtonAppearance(isDoneButtonEnabled)
+        }
     }
 
     private fun setupFragmentResultListener() {
@@ -117,6 +185,7 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
 
                 // 디버그 로그 추가
                 Log.d("CreateMaiteBottomSheet", "Received selected IDs: $selectedUserIds")
+                Log.d("CreateMaiteBottomSheet", "Received selected emails: $emails")
 
                 if (names != null) {
                     selectedUserNames.addAll(names)
@@ -217,6 +286,11 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
         const val TAG = "CreateMaiteBottomSheet"
+
+        // 방 생성 완료 이벤트를 위한 상수
+        const val ROOM_CREATED_REQUEST_KEY = "room_created_request"
+        const val ROOM_CREATED_RESULT_KEY = "room_created"
+
         fun newInstance(): CreateMaiteBottomSheet {
             return CreateMaiteBottomSheet()
         }
