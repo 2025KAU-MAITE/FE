@@ -1,23 +1,33 @@
 package com.example.maite.model
 
-class InviteRepository {
+import com.example.maite.MaiteApiService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 
-    fun getInviteList(): List<InviteListItem> {
-        // Dummy data for demonstration
-        return listOf(
-            InviteListItem("김정훈"),
-            InviteListItem("안성진"),
-            InviteListItem("이민우"),
-            InviteListItem("박지원")
-        )
-    }
+class InviteRepository(private val apiService: MaiteApiService) {
 
-    // Method to add new invites - can be implemented later
-    fun addInvite(inviteListItem: InviteListItem): List<InviteListItem> {
-        // In a real app, this would interact with a database or network
-        // For now, we just simulate adding to the list
-        val currentList = getInviteList().toMutableList()
-        currentList.add(inviteListItem)
-        return currentList
+    // 서버에서 mate 목록 가져오기
+    suspend fun getInviteList(): Result<List<InviteListItem>> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.getMates()
+
+            if (response.isSuccessful) {
+                val mateResponse = response.body()
+                if (mateResponse != null && mateResponse.isSuccess) {
+                    // API 응답 데이터를 InviteListItem으로 변환
+                    val inviteList = mateResponse.result.map { mate ->
+                        mate.toInviteListItem()
+                    }
+                    Result.success(inviteList)
+                } else {
+                    Result.failure(Exception("API 응답 실패: ${mateResponse?.message ?: "알 수 없는 오류"}"))
+                }
+            } else {
+                Result.failure(HttpException(response))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
