@@ -17,29 +17,29 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import com.example.maite.databinding.FragmentListDetailBinding
+import com.example.maite.model.InviteUserRequest
 import com.example.maite.model.MaiteListItem
 import com.example.maite.viewmodel.InviteListViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ListDetailFragment : Fragment() {
     private var _binding: FragmentListDetailBinding? = null
     private val binding get() = _binding!!
 
-    // ViewModel 추가 (Activity 스코프)
     private val sharedViewModel: TimeSelectionViewModel by activityViewModels()
-
-    // InviteListViewModel 추가
     private lateinit var inviteViewModel: InviteListViewModel
 
-    // 요일 목록 (월~일)
+    private lateinit var apiService: MaiteApiService
+    private var maiteListItem: MaiteListItem? = null
+
     private val weekDays = arrayOf("", "월", "화", "수", "목", "금", "토", "일")
-
-    // 시간 (00시부터 24시까지) - 인덱스 접근 위해 유지
     private val timeSlots = Array(25) { String.format("%02d", it) } // 00 ~ 24
-
-    // 수업 데이터 예시 (시간, 요일, 강의명, 색상)
     private val classes = listOf(
         TimetableItem(10, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 10시
         TimetableItem(11, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 11시
@@ -63,10 +63,8 @@ class ListDetailFragment : Fragment() {
         TimetableItem(17, 7, "알바", Color.parseColor("#4C7EED")), // 일 17시
     )
 
-    // 사용 가능한 요일 Set
     private lateinit var availableDaysOfWeek: Set<Int>
 
-    // 참가자 이메일 리스트
     private var participantEmails: List<String> = emptyList()
 
     override fun onCreateView(
@@ -78,22 +76,21 @@ class ListDetailFragment : Fragment() {
         Log.d("ListDetailFragment", "사용 가능한 요일: $availableDaysOfWeek")
         sharedViewModel.setTimetableData(classes)
         Log.d("ListDetailFragment", "ViewModel에 시간표 데이터 설정 완료")
+
+        apiService = MaiteRetrofitClient.getInstance(requireContext())
+
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // InviteListViewModel 초기화
         inviteViewModel = ViewModelProvider(this)[InviteListViewModel::class.java]
-
-        // 사용자 목록 로드 완료 관찰 (선택적)
         inviteViewModel.inviteList.observe(viewLifecycleOwner) { userList ->
-            // 사용자 목록이 로드되면 필요한 처리를 할 수 있습니다 (선택적)
             Log.d("ListDetailFragment", "사용자 목록 로드됨: ${userList.size}명")
         }
 
-        val maiteListItem = arguments?.getParcelable<MaiteListItem>(ARG_MAITE_LIST_ITEM)
+        maiteListItem = arguments?.getParcelable<MaiteListItem>(ARG_MAITE_LIST_ITEM)
 
         binding.title.text = maiteListItem?.title
         binding.intro.text = maiteListItem?.intro
@@ -136,6 +133,20 @@ class ListDetailFragment : Fragment() {
 
             Log.d("ListDetailFragment", "선택된 참가자 수: $selectedCount, 이메일: $selectedEmails")
 
+            val roomId = maiteListItem?.roomId
+            if (roomId != null) {
+                // 새로 선택된 이메일 찾기 (기존에 없던 이메일)
+                val newEmails = selectedEmails.filter { !participantEmails.contains(it) }
+
+                if (newEmails.isNotEmpty()) {
+                    // 새로 추가된 이메일들에 대해 초대 API 호출
+                    inviteNewUsers(roomId, newEmails)
+                }
+            } else {
+                Log.e("ListDetailFragment", "룸 ID가 null입니다.")
+                Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+
             // 선택된 이메일로 참가자 목록 업데이트
             participantEmails = selectedEmails
 
@@ -166,6 +177,46 @@ class ListDetailFragment : Fragment() {
 
         createTimetable()
     }
+
+    private fun inviteNewUsers(roomId: Long, emails: List<String>) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 각 이메일에 대해 API 호출
+                for (email in emails) {
+                    val request = InviteUserRequest(email)
+
+                    // API 호출 수행
+                    val response = withContext(Dispatchers.IO) {
+                        apiService.inviteUserToRoom(roomId, request)
+                    }
+
+                    if (response.isSuccessful) {
+                        Log.d("ListDetailFragment", "사용자 초대 성공: $email")
+                    } else {
+                        val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                        Log.e("ListDetailFragment", "사용자 초대 실패 ($email): $errorBody")
+                        // 초대 실패한 사용자가 있다면 토스트 메시지 표시
+                        activity?.runOnUiThread {
+                            Toast.makeText(requireContext(), "$email 초대 실패: $errorBody", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
+                // 모든 초대가 완료되면 성공 메시지 표시
+                if (emails.isNotEmpty()) {
+                    activity?.runOnUiThread {
+                        Toast.makeText(requireContext(), "${emails.size}명의 사용자를 초대했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "사용자 초대 중 오류 발생", e)
+                activity?.runOnUiThread {
+                    Toast.makeText(requireContext(), "초대 중 오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
 
     // 참가자 프로필 이미지 업데이트 함수
     private fun updateParticipantProfiles() {

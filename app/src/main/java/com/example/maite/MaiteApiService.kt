@@ -4,6 +4,7 @@ import com.example.maite.model.ApiResponse
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
+import com.example.maite.model.InviteUserRequest
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -33,4 +34,10 @@ interface MaiteApiService {
     suspend fun getRoomDetail(
         @Path("roomId") roomId: Long
     ): Response<RoomItem>
+
+    @POST("rooms/{roomId}/invites/")
+    suspend fun inviteUserToRoom(
+        @Path("roomId") roomId: Long,
+        @Body request: InviteUserRequest
+    ): Response<ResponseBody>
 }
