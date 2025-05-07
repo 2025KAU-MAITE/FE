@@ -12,8 +12,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.CreateMaiteBottomSheet
 import com.example.maite.ListDetailFragment
 import com.example.maite.R
-import com.example.maite.viewmodel.MaiteListViewModel
 import com.example.maite.databinding.FragmentListBinding
+import com.example.maite.viewmodel.MaiteListViewModel
 
 class ListFragment : Fragment() {
     private var _binding: FragmentListBinding? = null
@@ -21,6 +21,9 @@ class ListFragment : Fragment() {
 
     private lateinit var viewModel: MaiteListViewModel
     private lateinit var adapter: MaiteListAdapter
+
+    // 중복 탐색을 방지하기 위한 플래그 추가
+    private var isNavigating = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -33,7 +36,7 @@ class ListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // ViewModel 초기화 (AndroidViewModel 방식)
+        // ViewModel 초기화
         viewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory.getInstance(requireActivity().application))
             .get(MaiteListViewModel::class.java)
 
@@ -43,10 +46,8 @@ class ListFragment : Fragment() {
         // ViewModel에서 LiveData 관찰
         observeViewModel()
 
-        // 새로고침 버튼이나 SwipeRefreshLayout 추가 고려 (선택 사항)
-        // binding.swipeRefreshLayout.setOnRefreshListener {
-        //     viewModel.loadMaiteList()
-        // }
+        // 방 상세 정보 관찰 추가
+        observeRoomDetail()
 
         binding.doneBtn.setOnClickListener {
             val bottomSheet = CreateMaiteBottomSheet.newInstance()
@@ -55,6 +56,40 @@ class ListFragment : Fragment() {
 
         // 방 생성 완료 이벤트 리스너 설정
         setupFragmentResultListener()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 프래그먼트가 다시 표시될 때 탐색 플래그 리셋
+        isNavigating = false
+    }
+
+    // 방 상세 정보 LiveData 관찰 메서드
+    private fun observeRoomDetail() {
+        viewModel.roomDetail.observe(viewLifecycleOwner) { roomItem ->
+            // 이미 탐색 중이라면 무시
+            if (isNavigating) return@observe
+
+            // RoomItem을 MaiteListItem으로 변환
+            val maiteListItem = viewModel.convertRoomItemToMaiteListItem(roomItem)
+
+            // ListDetailFragment로 전환
+            navigateToDetailFragment(maiteListItem)
+        }
+    }
+
+    // ListDetailFragment로 이동하는 메서드
+    private fun navigateToDetailFragment(maiteListItem: com.example.maite.model.MaiteListItem) {
+        // 중복 탐색 방지
+        if (isNavigating) return
+        isNavigating = true
+
+        val fragment = ListDetailFragment.newInstance(maiteListItem)
+        // 명시적으로 트랜잭션을 제대로 설정
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.main_frm, fragment)
+            .addToBackStack(null) // 뒤로가기를 위한 백스택 추가
+            .commit()
     }
 
     private fun setupFragmentResultListener() {
@@ -73,22 +108,26 @@ class ListFragment : Fragment() {
 
     // 목록 새로고침 함수
     private fun refreshMaiteList() {
-        // 로딩 표시가 있다면 표시
-        // binding.progressBar?.visibility = View.VISIBLE
-
         // ViewModel을 통해 데이터 새로고침
         viewModel.loadMaiteList()
     }
 
     private fun setupRecyclerView() {
         adapter = MaiteListAdapter { maiteListItem ->
-            // RoomItem에서 변환된 MaiteListItem 사용
-            // 만약 RoomItem 자체를 전달해야 한다면 ListDetailFragment 및 어댑터 수정 필요
-            val fragment = ListDetailFragment.newInstance(maiteListItem)
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.main_frm, fragment)
-                .addToBackStack(null)
-                .commit()
+            // 중복 탐색 방지
+            if (isNavigating) return@MaiteListAdapter
+
+            // 수정된 부분: roomId를 사용하여 API 호출
+            val roomId = maiteListItem.roomId
+            if (roomId != null) {
+                // 방 상세 정보 API 호출
+                viewModel.getRoomDetail(roomId)
+            } else {
+                Toast.makeText(requireContext(), "방 ID가 없습니다", Toast.LENGTH_SHORT).show()
+
+                // roomId가 없는 경우 직접 디테일 페이지로 이동 (API 호출 없이)
+                navigateToDetailFragment(maiteListItem)
+            }
         }
 
         binding.listRV.apply {
@@ -101,21 +140,12 @@ class ListFragment : Fragment() {
         // Maite 목록 관찰
         viewModel.maiteList.observe(viewLifecycleOwner) { maiteList ->
             adapter.submitList(maiteList)
-            // 데이터 유무에 따라 빈 상태 UI 표시 (선택 사항)
-            // binding.emptyView.visibility = if (maiteList.isEmpty()) View.VISIBLE else View.GONE
-
-            // 로딩 표시 숨김 (로딩 표시가 있는 경우)
-            // binding.progressBar?.visibility = View.GONE
         }
 
-        // 오류 메시지 관찰 (선택 사항: Toast 메시지 표시)
+        // 오류 메시지 관찰
         viewModel.errorMessage.observe(viewLifecycleOwner) { errorMessage ->
             errorMessage?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
-                // 오류 발생 시 사용자에게 알림
-
-                // 로딩 표시 숨김 (로딩 표시가 있는 경우)
-                // binding.progressBar?.visibility = View.GONE
             }
         }
     }
