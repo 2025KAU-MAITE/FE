@@ -10,6 +10,10 @@ interface TimetableApi {
 
     @GET("api/timetables/{timetableId}")
     suspend fun getTimetable(@Path("timetableId") timetableId: Long): Response<TimetableResponse>
+    
+    // 내 시간표 조회 엔드포인트 - 응답 타입 변경
+    @GET("api/timetables/my")
+    suspend fun getMyTimetable(): Response<MyTimetablesResponse>
 
     @DELETE("api/timetables/{timetableId}")
     suspend fun deleteTimetable(@Path("timetableId") timetableId: Long): Response<TimetableResponse>
@@ -81,4 +85,12 @@ data class EventsResponse(
     val code: String,
     val message: String,
     val result: List<EventDto>
+)
+
+// 내 시간표 목록을 위한 새로운 응답 클래스 (result가 배열)
+data class MyTimetablesResponse(
+    val isSuccess: Boolean,
+    val code: String,
+    val message: String,
+    val result: List<TimetableResult>  // 배열로 정의
 )

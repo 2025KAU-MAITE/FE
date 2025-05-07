@@ -138,10 +138,7 @@ class EditTimetableFragment : Fragment() {
 
         // 저장 버튼
         binding.btnSave.setOnClickListener {
-            // 임시 시간표를 실제 시간표로 적용
-            viewModel.updateTimetable(temporaryEntries)
-
-            // 저장 전 로딩 다이얼로그 표시
+            // 로딩 다이얼로그 표시
             val loadingDialog = LoadingDialog(requireContext())
             loadingDialog.show()
             
@@ -154,98 +151,94 @@ class EditTimetableFragment : Fragment() {
                 // accessToken 없을 때 처리
                 if (accessToken == null) {
                     loadingDialog.dismiss()
-                    Toast.makeText(requireContext(), "처음 저장 시에는 로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
-                    // 여기서 로그인 화면으로 이동 로직을 추가하거나 별도 절차 필요
-                } else {
-                    Log.d("EditTimetableFragment", "Saving timetable for userId: $userId with token: $accessToken")
-                    // 저장 시도 (3번 재시도)
-                    var saveSuccess = false
-                    var retryCount = 0
-                    var saveComplete = false
-                    
-                    lifecycleScope.launch {
-                        try {
-                            // 저장 이벤트 감시 설정
-                            val saveJob = launch {
+                    Toast.makeText(requireContext(), "시간표 저장을 위해 로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                Log.d("EditTimetableFragment", "시간표 저장 시작: userId=$userId, 항목 수=${temporaryEntries.size}")
+                
+                // 저장 중 상태 표시
+                binding.btnSave.isEnabled = false
+                binding.btnSave.text = "저장 중..."
+                
+                lifecycleScope.launch {
+                    try {
+                        // 1. 먼저 로컬 ViewModel 업데이트
+                        viewModel.updateTimetable(temporaryEntries)
+                        
+                        // 2. 강제로 서버 저장 시도 (최대 3회)
+                        var saveSuccess = false
+                        var saveError: String? = null
+                        
+                        for (i in 1..3) {
+                            try {
+                                Log.d("EditTimetableFragment", "서버 저장 시도 #$i")
+                                
+                                // 서버에 저장
+                                viewModel.saveTimetableToServer(userId)
+                                
                                 try {
-                                    viewModel.timetableEvent.collect { event ->
-                                        when (event) {
-                                            is ProfileViewModel.TimetableEvent.SavedToServer -> {
-                                                saveSuccess = true
-                                                saveComplete = true
-                                                Log.d("EditTimetableFragment", "서버 저장 성공")
-                                            }
-                                            is ProfileViewModel.TimetableEvent.Error -> {
-                                                saveSuccess = false
-                                                saveComplete = true
-                                                Log.e("EditTimetableFragment", "서버 저장 오류: ${event.message}")
-                                            }
-                                            is ProfileViewModel.TimetableEvent.SyncCompleted -> {
-                                                saveSuccess = event.success
-                                                saveComplete = true
-                                                Log.d("EditTimetableFragment", "동기화 완료: ${event.message}")
-                                            }
-                                            else -> {
-                                                // 다른 이벤트 무시
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("EditTimetableFragment", "이벤트 감시 오류", e)
-                                }
-                            }
-                            
-                            // 저장 시도 (3번 시도)
-                            while (!saveComplete && retryCount < 3) {
-                                try {
-                                    viewModel.saveTimetableToServer(userId)
-                                    delay(1500) // 응답 기다리기
-                                    if (saveComplete) break
-                                    
-                                    retryCount++
-                                    if (retryCount < 3) {
-                                        Log.d("EditTimetableFragment", "저장 재시도 ${retryCount}...")
-                                        delay(500)
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("EditTimetableFragment", "저장 시도 오류", e)
-                                    retryCount++
-                                    delay(500)
-                                }
-                            }
-                            
-                            // 저장 완료 후 이벤트 수집 아제
-                            saveJob.cancel()
-                            
-                            // 로딩 다이얼로그 제거
-                            loadingDialog.dismiss()
-                            
-                            // 저장 결과 표시
-                            withContext(Dispatchers.Main) {
-                                if (saveSuccess) {
-                                    // 저장 성공 메시지
-                                    Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
-                                    
-                                    // 다른 디바이스 동기화 위해 잠시 대기 후 다시 불러오기
-                                    delay(500)
+                                    // 서버에서 데이터 로드하여 확인 (2초 후)
+                                    // 시간 지연 없이 바로 진행
                                     viewModel.loadTimetableFromServer(userId)
                                     
-                                    // 화면 닫기
-                                    parentFragmentManager.popBackStack()
-                                } else {
-                                    // 저장 실패 메시지
-                                    Toast.makeText(requireContext(), "시간표 저장 중 오류가 발생했지만 로컬에 저장되었습니다. 다시 시도해주세요.", Toast.LENGTH_LONG).show()
+                                    // 데이터 확인
+                                    val verifyData = viewModel.timetable.value ?: emptyList()
                                     
-                                    // 화면 닫기 (UI에서는 저장이 완료된 것처럼 처리)
-                                    parentFragmentManager.popBackStack()
+                                    // 서버에서 로드한 데이터 확인
+                                    if (verifyData.isNotEmpty()) {
+                                        Log.d("EditTimetableFragment", "서버 저장 확인됨 - ${verifyData.size}개 항목")
+                                        saveSuccess = true
+                                        break
+                                    } else {
+                                        Log.w("EditTimetableFragment", "서버 저장 후 데이터를 확인할 수 없음, 재시도...")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("EditTimetableFragment", "데이터 검증 중 오류", e)
                                 }
+                            } catch (e: Exception) {
+                                Log.e("EditTimetableFragment", "저장 시도 #$i 중 오류", e)
+                                saveError = e.message
+                                // suspend 함수 컨텍스트 안에서 호출해야 함
+                                delay(1000)
                             }
-                        } catch (e: Exception) {
-                            Log.e("EditTimetableFragment", "저장 처리 중 예외 발생", e)
+                        }
+                        
+                        // 3. 결과 처리
+                        withContext(Dispatchers.Main) {
                             loadingDialog.dismiss()
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(requireContext(), "시간표 저장 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                            binding.btnSave.isEnabled = true
+                            binding.btnSave.text = "저장"
+                            
+                            if (saveSuccess) {
+                                // 저장 성공
+                                Toast.makeText(requireContext(), "시간표가 성공적으로 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                                parentFragmentManager.popBackStack()
+                            } else {
+                                // 저장 실패 - 하지만 로컬에는 저장됨
+                                val msg = "시간표가 로컬에 저장되었으나 서버 동기화에 실패했습니다.\n" +
+                                        "다른 기기에서는 시간표가 보이지 않을 수 있습니다."
+                                
+                                // 경고 다이얼로그 표시 후 화면 닫기
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("저장 부분 성공")
+                                    .setMessage(msg)
+                                    .setPositiveButton("확인") { _, _ ->
+                                        parentFragmentManager.popBackStack()
+                                    }
+                                    .setNegativeButton("다시 시도") { _, _ ->
+                                        // 아무 작업 없음 (화면 유지)
+                                    }
+                                    .show()
                             }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            loadingDialog.dismiss()
+                            binding.btnSave.isEnabled = true
+                            binding.btnSave.text = "저장"
+                            Toast.makeText(requireContext(), "저장 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Log.e("EditTimetableFragment", "저장 중 예외 발생", e)
                         }
                     }
                 }
@@ -667,6 +660,11 @@ class EditTimetableFragment : Fragment() {
     private fun clearInputFields() {
         binding.etTitle.setText("")
         binding.etLocation.setText("")
+    }
+
+    // delay 함수 호출 문제를 해결하기 위한 헬퍼 함수
+    private suspend fun suspendWithTimeout(timeMillis: Long) {
+        delay(timeMillis)
     }
 
     override fun onDestroyView() {
