@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.maite.ApiClient
 import com.example.maite.PreferencesUtil
 import com.example.maite.api.UserApiService
+import com.example.maite.model.AddFriendRequest
 import com.example.maite.model.AuthApi
 import com.example.maite.model.User
 import com.example.maite.model.UserInfo
@@ -136,6 +137,42 @@ class UserRepository(private val context: Context) {
             } catch (e: Exception) {
                 Log.e(TAG, "친구 요청 전송 중 오류 발생", e)
                 false
+            }
+        }
+    }
+
+    // 친구 추가 API
+    suspend fun addFriend(request: AddFriendRequest): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = preferencesUtil.getAccessToken()
+                if (token == null) {
+                    Log.e(TAG, "토큰이 없습니다")
+                    return@withContext false
+                }
+                
+                Log.d(TAG, "친구 추가 API 호출: userId=${request.userId}")
+                val response = userApiService.addFriend(request)
+                
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    if (responseBody?.isSuccess == true) {
+                        Log.d(TAG, "친구 추가 성공")
+                        return@withContext true
+                    } else {
+                        Log.e(TAG, "친구 추가 실패: ${responseBody?.message}")
+                        return@withContext false
+                    }
+                } else {
+                    Log.e(TAG, "친구 추가 API 호출 실패: ${response.code()} - ${response.errorBody()?.string()}")
+                    return@withContext false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "친구 추가 중 오류 발생", e)
+                if (e is HttpException) {
+                    Log.e(TAG, "HTTP 오류 코드: ${e.code()}")
+                }
+                return@withContext false
             }
         }
     }

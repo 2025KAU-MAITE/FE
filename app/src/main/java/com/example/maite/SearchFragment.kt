@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.maite.adapter.SearchAdapter
+import com.example.maite.model.AddFriendRequest
 import com.example.maite.repository.UserRepository
 import com.example.maite.viewmodel.SearchViewModel
 import com.example.maite.viewmodel.SearchViewModelFactory
@@ -41,6 +42,9 @@ class SearchFragment : Fragment() {
         etSearch = view.findViewById(R.id.etSearch)
         rvSearchResults = view.findViewById(R.id.rvSearchResults)
         btnSend = view.findViewById(R.id.btnSend)
+        
+        // Update button text to match functionality
+        btnSend.text = "친구 추가하기"
 
         setupViewModel()
         setupRecyclerView()
@@ -76,11 +80,13 @@ class SearchFragment : Fragment() {
     private fun observeViewModel() {
         searchViewModel.searchResults.observe(viewLifecycleOwner) { users ->
             searchAdapter.updateUsers(users)
+            updateButtonState()
         }
 
         lifecycleScope.launch {
             searchViewModel.isLoading.collect { isLoading ->
-                // Could show loading indicator here
+                // Toggle loading indicator visibility
+                btnSend.isEnabled = !isLoading
             }
         }
 
@@ -94,7 +100,7 @@ class SearchFragment : Fragment() {
         searchViewModel.friendRequestSent.observe(viewLifecycleOwner) { sent ->
             if (sent) {
                 Toast.makeText(context, "친구 요청이 성공적으로 전송되었습니다", Toast.LENGTH_SHORT).show()
-                // Clear selections or navigate back
+                // Clear selections and refresh search
                 etSearch.text.clear()
                 searchViewModel.resetFriendRequestSent()
                 searchViewModel.searchUsers("")
@@ -104,9 +110,20 @@ class SearchFragment : Fragment() {
 
     private fun setupSendButton() {
         btnSend.setOnClickListener {
-            val selectedUsers = searchAdapter.getSelectedUsers()
-            searchViewModel.sendFriendRequests(selectedUsers)
+            val selectedUser = searchAdapter.getSelectedUser()
+            if (selectedUser != null) {
+                // Create a friend request with only the selected user's ID
+                val request = AddFriendRequest(userId = selectedUser.id.toLong())
+                searchViewModel.addFriend(request)
+            } else {
+                Toast.makeText(context, "친구 추가할 사용자를 선택해주세요", Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+    
+    private fun updateButtonState() {
+        // Enable button only if a user is selected
+        btnSend.isEnabled = searchAdapter.getSelectedUser() != null
     }
 
     companion object {

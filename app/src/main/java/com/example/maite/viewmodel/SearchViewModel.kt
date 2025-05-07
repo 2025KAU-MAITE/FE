@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.maite.model.AddFriendRequest
 import com.example.maite.model.User
 import com.example.maite.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +52,26 @@ class SearchViewModel(private val userRepository: UserRepository) : ViewModel() 
                 // 오류 발생 시 모의 데이터로 폴백
                 val mockUsers = userRepository.getMockUsers(query)
                 _searchResults.value = mockUsers
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    // 친구 추가 기능
+    fun addFriend(request: AddFriendRequest) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            
+            try {
+                val success = userRepository.addFriend(request)
+                if (success) {
+                    _friendRequestSent.value = true
+                } else {
+                    _errorMessage.value = "친구 추가에 실패했습니다"
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "친구 추가 중 오류가 발생했습니다: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
