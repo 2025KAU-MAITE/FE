@@ -26,10 +26,24 @@
         android:text="김정훈"
         android:textColor="@android:color/black"
         android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/ivUserProfile"
         app:layout_constraintEnd_toStartOf="@+id/cbSelectUser"
         app:layout_constraintStart_toEndOf="@+id/ivUserProfile"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="@+id/ivUserProfile"
+        app:layout_constraintVertical_bias="0.3" />
+        
+    <TextView
+        android:id="@+id/tvUserEmail"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="example@email.com"
+        android:textColor="#757575"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toStartOf="@+id/cbSelectUser"
+        app:layout_constraintStart_toEndOf="@+id/ivUserProfile"
+        app:layout_constraintTop_toBottomOf="@+id/tvUserName" />
 
     <CheckBox
         android:id="@+id/cbSelectUser"
