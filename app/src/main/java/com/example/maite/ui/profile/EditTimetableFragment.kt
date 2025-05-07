@@ -37,6 +37,7 @@ class EditTimetableFragment : Fragment() {
     // 독립적인 EditTimeSelectionViewModel 사용
     private val timeSelectionViewModel: EditTimeSelectionViewModel by activityViewModels()
 
+
     // 요일 선택 옵션
     private val dayOptions = arrayOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
 
