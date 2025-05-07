@@ -46,6 +46,10 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
     private val _roomJoinEvent = MutableLiveData<String?>()
     val roomJoinEvent: LiveData<String?> = _roomJoinEvent
 
+    // 회의방 이동 이벤트
+    private val _navigateToRoomId = MutableLiveData<Int?>()
+    val navigateToRoomId: LiveData<Int?> = _navigateToRoomId
+
     init {
         // 시간표 데이터 가져오기
         TimetableDataHolder.timetableEntries
@@ -234,6 +238,9 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
                         if (proposal.type == ProposalType.ROOM_INVITE) {
                             // 회의방 참가 이벤트 발생
                             _roomJoinEvent.value = proposal.roomName
+                            
+                            // 회의방 ID를 저장하여 ListFragment에서 바로 해당 방으로 이동하기 위한 데이터
+                            _navigateToRoomId.value = proposal.roomId
                         } else {
                             // 회의 목록 다시 가져오기
                             loadNearestMeeting()
@@ -301,5 +308,12 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
      */
     fun clearRoomJoinEvent() {
         _roomJoinEvent.value = null
+    }
+
+    /**
+     * 회의방 이동 이벤트 초기화
+     */
+    fun clearNavigateToRoomId() {
+        _navigateToRoomId.value = null
     }
 }

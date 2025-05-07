@@ -11,6 +11,7 @@ class PreferencesUtil(context: Context) {
         private const val KEY_USER_ID = "user_id"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_LAST_JOINED_ROOM_ID = "last_joined_room_id"
     }
 
     fun saveAccessToken(token: String) {
@@ -68,5 +69,32 @@ class PreferencesUtil(context: Context) {
         } else {
             null
         }
+    }
+
+    /**
+     * 마지막으로 참가한 회의방 ID 저장
+     */
+    fun setLastJoinedRoomId(roomId: Int) {
+        prefs.edit().putInt(KEY_LAST_JOINED_ROOM_ID, roomId).apply()
+    }
+
+    /**
+     * 마지막으로 참가한 회의방 ID 가져오기
+     * @return null 값은 저장된 값이 없을 때 반환
+     */
+    fun getLastJoinedRoomId(): Int? {
+        return if (prefs.contains(KEY_LAST_JOINED_ROOM_ID)) {
+            prefs.getInt(KEY_LAST_JOINED_ROOM_ID, -1)
+        } else {
+            null
+        }
+    }
+
+    /**
+     * 마지막으로 참가한 회의방 ID 초기화 
+     * 이미 처리된 회의방 ID를 지워서 중복 처리를 방지함
+     */
+    fun clearLastJoinedRoomId() {
+        prefs.edit().remove(KEY_LAST_JOINED_ROOM_ID).apply()
     }
 }

@@ -189,6 +189,25 @@ class HomeFragment : Fragment() {
             }
         }
         
+        // 회의방으로 이동 이벤트 관찰
+        viewModel.navigateToRoomId.observe(viewLifecycleOwner) { roomId ->
+            if (roomId != null) {
+                Log.d("HomeFragment", "회의방으로 이동: roomId=$roomId")
+                // 바텀 네비게이션에서 List 탭으로 이동
+                val mainActivity = activity as? MainActivity
+                mainActivity?.navigateToListTab()
+                
+                // 로딩 시간을 주기 위해 약간의 딜레이 후 처리
+                Handler(Looper.getMainLooper()).postDelayed({
+                    // SharedPreferences나 앱 내 데이터 저장소에 방금 참가한 방 ID 저장
+                    preferencesUtil.setLastJoinedRoomId(roomId)
+                    
+                    // 방금 수락한 방 ID 초기화 (중복 이동 방지)
+                    viewModel.clearNavigateToRoomId()
+                }, 300)
+            }
+        }
+        
         // 로딩 상태 관찰
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
