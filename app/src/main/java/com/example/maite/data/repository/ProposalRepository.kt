@@ -39,6 +39,71 @@ class ProposalRepository(
     }
     
     /**
+     * 읽지 않은 회의방 초대 알림을 가져오는 함수
+     */
+    suspend fun getRoomInvites(): Result<List<MeetingProposal>> {
+        return try {
+            android.util.Log.d(TAG, "회의방 초대 가져오기 API 호출 시작")
+            val response = proposalApi.getRoomInvites()
+            android.util.Log.d(TAG, "회의방 초대 API 응답 코드: ${response.code()}, 성공여부: ${response.isSuccessful}")
+            
+            if (response.isSuccessful) {
+                val body = response.body()
+                android.util.Log.d(TAG, "회의방 초대 API 응답 본문: $body")
+                android.util.Log.d(TAG, "회의방 초대 개수: ${body?.size ?: 0}개")
+                
+                // 각 초대에 대한 상세 정보 로깅
+                body?.forEachIndexed { index, invite ->
+                    android.util.Log.d(TAG, "회의방 초대[$index] - ID: ${invite.id}, 유형: ${invite.type}, " +
+                            "제목: ${invite.title}, 보낸사람: ${invite.fromUser}, 방ID: ${invite.roomId}, 방이름: ${invite.roomName}")
+                }
+                
+                val proposals = body?.map { 
+                    ProposalMapper.mapToUiModel(it)
+                } ?: emptyList()
+                
+                android.util.Log.d(TAG, "회의방 초대 변환 완료: ${proposals.size}개")
+                Result.success(proposals)
+            } else {
+                android.util.Log.e(TAG, "회의방 초대 API 오류: ${response.code()} - ${response.message()}")
+                android.util.Log.e(TAG, "회의방 초대 API 오류 응답 본문: ${response.errorBody()?.string()}")
+                Result.failure(Exception("회의방 초대 로드 실패: ${response.code()} - ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "회의방 초대 API 호출 중 예외 발생", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * 모든 읽지 않은 제안(회의 제안 + 회의방 초대)을 가져오는 함수
+     */
+    suspend fun getAllProposals(): Result<List<MeetingProposal>> {
+        val meetingProposals = getUnreadProposals()
+        val roomInvites = getRoomInvites()
+        
+        val allProposals = mutableListOf<MeetingProposal>()
+        
+        meetingProposals.onSuccess { proposals ->
+            allProposals.addAll(proposals)
+        }
+        
+        roomInvites.onSuccess { invites ->
+            allProposals.addAll(invites)
+        }
+        
+        return if (meetingProposals.isFailure && roomInvites.isFailure) {
+            // 둘 다 실패한 경우
+            android.util.Log.e(TAG, "Failed to load both meeting proposals and room invites")
+            Result.failure(Exception("Failed to load proposals and invites"))
+        } else {
+            // 하나라도 성공한 경우 (일부라도 데이터를 보여주기 위함)
+            android.util.Log.d(TAG, "Loaded ${allProposals.size} total proposals")
+            Result.success(allProposals)
+        }
+    }
+    
+    /**
      * 내 회의 목록을 가져오는 함수
      */
     suspend fun getMyMeetings(): Result<List<MeetingItem>> {

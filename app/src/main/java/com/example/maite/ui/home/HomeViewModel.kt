@@ -74,9 +74,29 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
                 _error.value = null
                 
                 try {
-                    val result = repository.getUnreadProposals()
+                    Log.d(TAG, "제안 목록 가져오기 (회의 제안 + 회의방 초대) 시작")
+                    
+                    // 모든 제안(회의 제안 + 회의방 초대)을 함께 가져오기
+                    val result = repository.getAllProposals()
                     result.onSuccess { proposals ->
-                        Log.d(TAG, "제안 목록 로드 성공: ${proposals.size}개")
+                        Log.d(TAG, "제안 목록 로드 성공: 총 ${proposals.size}개")
+                        
+                        // 타입별 구분하여 로깅
+                        val meetingProposals = proposals.filter { it.type == ProposalType.MEETING }
+                        val roomInvites = proposals.filter { it.type == ProposalType.ROOM_INVITE }
+                        
+                        Log.d(TAG, "회의 제안: ${meetingProposals.size}개, 회의방 초대: ${roomInvites.size}개")
+                        
+                        // 회의방 초대가 있는 경우 상세 정보 출력
+                        if (roomInvites.isNotEmpty()) {
+                            roomInvites.forEachIndexed { index, invite ->
+                                Log.d(TAG, "회의방 초대[$index] - ID: ${invite.id}, 방ID: ${invite.roomId}, " +
+                                        "방이름: ${invite.roomName}, 보낸사람: ${invite.fromUser}")
+                            }
+                        } else {
+                            Log.d(TAG, "읽지 않은 회의방 초대가 없습니다.")
+                        }
+                        
                         _proposals.value = proposals
                     }.onFailure { e ->
                         Log.e(TAG, "제안 목록 로드 실패", e)

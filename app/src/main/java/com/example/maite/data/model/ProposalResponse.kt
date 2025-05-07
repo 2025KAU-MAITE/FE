@@ -7,13 +7,13 @@ data class ProposalResponse(
     val id: Int,
     
     @SerializedName("type")
-    val type: ProposalType,
+    val type: ProposalType?, // null 허용하도록 변경
     
     @SerializedName("title")
-    val title: String,
+    val title: String?,     // null 허용
     
     @SerializedName("fromUser")
-    val fromUser: String,
+    val fromUser: String?, // null 허용
     
     @SerializedName("fromUserId")
     val fromUserId: Int,
@@ -39,8 +39,8 @@ data class ProposalResponse(
     val roomName: String?,
     
     @SerializedName("createdAt")
-    val createdAt: String,
+    val createdAt: String?,  // null 허용
     
     @SerializedName("status")
-    val status: String // "PENDING", "ACCEPTED", "REJECTED"
+    val status: String?     // null 허용, "PENDING", "ACCEPTED", "REJECTED"
 )
