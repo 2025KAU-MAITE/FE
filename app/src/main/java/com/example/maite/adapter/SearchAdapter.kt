@@ -17,6 +17,7 @@ class SearchAdapter(private val users: MutableList<User>) :
     class UserViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val profileImageView: CircleImageView = itemView.findViewById(R.id.ivUserProfile)
         val nameTextView: TextView = itemView.findViewById(R.id.tvUserName)
+        val emailTextView: TextView = itemView.findViewById(R.id.tvUserEmail)
         val selectCheckBox: CheckBox = itemView.findViewById(R.id.cbSelectUser)
     }
     
@@ -32,6 +33,7 @@ class SearchAdapter(private val users: MutableList<User>) :
         val user = users[position]
         
         holder.nameTextView.text = user.name
+        holder.emailTextView.text = user.email
         holder.selectCheckBox.isChecked = user.isSelected
         
         // Load profile image with Glide

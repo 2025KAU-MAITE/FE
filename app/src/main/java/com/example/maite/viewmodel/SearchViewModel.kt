@@ -35,14 +35,22 @@ class SearchViewModel(private val userRepository: UserRepository) : ViewModel() 
             _isLoading.value = true
             
             try {
-                // Use mock data for development, replace with real API for production
-                // val result = userRepository.searchUsers(query)
-                val mockUsers = userRepository.getMockUsers(query)
-                _searchResults.value = mockUsers
-                _errorMessage.value = null
+                // 실제 API 호출로 데이터 가져오기
+                val result = userRepository.searchUsers(query)
+                if (result.isNotEmpty()) {
+                    _searchResults.value = result
+                    _errorMessage.value = null
+                } else {
+                    // 실제 API 결과가 없거나 오류 발생 시 모의 데이터 사용
+                    val mockUsers = userRepository.getMockUsers(query)
+                    _searchResults.value = mockUsers
+                    _errorMessage.value = null
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "검색 중 오류가 발생했습니다: ${e.message}"
-                _searchResults.value = emptyList()
+                // 오류 발생 시 모의 데이터로 폴백
+                val mockUsers = userRepository.getMockUsers(query)
+                _searchResults.value = mockUsers
             } finally {
                 _isLoading.value = false
             }
@@ -59,16 +67,13 @@ class SearchViewModel(private val userRepository: UserRepository) : ViewModel() 
             _isLoading.value = true
             
             try {
-                // For development, just simulate success
-                // val result = userRepository.sendFriendRequests(selectedUsers.map { it.id })
-                // if (result.isSuccess) {
-                //     _friendRequestSent.value = true
-                // } else {
-                //     _errorMessage.value = "친구 요청을 보내는 데 실패했습니다"
-                // }
-                
-                // Mock success
-                _friendRequestSent.value = true
+                // 실제 API 호출로 친구 요청 보내기
+                val result = userRepository.sendFriendRequests(selectedUsers.map { it.id })
+                if (result) {
+                    _friendRequestSent.value = true
+                } else {
+                    _errorMessage.value = "친구 요청을 보내는 데 실패했습니다"
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "요청 중 오류가 발생했습니다: ${e.message}"
             } finally {

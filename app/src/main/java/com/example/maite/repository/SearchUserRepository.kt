@@ -21,8 +21,8 @@ class SearchUserRepository(private val userApiService: UserApiService) {
                 val response = userApiService.searchUsers(query)
                 if (response.isSuccessful && response.body() != null) {
                     val userResponse = response.body() as UserSearchResponse
-                    Log.d(TAG, "사용자 ${userResponse.users.size}명 검색됨")
-                    userResponse.users
+                    Log.d(TAG, "사용자 ${userResponse.result.size}명 검색됨")
+                    userResponse.result
                 } else {
                     Log.e(TAG, "사용자 검색 실패: ${response.code()}")
                     emptyList()
