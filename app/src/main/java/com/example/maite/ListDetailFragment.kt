@@ -16,10 +16,12 @@ import android.view.Gravity
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import com.example.maite.databinding.FragmentListDetailBinding
 import com.example.maite.model.MaiteListItem
+import com.example.maite.viewmodel.InviteListViewModel
 
 class ListDetailFragment : Fragment() {
     private var _binding: FragmentListDetailBinding? = null
@@ -27,6 +29,9 @@ class ListDetailFragment : Fragment() {
 
     // ViewModel 추가 (Activity 스코프)
     private val sharedViewModel: TimeSelectionViewModel by activityViewModels()
+
+    // InviteListViewModel 추가
+    private lateinit var inviteViewModel: InviteListViewModel
 
     // 요일 목록 (월~일)
     private val weekDays = arrayOf("", "월", "화", "수", "목", "금", "토", "일")
@@ -79,6 +84,15 @@ class ListDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // InviteListViewModel 초기화
+        inviteViewModel = ViewModelProvider(this)[InviteListViewModel::class.java]
+
+        // 사용자 목록 로드 완료 관찰 (선택적)
+        inviteViewModel.inviteList.observe(viewLifecycleOwner) { userList ->
+            // 사용자 목록이 로드되면 필요한 처리를 할 수 있습니다 (선택적)
+            Log.d("ListDetailFragment", "사용자 목록 로드됨: ${userList.size}명")
+        }
+
         val maiteListItem = arguments?.getParcelable<MaiteListItem>(ARG_MAITE_LIST_ITEM)
 
         binding.title.text = maiteListItem?.title
@@ -96,8 +110,37 @@ class ListDetailFragment : Fragment() {
         }
 
         binding.addBtn.setOnClickListener {
-            val bottomSheet = InviteBottomSheet()
+            // 이메일을 기반으로 실제 사용자 ID 목록 가져오기
+            val userList = inviteViewModel.inviteList.value ?: emptyList()
+
+            // 이메일 목록과 일치하는 사용자의 ID 추출
+            val selectedIds = userList
+                .filter { item -> participantEmails.contains(item.email) }
+                .map { it.id }
+
+            Log.d("ListDetailFragment", "이메일로 매칭된 사용자 ID 목록: $selectedIds")
+
+            // ListDetailFragment에서 호출됨을 나타내는 true 플래그 전달
+            val bottomSheet = InviteBottomSheet.newInstance(selectedIds, true)
             bottomSheet.show(parentFragmentManager, bottomSheet.tag)
+        }
+
+        // InviteBottomSheet의 결과를 받기 위한 리스너 설정
+        parentFragmentManager.setFragmentResultListener(
+            InviteBottomSheet.REQUEST_KEY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val selectedCount = bundle.getInt(InviteBottomSheet.KEY_SELECTED_COUNT, 0)
+            val selectedIds = bundle.getSerializable(InviteBottomSheet.KEY_SELECTED_IDS) as? ArrayList<Long>
+            val selectedEmails = bundle.getStringArrayList(InviteBottomSheet.KEY_SELECTED_EMAILS) ?: arrayListOf()
+
+            Log.d("ListDetailFragment", "선택된 참가자 수: $selectedCount, 이메일: $selectedEmails")
+
+            // 선택된 이메일로 참가자 목록 업데이트
+            participantEmails = selectedEmails
+
+            // UI 업데이트
+            updateParticipantProfiles()
         }
 
         binding.timetableLayout.setOnClickListener {

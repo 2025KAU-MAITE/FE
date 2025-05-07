@@ -26,6 +26,9 @@ class InviteBottomSheet : BottomSheetDialogFragment() {
     // 이미 선택된 사용자 ID 목록
     private var preSelectedUserIds = ArrayList<Long>()
 
+    // 호출 출처를 식별하는 플래그 추가
+    private var isFromListDetail = false
+
     // 선택 상태가 변경되었는지 추적
     private var selectionChanged = false
 
@@ -39,6 +42,9 @@ class InviteBottomSheet : BottomSheetDialogFragment() {
             if (idsList != null) {
                 preSelectedUserIds.addAll(idsList)
             }
+
+            // 호출 출처 플래그 가져오기
+            isFromListDetail = it.getBoolean(ARG_FROM_LIST_DETAIL, false)
         }
     }
 
@@ -55,11 +61,14 @@ class InviteBottomSheet : BottomSheetDialogFragment() {
 
         viewModel = ViewModelProvider(this)[InviteListViewModel::class.java]
 
-        adapter = InviteListAdapter { hasSelection, changed ->
-            // 선택 상태가 변경되었을 때만 버튼 활성화 (항목 선택 여부와 관계없이)
-            selectionChanged = changed
-            updateButtonState(hasSelection, changed)
-        }
+        adapter = InviteListAdapter(
+            onSelectionChanged = { hasSelection, changed ->
+                // 선택 상태가 변경되었을 때만 버튼 활성화 (항목 선택 여부와 관계없이)
+                selectionChanged = changed
+                updateButtonState(hasSelection, changed)
+            },
+            isFromListDetail = isFromListDetail
+        )
 
         // 사전 선택된 사용자 ID 목록 설정
         if (preSelectedUserIds.isNotEmpty()) {
@@ -157,13 +166,14 @@ class InviteBottomSheet : BottomSheetDialogFragment() {
         const val KEY_SELECTED_EMAILS = "selectedUserEmails"
 
         private const val ARG_PRE_SELECTED_IDS = "preSelectedUserIds"
+        private const val ARG_FROM_LIST_DETAIL = "fromListDetail" // 새로운 상수 추가
 
         fun newInstance(): InviteBottomSheet {
             return InviteBottomSheet()
         }
 
         // 사전 선택된 사용자 ID 목록을 받는 newInstance 메서드 추가
-        fun newInstance(preSelectedUserIds: List<Long>): InviteBottomSheet {
+        fun newInstance(preSelectedUserIds: List<Long>, fromListDetail: Boolean = false): InviteBottomSheet {
             val fragment = InviteBottomSheet()
             val args = Bundle()
 
@@ -175,6 +185,7 @@ class InviteBottomSheet : BottomSheetDialogFragment() {
             }
 
             args.putIntegerArrayList(ARG_PRE_SELECTED_IDS, intList)
+            args.putBoolean(ARG_FROM_LIST_DETAIL, fromListDetail) // 추가된 인자
             fragment.arguments = args
             return fragment
         }

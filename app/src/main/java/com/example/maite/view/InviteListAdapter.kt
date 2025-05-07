@@ -10,7 +10,8 @@ import com.example.maite.databinding.ItemInviteListBinding
 import com.example.maite.model.InviteListItem
 
 class InviteListAdapter(
-    private val onSelectionChanged: ((Boolean, Boolean) -> Unit)? = null
+    private val onSelectionChanged: ((Boolean, Boolean) -> Unit)? = null,
+    private val isFromListDetail: Boolean = false // 추가된 파라미터
 ) : ListAdapter<InviteListItem, InviteListAdapter.InviteViewHolder>(DiffCallback) {
 
     // 선택된 항목들을 저장하는 집합(Set) 사용
@@ -18,6 +19,9 @@ class InviteListAdapter(
 
     // 초기 선택 상태를 저장
     private val initialSelectedItems = HashSet<Int>()
+
+    // 변경 불가능한 항목 (ListDetailFragment에서 호출된 경우 초기 선택된 항목)
+    private val immutableItems = HashSet<Int>()
 
     // 사전 선택된 사용자 ID 목록
     private var preSelectedUserIds = listOf<Long>()
@@ -66,8 +70,15 @@ class InviteListAdapter(
         val item = getItem(position)
         val wasSelected = selectedItems.contains(position)
         val wasInitiallySelected = initialSelectedItems.contains(position)
+        val isImmutable = immutableItems.contains(position)
 
-        Log.d("InviteListAdapter", "Toggle selection for position $position (id: ${item.id}, name: ${item.name}), was selected: $wasSelected, was initially selected: $wasInitiallySelected")
+        Log.d("InviteListAdapter", "Toggle selection for position $position (id: ${item.id}, name: ${item.name}), was selected: $wasSelected, was initially selected: $wasInitiallySelected, immutable: $isImmutable")
+
+        // ListDetailFragment에서 호출된 경우, 이미 선택된 항목은 선택 해제할 수 없음
+        if (wasSelected && isImmutable) {
+            Log.d("InviteListAdapter", "Item is immutable, ignoring deselection")
+            return
+        }
 
         // 토글 기능 구현
         if (wasSelected) {
@@ -85,7 +96,7 @@ class InviteListAdapter(
         // 두 경우 모두 선택 상태가 변경된 것으로 처리
         checkSelectionChanged()
 
-        Log.d("InviteListAdapter", "Selection changed: $selectionChanged, selectedItems: $selectedItems, initialItems: $initialSelectedItems")
+        Log.d("InviteListAdapter", "Selection changed: $selectionChanged, selectedItems: $selectedItems, initialItems: $initialSelectedItems, immutableItems: $immutableItems")
 
         // 선택 상태 변경 콜백 호출
         onSelectionChanged?.invoke(selectedItems.isNotEmpty(), selectionChanged)
@@ -111,12 +122,6 @@ class InviteListAdapter(
 
         // 모든 항목이 초기 상태와 동일하면 변경 없음
         selectionChanged = false
-    }
-
-    // 두 Set의 내용이 동일한지 비교하는 함수
-    private fun areSelectionsEqual(set1: Set<Int>, set2: Set<Int>): Boolean {
-        if (set1.size != set2.size) return false
-        return set1.containsAll(set2) && set2.containsAll(set1)
     }
 
     // ViewHolder 클래스 - bind 메서드 없이 binding 객체만 노출
@@ -154,13 +159,20 @@ class InviteListAdapter(
         // 기존 선택 초기화
         selectedItems.clear()
         initialSelectedItems.clear()
+        immutableItems.clear() // 변경 불가능한 항목 초기화
 
         // 사전 선택된 ID에 해당하는 항목 선택
         currentList.forEachIndexed { index, item ->
             if (preSelectedUserIds.contains(item.id)) {
                 selectedItems.add(index)
                 initialSelectedItems.add(index)
-                Log.d("InviteListAdapter", "Pre-selecting item at position $index (id: ${item.id}, name: ${item.name})")
+
+                // ListDetailFragment에서 호출된 경우, 이 항목은 변경 불가능으로 표시
+                if (isFromListDetail) {
+                    immutableItems.add(index)
+                }
+
+                Log.d("InviteListAdapter", "Pre-selecting item at position $index (id: ${item.id}, name: ${item.name}), immutable: ${isFromListDetail}")
             }
         }
 
