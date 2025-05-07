@@ -37,6 +37,7 @@ class EditTimetableFragment : Fragment() {
     // 독립적인 EditTimeSelectionViewModel 사용
     private val timeSelectionViewModel: EditTimeSelectionViewModel by activityViewModels()
 
+
     // 요일 선택 옵션
     private val dayOptions = arrayOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
 
@@ -186,7 +187,8 @@ class EditTimetableFragment : Fragment() {
                                     val verifyData = viewModel.timetable.value ?: emptyList()
                                     
                                     // 서버에서 로드한 데이터 확인
-                                    if (verifyData.isNotEmpty()) {
+                                    // 초기화된 경우 빈 리스트도 성공으로 처리
+                                    if (verifyData.size == temporaryEntries.size) {
                                         Log.d("EditTimetableFragment", "서버 저장 확인됨 - ${verifyData.size}개 항목")
                                         saveSuccess = true
                                         break
@@ -210,26 +212,17 @@ class EditTimetableFragment : Fragment() {
                             binding.btnSave.isEnabled = true
                             binding.btnSave.text = "저장"
                             
-                            if (saveSuccess) {
-                                // 저장 성공
-                                Toast.makeText(requireContext(), "시간표가 성공적으로 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                            if (saveSuccess || temporaryEntries.isEmpty()) {
+                                // 저장 성공 또는 초기화 상태 저장
+                                val message = if (temporaryEntries.isEmpty()) {
+                                    "시간표가 초기화되어 저장되었습니다."
+                                } else {
+                                    "시간표가 성공적으로 저장되었습니다."
+                                }
+                                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
                                 parentFragmentManager.popBackStack()
                             } else {
-                                // 저장 실패 - 하지만 로컬에는 저장됨
-                                val msg = "시간표가 로컬에 저장되었으나 서버 동기화에 실패했습니다.\n" +
-                                        "다른 기기에서는 시간표가 보이지 않을 수 있습니다."
-                                
-                                // 경고 다이얼로그 표시 후 화면 닫기
-                                MaterialAlertDialogBuilder(requireContext())
-                                    .setTitle("저장 부분 성공")
-                                    .setMessage(msg)
-                                    .setPositiveButton("확인") { _, _ ->
-                                        parentFragmentManager.popBackStack()
-                                    }
-                                    .setNegativeButton("다시 시도") { _, _ ->
-                                        // 아무 작업 없음 (화면 유지)
-                                    }
-                                    .show()
+                                Toast.makeText(requireContext(), "저장에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
                             }
                         }
                     } catch (e: Exception) {
