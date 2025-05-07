@@ -27,6 +27,8 @@ import com.example.maite.ui.home.HomeViewModelFactory
 import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
 
 class HomeFragment : Fragment() {
 
@@ -56,14 +58,32 @@ class HomeFragment : Fragment() {
         Log.d("HomeFragment", "User ID from preferences: $userId")
         
         if (userId != null) {
-            Log.d("HomeFragment", "Loading timetable for userId: $userId")
+            Log.d("HomeFragment", "강제 시간표 로드 시작: userId=$userId")
+            
+            // 강제로 서버에서 시간표 다시 로드
             profileViewModel.loadTimetableFromServer(userId)
+            
+            // 5초 후에도 시간표가 비어있으면 다시 로드 시도
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (viewModel.timetableEntries.value?.isEmpty() == true) {
+                    Log.d("HomeFragment", "시간표가 여전히 비어있어 다시 로드 시도")
+                    profileViewModel.loadTimetableFromServer(userId)
+                }
+            }, 5000)
         } else {
             Log.e("HomeFragment", "User ID not found")
+            
+            // 사용자 ID가 없는 경우 로그인 필요 안내
+            Snackbar.make(
+                binding.root,
+                "로그인이 필요합니다. 로그인 후 시간표를 확인할 수 있습니다.",
+                Snackbar.LENGTH_LONG
+            ).show()
         }
-
+        
         // 시간표 관찰 및 표시
         viewModel.timetableEntries.observe(viewLifecycleOwner) { entries ->
+            Log.d("HomeFragment", "시간표 데이터 관찰됨: ${entries.size}개 항목")
             renderTimetable(entries)
         }
 
