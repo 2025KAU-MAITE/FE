@@ -16,13 +16,18 @@ object ProposalMapper {
             // roomId가 있으면 회의방 초대로 처리
             return if (response.roomId != null) {
                 Log.d(TAG, "roomId가 존재하므로 ROOM_INVITE로 처리합니다")
+                
+                // 회의방 초대 API 응답에 맞게 hostEmail과 name 필드 사용
+                val hostName = response.hostEmail ?: response.fromUser ?: "알 수 없는 사용자"
+                val roomName = response.name ?: "알 수 없는 회의방"
+                
                 MeetingProposal(
                     id = response.id,
-                    type = ProposalType.ROOM_INVITE, // 명시적으로 타입 지정
-                    title = "${response.fromUser ?: "알 수 없는 사용자"}님의 초대",
-                    fromUser = response.fromUser ?: "알 수 없는 사용자",
+                    type = ProposalType.ROOM_INVITE,
+                    title = "${hostName}님의 회의방 초대",
+                    fromUser = hostName,
                     roomId = response.roomId,
-                    roomName = response.roomName ?: "알 수 없는 회의방"
+                    roomName = roomName
                 )
             } else {
                 // 타입도 없고 roomId도 없다면 기본값으로 MEETING 처리
@@ -53,13 +58,17 @@ object ProposalMapper {
                 )
             }
             ProposalType.ROOM_INVITE -> {
+                // 회의방 초대 API 응답에 맞게 hostEmail과 name 필드 사용
+                val hostName = response.hostEmail ?: response.fromUser ?: "알 수 없는 사용자"
+                val roomName = response.name ?: "알 수 없는 회의방"
+                
                 MeetingProposal(
                     id = response.id,
                     type = response.type,
-                    title = "${response.fromUser ?: "알 수 없는 사용자"}님의 초대",
-                    fromUser = response.fromUser ?: "알 수 없는 사용자",
+                    title = "${hostName}님의 회의방 초대",
+                    fromUser = hostName,
                     roomId = response.roomId,
-                    roomName = response.roomName ?: "알 수 없는 회의방"
+                    roomName = roomName
                 )
             }
             else -> {

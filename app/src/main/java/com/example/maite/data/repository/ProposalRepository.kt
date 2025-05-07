@@ -54,12 +54,23 @@ class ProposalRepository(
                 
                 // 각 초대에 대한 상세 정보 로깅
                 body?.forEachIndexed { index, invite ->
-                    android.util.Log.d(TAG, "회의방 초대[$index] - ID: ${invite.id}, 유형: ${invite.type}, " +
-                            "제목: ${invite.title}, 보낸사람: ${invite.fromUser}, 방ID: ${invite.roomId}, 방이름: ${invite.roomName}")
+                    android.util.Log.d(TAG, "회의방 초대[$index] - " +
+                            "roomId: ${invite.roomId}, " +
+                            "name: ${invite.name}, " + 
+                            "hostEmail: ${invite.hostEmail}, " +
+                            "description: ${invite.description}")
                 }
                 
-                val proposals = body?.map { 
-                    ProposalMapper.mapToUiModel(it)
+                // API 응답 데이터를 데이터 매퍼를 통해 일관되게 변환
+                val proposals = body?.mapNotNull { invite ->
+                    // roomId가 null이면 처리 불가능하므로 제외
+                    if (invite.roomId == null) {
+                        android.util.Log.e(TAG, "roomId가 null인 초대를 건너뜁니다")
+                        return@mapNotNull null
+                    }
+                    
+                    // 모든 초대는 ProposalMapper를 통해 일관되게 변환하여 처리
+                    ProposalMapper.mapToUiModel(invite)
                 } ?: emptyList()
                 
                 android.util.Log.d(TAG, "회의방 초대 변환 완료: ${proposals.size}개")
