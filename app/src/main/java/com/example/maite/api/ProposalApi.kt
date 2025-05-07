@@ -12,6 +12,10 @@ interface ProposalApi {
     @GET("notifications/meetings")
     suspend fun getUnreadProposals(): Response<List<ProposalResponse>>
     
+    // 읽지 않은 회의방 초대 알림 조회
+    @GET("notifications/rooms")
+    suspend fun getRoomInvites(): Response<List<ProposalResponse>>
+    
     // 내 회의 목록 조회
     @GET("meetings")
     suspend fun getMyMeetings(): Response<List<MeetingItem>>

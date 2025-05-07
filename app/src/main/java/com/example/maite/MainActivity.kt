@@ -65,4 +65,12 @@ class MainActivity : AppCompatActivity() {
         // 기본 선택 항목 설정
         binding.bottomNavigation.selectedItemId = R.id.navigation_home
     }
+
+    /**
+     * List 탭으로 이동하는 메서드
+     * HomeFragment 등에서 호출하여 회의방 목록 화면으로 전환할 때 사용
+     */
+    fun navigateToListTab() {
+        binding.bottomNavigation.selectedItemId = R.id.navigation_list
+    }
 }

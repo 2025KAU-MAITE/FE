@@ -120,8 +120,8 @@ class HomeFragment : Fragment() {
                     binding.tvProposalTime.visibility = View.GONE
                     binding.tvProposalLocation.visibility = View.GONE
                     
-                    // 회의방 초대의 경우 카드 배경색 변경
-                    binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.colorRoomInvite, null))
+                    // 회의방 초대의 경우에도 흰색 배경 사용
+                    binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
                     binding.ivInviteIcon.setImageResource(R.drawable.ic_room_invite)
                     binding.ivInviteIcon.visibility = View.VISIBLE
                 } else {
@@ -186,6 +186,25 @@ class HomeFragment : Fragment() {
                 } catch (e: Exception) {
                     Log.e("HomeFragment", "Error clearing room join event", e)
                 }
+            }
+        }
+        
+        // 회의방으로 이동 이벤트 관찰
+        viewModel.navigateToRoomId.observe(viewLifecycleOwner) { roomId ->
+            if (roomId != null) {
+                Log.d("HomeFragment", "회의방으로 이동: roomId=$roomId")
+                // 바텀 네비게이션에서 List 탭으로 이동
+                val mainActivity = activity as? MainActivity
+                mainActivity?.navigateToListTab()
+                
+                // 로딩 시간을 주기 위해 약간의 딜레이 후 처리
+                Handler(Looper.getMainLooper()).postDelayed({
+                    // SharedPreferences나 앱 내 데이터 저장소에 방금 참가한 방 ID 저장
+                    preferencesUtil.setLastJoinedRoomId(roomId)
+                    
+                    // 방금 수락한 방 ID 초기화 (중복 이동 방지)
+                    viewModel.clearNavigateToRoomId()
+                }, 300)
             }
         }
         
@@ -261,7 +280,8 @@ class HomeFragment : Fragment() {
             for (i in 1..7) {
                 setColumnStretchable(i, true)
             }
-            setBackgroundColor(Color.parseColor("#F5F5F5"))
+            // 테이블 배경색을 흰색으로 변경
+            setBackgroundColor(Color.WHITE)
         }
 
         // 요일 배열
@@ -274,7 +294,8 @@ class HomeFragment : Fragment() {
         val emptyCell = TextView(requireContext()).apply {
             text = ""
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#F5F5F5"))
+            // 헤더 셀도 흰색 배경으로 변경
+            setBackgroundColor(Color.WHITE)
             layoutParams = TableRow.LayoutParams().apply {
                 width = 40
                 height = TableRow.LayoutParams.WRAP_CONTENT
@@ -286,15 +307,16 @@ class HomeFragment : Fragment() {
         for (i in 1 until weekDays.size) {
             val dayCell = TextView(requireContext()).apply {
                 text = weekDays[i]
-                textSize = 13f // 더 크게 폰트 크기 증가
+                textSize = 13f 
                 gravity = Gravity.CENTER
-                setBackgroundColor(Color.parseColor("#F5F5F5"))
+                // 요일 헤더도 흰색 배경으로 변경
+                setBackgroundColor(Color.WHITE)
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 0
                     height = TableRow.LayoutParams.WRAP_CONTENT
                     weight = 1f
                 }
-                setPadding(4, 10, 4, 10) // 패딩 더 추가
+                setPadding(4, 10, 4, 10)
             }
             headerRow.addView(dayCell)
         }
@@ -311,12 +333,13 @@ class HomeFragment : Fragment() {
             // 시간 셀 - 정시(00분)에만 시간 표시
             val timeCell = TextView(requireContext()).apply {
                 text = if (minute == 0) hour.toString() else ""
-                textSize = 12f // 폰트 크기 증가
+                textSize = 12f 
                 gravity = Gravity.CENTER
-                setBackgroundColor(Color.parseColor("#F5F5F5"))
+                // 시간 셀도 흰색 배경으로 변경
+                setBackgroundColor(Color.WHITE)
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 40
-                    height = 35 // 30분 단위이므로 높이 조정 (기존 65의 절반보다 약간 큰 값)
+                    height = 35 
                 }
             }
             row.addView(timeCell)
@@ -336,13 +359,17 @@ class HomeFragment : Fragment() {
                 val cell = LinearLayout(requireContext()).apply {
                     layoutParams = TableRow.LayoutParams().apply {
                         width = 0
-                        height = 35 // 30분 단위이므로 높이 조정
+                        height = 35
                         weight = 1f
                     }
                     gravity = Gravity.CENTER
                     orientation = LinearLayout.VERTICAL
 
                     if (entry != null) {
+                        // 일정이 있는 셀은 일정 색상으로 설정
+                        setBackgroundColor(Color.parseColor(entry.colorHex))
+                        alpha = 0.85f
+
                         // 일정 시작 시간 및 종료 시간 (분 단위)
                         val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
                         val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
@@ -359,10 +386,7 @@ class HomeFragment : Fragment() {
 
                         // 최소 길이 확인 (적어도 1시간 이상이어야 제목/장소 표시)
                         val isLongEnough = (endTimeInMinutes - startTimeInMinutes) >= 60
-                        // 일정이 있는 경우
-                        setBackgroundColor(Color.parseColor(entry.colorHex))
-                        alpha = 0.85f
-
+                        
                         // 일정 시작 시간인 경우에만 제목 표시
                         val isStartTime = (
                                 currentTimeInMinutes == entry.startHour * 60 + entry.startMinute
@@ -400,8 +424,11 @@ class HomeFragment : Fragment() {
                             })
                         }
                     } else {
-                        // 빈 셀
-                        setBackgroundResource(R.drawable.timetable_cell_border)
+                        // 빈 셀은 흰색 배경에 얇은 테두리 적용
+                        setBackgroundColor(Color.WHITE)
+                        
+                        // 테두리 리소스 적용
+                        background = context.getDrawable(R.drawable.timetable_cell_border)
                     }
                 }
 
