@@ -13,6 +13,8 @@ import android.widget.TableRow
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.material.snackbar.Snackbar
+import com.example.maite.notification.NotificationViewModel
+import com.example.maite.notification.NotificationViewModelFactory
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -41,6 +43,11 @@ class HomeFragment : Fragment() {
     }
     private val profileViewModel: ProfileViewModel by activityViewModels()
     private val preferencesUtil by lazy { PreferencesUtil(requireContext()) }
+    
+    // 알림 ViewModel 추가
+    private val notificationViewModel by viewModels<NotificationViewModel> {
+        NotificationViewModelFactory(requireContext())
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -169,6 +176,22 @@ class HomeFragment : Fragment() {
                     .commit()
             }
         }
+        
+        // 알림 개수 관찰 및 배지 업데이트
+        notificationViewModel.notifications.observe(viewLifecycleOwner) { notifications ->
+            val notificationCount = notifications.size
+            if (notificationCount > 0) {
+                binding.notificationBadge.apply {
+                    visibility = View.VISIBLE
+                    text = if (notificationCount > 9) "9+" else notificationCount.toString()
+                }
+            } else {
+                binding.notificationBadge.visibility = View.GONE
+            }
+        }
+        
+        // 알림 데이터 로드
+        notificationViewModel.loadNotifications()
         
         // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
         viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->

@@ -4,19 +4,28 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AnimationUtils
 import android.view.animation.DecelerateInterpolator
+import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.adapter.NotificationAdapter
 import com.example.maite.databinding.FragmentNotificationBinding
 import com.example.maite.model.NotificationItem
 import com.example.maite.model.NotificationType
+import com.example.maite.notification.NotificationViewModel
+import com.example.maite.notification.NotificationViewModelFactory
 
 class NotificationFragment : Fragment() {
 
     private var _binding: FragmentNotificationBinding? = null
     private val binding get() = _binding!!
+    
+    private val viewModel: NotificationViewModel by viewModels {
+        NotificationViewModelFactory(requireContext())
+    }
+    
+    private lateinit var notificationAdapter: NotificationAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,38 +52,106 @@ class NotificationFragment : Fragment() {
             closeWithAnimation()
         }
 
-        // 알림 리스트 세팅
-        setupNotificationList()
+        // RecyclerView 초기화
+        setupRecyclerView()
+        
+        // ViewModel 관찰
+        observeViewModel()
+        
+        // 알림 데이터 로드
+        viewModel.loadNotifications()
     }
 
-    private fun setupNotificationList() {
-        val dummyNotifications = listOf(
-            NotificationItem(
-                id = 1,
-                type = NotificationType.MEETING_INVITE,
-                senderName = "김정훈의 MAITE",
-                message = "\"김정훈의 MAITE\"에서 제안을 받았어요.",
-                profileImageRes = R.drawable.ic_launcher_foreground
-            ),
-            NotificationItem(
-                id = 2,
-                type = NotificationType.FRIEND_REQUEST,
-                senderName = "김정훈의 MAITE",
-                message = "\"김정훈의 MAITE\"님이 친구 요청을 보냈습니다.",
-                profileImageRes = R.drawable.ic_launcher_foreground
-            ),
-            NotificationItem(
-                id = 3,
-                type = NotificationType.CHAT,
-                senderName = "김정훈의 MAITE",
-                message = "\"김정훈의 MAITE\"와의 채팅방에 새 메시지가 도착했습니다.",
-                profileImageRes = R.drawable.ic_launcher_foreground
-            )
+    private fun setupRecyclerView() {
+        notificationAdapter = NotificationAdapter(
+            emptyList(),
+            onAcceptClick = { notification ->
+                handleAccept(notification)
+            },
+            onDeclineClick = { notification ->
+                handleDecline(notification)
+            }
         )
-
+        
         binding.rvNotifications.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = NotificationAdapter(dummyNotifications)
+            adapter = notificationAdapter
+        }
+    }
+    
+    private fun observeViewModel() {
+        viewModel.notifications.observe(viewLifecycleOwner) { notifications ->
+            // 알림 타입별로 분류하여 표시 순서 조정
+            val sortedNotifications = notifications.sortedBy { notification ->
+                when (notification.type) {
+                    NotificationType.ROOM_INVITE -> 0
+                    NotificationType.MEETING_INVITE -> 1
+                    NotificationType.FRIEND_REQUEST -> 2
+                    NotificationType.CHAT -> 3
+                }
+            }
+            
+            // 어댑터 갱신 (새로운 인스턴스 생성)
+            binding.rvNotifications.adapter = NotificationAdapter(
+                sortedNotifications,
+                onAcceptClick = { notification -> handleAccept(notification) },
+                onDeclineClick = { notification -> handleDecline(notification) }
+            )
+            
+            // 알림이 없을 때 표시할 메시지
+            if (notifications.isEmpty()) {
+                binding.tvNoNotifications?.visibility = View.VISIBLE
+                binding.rvNotifications.visibility = View.GONE
+            } else {
+                binding.tvNoNotifications?.visibility = View.GONE
+                binding.rvNotifications.visibility = View.VISIBLE
+            }
+        }
+        
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+        
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun handleAccept(notification: NotificationItem) {
+        when (notification.type) {
+            NotificationType.ROOM_INVITE -> {
+                viewModel.acceptRoomInvite(notification.id)
+                Toast.makeText(requireContext(), "회의방에 참가했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            NotificationType.MEETING_INVITE -> {
+                viewModel.acceptMeetingProposal(notification.id)
+                Toast.makeText(requireContext(), "회의 제안을 수락했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            NotificationType.FRIEND_REQUEST -> {
+                // TODO: 친구 요청 수락 API 구현 필요
+                Toast.makeText(requireContext(), "친구 요청을 수락했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
+        }
+    }
+    
+    private fun handleDecline(notification: NotificationItem) {
+        when (notification.type) {
+            NotificationType.ROOM_INVITE -> {
+                viewModel.declineRoomInvite(notification.id)
+                Toast.makeText(requireContext(), "회의방 초대를 거절했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            NotificationType.MEETING_INVITE -> {
+                viewModel.declineMeetingProposal(notification.id)
+                Toast.makeText(requireContext(), "회의 제안을 거절했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            NotificationType.FRIEND_REQUEST -> {
+                // TODO: 친구 요청 거절 API 구현 필요
+                Toast.makeText(requireContext(), "친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
         }
     }
 
