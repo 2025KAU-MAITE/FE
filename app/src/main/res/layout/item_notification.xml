@@ -2,26 +2,77 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="12dp"
-    android:background="@android:color/white">
+    android:orientation="vertical"
+    android:paddingVertical="8dp">
 
-    <ImageView
-        android:id="@+id/img_profile"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_launcher_foreground"
-        android:scaleType="centerCrop"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/bg_circle"
-        android:contentDescription="프로필 이미지" />
-
-    <TextView
-        android:id="@+id/tv_message"
-        android:layout_width="0dp"
+    <!-- 메인 알림 컨텐츠 -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="알림 내용"
-        android:textSize="14sp"
-        android:textColor="#000000" />
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/img_profile"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_launcher_foreground"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_circle"
+            android:contentDescription="프로필 이미지" />
+
+        <TextView
+            android:id="@+id/tv_message"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center_vertical"
+            android:text="알림 내용"
+            android:textSize="14sp"
+            android:textColor="@android:color/black"
+            android:lineSpacingExtra="2dp" />
+
+    </LinearLayout>
+
+    <!-- 버튼 영역 (수락/거절) -->
+    <LinearLayout
+        android:id="@+id/buttons_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="52dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/btn_accept"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_accept_button"
+            android:text="수락"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_decline"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_decline_button"
+            android:text="거절"
+            android:textColor="@android:color/black"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- 구분선 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E0E0E0"
+        android:layout_marginTop="8dp" />
+
 </LinearLayout>
