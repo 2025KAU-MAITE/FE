@@ -4,10 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <FrameLayout
-        android:id="@+id/notificationContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#80000000">
+        android:background="#66000000">
 
         <LinearLayout
             android:id="@+id/notificationPanel"
@@ -15,24 +14,28 @@
             android:layout_height="match_parent"
             android:layout_gravity="end"
             android:orientation="vertical"
-            android:background="@android:color/white"
-            android:elevation="8dp">
+            android:background="@android:color/white">
 
             <!-- 헤더 영역 -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp">
+                android:layout_marginTop="0dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="12dp"
+                android:paddingHorizontal="16dp">
 
                 <TextView
                     android:id="@+id/tv_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="내 알림"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:layout_centerVertical="true"
-                    android:textColor="@android:color/black" />
+                    android:textColor="@android:color/black"
+                    android:includeFontPadding="true"
+                    android:lineHeight="24sp" />
 
                 <ImageButton
                     android:id="@+id/btn_close"
@@ -47,44 +50,105 @@
 
             </RelativeLayout>
 
-            <!-- 구분선 -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#E0E0E0" />
-
-            <!-- 로딩 프로그레스바 -->
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="32dp"
-                android:visibility="gone" />
-
-            <!-- 알림 목록 -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_notifications"
+            <!-- 알림 컨텐츠 스크롤뷰 -->
+            <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:scrollbars="vertical"
-                android:importantForAccessibility="no"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                tools:listitem="@layout/item_notification" />
+                android:scrollbars="none">
 
-            <!-- 알림이 없을 때 표시할 메시지 -->
-            <TextView
-                android:id="@+id/tv_no_notifications"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:text="새로운 알림이 없습니다."
-                android:textColor="@android:color/darker_gray"
-                android:textSize="16sp"
-                android:visibility="gone" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- 로딩 프로그레스바 -->
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="32dp"
+                        android:visibility="gone" />
+
+                    <!-- 받은 초대 섹션 -->
+                    <LinearLayout
+                        android:id="@+id/section_invites"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="받은 초대"
+                            android:textSize="14sp"
+                            android:textColor="#666666"
+                            android:layout_marginBottom="8dp"
+                            android:paddingHorizontal="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E0E0E0"
+                            android:layout_marginBottom="16dp" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_invites"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="16dp"
+                            tools:listitem="@layout/item_notification" />
+
+                    </LinearLayout>
+
+                    <!-- 약속 제안 섹션 -->
+                    <LinearLayout
+                        android:id="@+id/section_proposals"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="24dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="약속 제안"
+                            android:textSize="14sp"
+                            android:textColor="#666666"
+                            android:layout_marginBottom="8dp"
+                            android:paddingHorizontal="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E0E0E0"
+                            android:layout_marginBottom="16dp" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_proposals"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="16dp"
+                            tools:listitem="@layout/item_notification" />
+
+                    </LinearLayout>
+
+                    <!-- 알림이 없을 때 메시지 -->
+                    <TextView
+                        android:id="@+id/tv_no_notifications"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="새로운 알림이 없습니다."
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="16sp"
+                        android:layout_marginTop="100dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+            </ScrollView>
 
         </LinearLayout>
 

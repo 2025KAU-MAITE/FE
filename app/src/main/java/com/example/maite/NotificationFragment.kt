@@ -25,7 +25,8 @@ class NotificationFragment : Fragment() {
         NotificationViewModelFactory(requireContext())
     }
     
-    private lateinit var notificationAdapter: NotificationAdapter
+    private lateinit var invitesAdapter: NotificationAdapter
+    private lateinit var proposalsAdapter: NotificationAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,9 +39,16 @@ class NotificationFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // 시스템 상태바 높이를 고려한 패딩 설정
+        binding.notificationPanel.apply {
+            val statusBarHeight = getStatusBarHeight()
+            // 상태바 높이의 2/3만 적용하여 여백 최소화
+            setPadding(paddingLeft, statusBarHeight * 2 / 3, paddingRight, paddingBottom)
+        }
 
         // 부드러운 애니메이션 적용
-        binding.notificationPanel.translationX = 320f // 패널 너비
+        binding.notificationPanel.translationX = 320f
         binding.notificationPanel.animate()
             .translationX(0f)
             .setDuration(300)
@@ -53,7 +61,7 @@ class NotificationFragment : Fragment() {
         }
 
         // RecyclerView 초기화
-        setupRecyclerView()
+        setupRecyclerViews()
         
         // ViewModel 관찰
         observeViewModel()
@@ -62,8 +70,9 @@ class NotificationFragment : Fragment() {
         viewModel.loadNotifications()
     }
 
-    private fun setupRecyclerView() {
-        notificationAdapter = NotificationAdapter(
+    private fun setupRecyclerViews() {
+        // 받은 초대 RecyclerView
+        invitesAdapter = NotificationAdapter(
             emptyList(),
             onAcceptClick = { notification ->
                 handleAccept(notification)
@@ -73,43 +82,68 @@ class NotificationFragment : Fragment() {
             }
         )
         
-        binding.rvNotifications.apply {
+        binding.rvInvites.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = notificationAdapter
+            adapter = invitesAdapter
+        }
+        
+        // 약속 제안 RecyclerView
+        proposalsAdapter = NotificationAdapter(
+            emptyList(),
+            onAcceptClick = { notification ->
+                handleAccept(notification)
+            },
+            onDeclineClick = { notification ->
+                handleDecline(notification)
+            }
+        )
+        
+        binding.rvProposals.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = proposalsAdapter
         }
     }
     
     private fun observeViewModel() {
         viewModel.notifications.observe(viewLifecycleOwner) { notifications ->
-            // 알림 타입별로 분류하여 표시 순서 조정
-            val sortedNotifications = notifications.sortedBy { notification ->
-                when (notification.type) {
-                    NotificationType.ROOM_INVITE -> 0
-                    NotificationType.MEETING_INVITE -> 1
-                    NotificationType.FRIEND_REQUEST -> 2
-                    NotificationType.CHAT -> 3
-                }
+            // 알림 타입별로 분류
+            val invites = notifications.filter { it.type == NotificationType.ROOM_INVITE }
+            val proposals = notifications.filter { it.type == NotificationType.MEETING_INVITE }
+            
+            // 받은 초대 섹션
+            if (invites.isNotEmpty()) {
+                binding.sectionInvites.visibility = View.VISIBLE
+                binding.rvInvites.adapter = NotificationAdapter(
+                    invites,
+                    onAcceptClick = { notification -> handleAccept(notification) },
+                    onDeclineClick = { notification -> handleDecline(notification) }
+                )
+            } else {
+                binding.sectionInvites.visibility = View.GONE
             }
             
-            // 어댑터 갱신 (새로운 인스턴스 생성)
-            binding.rvNotifications.adapter = NotificationAdapter(
-                sortedNotifications,
-                onAcceptClick = { notification -> handleAccept(notification) },
-                onDeclineClick = { notification -> handleDecline(notification) }
-            )
-            
-            // 알림이 없을 때 표시할 메시지
-            if (notifications.isEmpty()) {
-                binding.tvNoNotifications?.visibility = View.VISIBLE
-                binding.rvNotifications.visibility = View.GONE
+            // 약속 제안 섹션
+            if (proposals.isNotEmpty()) {
+                binding.sectionProposals.visibility = View.VISIBLE
+                binding.rvProposals.adapter = NotificationAdapter(
+                    proposals,
+                    onAcceptClick = { notification -> handleAccept(notification) },
+                    onDeclineClick = { notification -> handleDecline(notification) }
+                )
             } else {
-                binding.tvNoNotifications?.visibility = View.GONE
-                binding.rvNotifications.visibility = View.VISIBLE
+                binding.sectionProposals.visibility = View.GONE
+            }
+            
+            // 알림이 없을 때 메시지
+            if (notifications.isEmpty()) {
+                binding.tvNoNotifications.visibility = View.VISIBLE
+            } else {
+                binding.tvNoNotifications.visibility = View.GONE
             }
         }
         
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.progressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
+            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
         
         viewModel.error.observe(viewLifecycleOwner) { error ->
@@ -129,10 +163,6 @@ class NotificationFragment : Fragment() {
                 viewModel.acceptMeetingProposal(notification.id)
                 Toast.makeText(requireContext(), "회의 제안을 수락했습니다.", Toast.LENGTH_SHORT).show()
             }
-            NotificationType.FRIEND_REQUEST -> {
-                // TODO: 친구 요청 수락 API 구현 필요
-                Toast.makeText(requireContext(), "친구 요청을 수락했습니다.", Toast.LENGTH_SHORT).show()
-            }
             else -> {}
         }
     }
@@ -146,10 +176,6 @@ class NotificationFragment : Fragment() {
             NotificationType.MEETING_INVITE -> {
                 viewModel.declineMeetingProposal(notification.id)
                 Toast.makeText(requireContext(), "회의 제안을 거절했습니다.", Toast.LENGTH_SHORT).show()
-            }
-            NotificationType.FRIEND_REQUEST -> {
-                // TODO: 친구 요청 거절 API 구현 필요
-                Toast.makeText(requireContext(), "친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
@@ -166,6 +192,15 @@ class NotificationFragment : Fragment() {
                     .commit()
             }
             .start()
+    }
+    
+    private fun getStatusBarHeight(): Int {
+        var result = 0
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        if (resourceId > 0) {
+            result = resources.getDimensionPixelSize(resourceId)
+        }
+        return result
     }
 
     override fun onDestroyView() {

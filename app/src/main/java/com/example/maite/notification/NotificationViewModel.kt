@@ -41,10 +41,10 @@ class NotificationViewModel(
                         if (invite.roomId != null && invite.name != null) {
                             allNotifications.add(
                                 NotificationItem(
-                                    id = invite.roomId,  // roomId를 알림 ID로 사용
+                                    id = invite.roomId,  
                                     type = NotificationType.ROOM_INVITE,
-                                    senderName = invite.name,  // 회의방 이름
-                                    message = "\"${invite.name}\"에서 초대를 받았어요.",
+                                    senderName = invite.name,  
+                                    message = "\"${invite.name}\"에서 제안을 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
                                     roomId = invite.roomId
                                 )
@@ -60,10 +60,10 @@ class NotificationViewModel(
                         if (notification.meetingId != null && notification.title != null && notification.proposerName != null) {
                             allNotifications.add(
                                 NotificationItem(
-                                    id = notification.meetingId,  // meetingId를 알림 ID로 사용
+                                    id = notification.meetingId,  
                                     type = NotificationType.MEETING_INVITE,
-                                    senderName = notification.proposerName,  // 제안자 이름
-                                    message = "\"${notification.proposerName}\"님이 회의를 제안했습니다.",
+                                    senderName = notification.proposerName,  
+                                    message = "\"${notification.proposerName}\"에서 제안을 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
                                     meetingId = notification.meetingId,
                                     meetingDetails = MeetingDetails(

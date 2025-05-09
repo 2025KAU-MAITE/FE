@@ -3,9 +3,9 @@ package com.example.maite.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import com.google.android.material.button.MaterialButton
 import androidx.recyclerview.widget.RecyclerView
 import com.example.maite.R
 import com.example.maite.model.NotificationItem
@@ -19,9 +19,10 @@ class NotificationAdapter(
 
     inner class NotificationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imgProfile: ImageView = view.findViewById(R.id.img_profile)
+        val tvSenderName: TextView = view.findViewById(R.id.tv_sender_name)
         val tvMessage: TextView = view.findViewById(R.id.tv_message)
-        val btnAccept: Button = view.findViewById(R.id.btn_accept)
-        val btnDecline: Button = view.findViewById(R.id.btn_decline)
+        val btnAccept: MaterialButton = view.findViewById(R.id.btn_accept)
+        val btnDecline: MaterialButton = view.findViewById(R.id.btn_decline)
         val buttonsLayout: ViewGroup = view.findViewById(R.id.buttons_layout)
     }
 
@@ -35,15 +36,15 @@ class NotificationAdapter(
         val notification = notifications[position]
         
         holder.imgProfile.setImageResource(notification.profileImageRes)
+        holder.tvSenderName.text = notification.senderName
         holder.tvMessage.text = notification.message
         
         // 알림 타입에 따라 버튼 표시 조정
         when (notification.type) {
-            NotificationType.FRIEND_REQUEST,
-            NotificationType.MEETING_INVITE,
-            NotificationType.ROOM_INVITE -> {
+            NotificationType.ROOM_INVITE,
+            NotificationType.MEETING_INVITE -> {
                 holder.buttonsLayout.visibility = View.VISIBLE
-                holder.btnAccept.text = if (notification.type == NotificationType.ROOM_INVITE) "참가" else "수락"
+                holder.btnAccept.text = "수락"
                 holder.btnDecline.text = "거절"
                 
                 holder.btnAccept.setOnClickListener {
@@ -54,8 +55,8 @@ class NotificationAdapter(
                     onDeclineClick(notification)
                 }
             }
-            NotificationType.CHAT -> {
-                // 채팅 알림은 버튼 없음
+            else -> {
+                // 친구 요청이나 채팅 알림은 현재 미구현
                 holder.buttonsLayout.visibility = View.GONE
             }
         }
