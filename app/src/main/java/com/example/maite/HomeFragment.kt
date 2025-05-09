@@ -171,7 +171,6 @@ class HomeFragment : Fragment() {
         binding.ivNotification.setOnClickListener {
             if (parentFragmentManager.findFragmentByTag(NotificationFragment.TAG) == null) {
                 parentFragmentManager.beginTransaction()
-                    .setCustomAnimations(R.anim.slide_in_right, 0)
                     .add(R.id.main_frm, NotificationFragment(), NotificationFragment.TAG)
                     .commit()
             }

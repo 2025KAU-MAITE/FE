@@ -47,17 +47,44 @@ class NotificationFragment : Fragment() {
             setPadding(paddingLeft, statusBarHeight * 2 / 3, paddingRight, paddingBottom)
         }
 
-        // 부드러운 애니메이션 적용
-        binding.notificationPanel.translationX = 320f
-        binding.notificationPanel.animate()
-            .translationX(0f)
-            .setDuration(300)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
+        // 초기 설정 - 화면 밖으로 이동 및 투명하게 설정
+        binding.dimBackground.alpha = 0f
+        
+        // 레이아웃이 완료된 후 애니메이션 실행
+        binding.notificationPanel.post {
+            // 패널의 너비를 구한 후 초기 위치 설정
+            val panelWidth = binding.notificationPanel.width
+            binding.notificationPanel.translationX = panelWidth.toFloat()
+            
+            // 배경 페이드인 애니메이션
+            binding.dimBackground.animate()
+                .alpha(1f)
+                .setDuration(200)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+            
+            // 패널 슬라이드인 애니메이션
+            binding.notificationPanel.animate()
+                .translationX(0f)
+                .setDuration(300)
+                .setStartDelay(100) // 배경이 어느정도 나타난 후 슬라이드 시작
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
 
         // 닫기 버튼
         binding.btnClose.setOnClickListener {
             closeWithAnimation()
+        }
+        
+        // 배경 클릭 시 닫기
+        binding.dimBackground.setOnClickListener {
+            closeWithAnimation()
+        }
+        
+        // 패널 클릭 시 이벤트 전파 방지
+        binding.notificationPanel.setOnClickListener {
+            // 패널 내부를 클릭해도 닫히지 않도록 함
         }
 
         // RecyclerView 초기화
@@ -182,9 +209,18 @@ class NotificationFragment : Fragment() {
     }
 
     private fun closeWithAnimation() {
+        // 패널 슬라이드 아웃
         binding.notificationPanel.animate()
-            .translationX(320f)
+            .translationX(binding.notificationPanel.width.toFloat())
             .setDuration(300)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        
+        // 배경 페이드 아웃
+        binding.dimBackground.animate()
+            .alpha(0f)
+            .setDuration(200)
+            .setStartDelay(100) // 패널이 어느정도 나가기 시작한 후 페이드 아웃
             .setInterpolator(DecelerateInterpolator())
             .withEndAction {
                 parentFragmentManager.beginTransaction()

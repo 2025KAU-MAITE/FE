@@ -5,8 +5,15 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#66000000">
+        android:layout_height="match_parent">
+
+        <!-- 딤 배경 -->
+        <View
+            android:id="@+id/dimBackground"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#66000000"
+            android:alpha="0" />
 
         <LinearLayout
             android:id="@+id/notificationPanel"
