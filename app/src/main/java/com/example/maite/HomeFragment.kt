@@ -29,6 +29,7 @@ import kotlin.math.ceil
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
+import com.example.maite.ChatListFragment
 
 class HomeFragment : Fragment() {
 
@@ -169,7 +170,14 @@ class HomeFragment : Fragment() {
                     .commit()
             }
         }
-        
+
+        binding.ivChat.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_right, 0)
+                .add(R.id.main_frm, ChatListFragment())
+                .commit()
+        }
+
         // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
         viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->
             if (roomName != null) {
