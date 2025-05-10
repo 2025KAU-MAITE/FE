@@ -289,4 +289,57 @@ class AuthRepository(private val context: Context) {
             }
         }
     }
+
+    /**
+     * 소셜 로그인 회원가입 처리 (서버 API 연동)
+     */
+    suspend fun completeSocialSignup(
+        email: String,
+        name: String,
+        provider: String,
+        phoneNumber: String,
+        address: String
+    ): SocialSignupResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "소셜 로그인 회원가입 API 호출: 이메일=$email, 이름=$name, 제공자=$provider")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = SocialSignupRequest(
+                    email = email,
+                    name = name,
+                    provider = provider,
+                    phonenumber = phoneNumber, // API 요구사항에 따라 phonenumber 사용
+                    address = address
+                )
+                
+                // 실제 API 호출
+                val response = authApi.completeSocialSignup(request)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                Log.d(TAG, "회원가입 결과: userId=${response.result.userId}, email=${response.result.email}, registered=${response.result.registered}")
+                
+                response
+            } catch (e: Exception) {
+                Log.e(TAG, "소셜 로그인 회원가입 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                SocialSignupResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = SocialSignupResult(
+                        userId = 0,
+                        email = email,
+                        name = name,
+                        registeredAt = "",
+                        message = "소셜 로그인 회원가입 처리 중 오류가 발생했습니다",
+                        registered = false,
+                        accessToken = "",
+                        idToken = ""
+                    )
+                )
+            }
+        }
+    }
 }

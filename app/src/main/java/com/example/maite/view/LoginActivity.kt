@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.maite.MainActivity
 import com.example.maite.R
@@ -16,6 +17,7 @@ import com.example.maite.repository.AuthRepository
 import kotlinx.coroutines.launch
 import com.example.maite.PreferencesUtil
 import com.example.maite.ApiClient
+import com.example.maite.viewmodel.LoginViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -27,6 +29,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private val authRepository by lazy { AuthRepository(this) }
     private val preferencesUtil by lazy { PreferencesUtil(this) }
+    private lateinit var viewModel: LoginViewModel
     
     // Google 로그인 관련 변수
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -38,6 +41,12 @@ class LoginActivity : AppCompatActivity() {
         // View binding setup
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        
+        // ViewModel 초기화
+        viewModel = ViewModelProvider(this)[LoginViewModel::class.java]
+        
+        // Observer 설정
+        setupObservers()
         
         // Google 로그인 설정
         setupGoogleSignIn()
@@ -68,6 +77,57 @@ class LoginActivity : AppCompatActivity() {
         // Google 로그인 버튼
         binding.btnGoogleLogin.setOnClickListener {
             signInWithGoogle()
+        }
+    }
+    
+    // ViewModel 관찰자 설정
+    private fun setupObservers() {
+        // 일반 로그인 결과 관찰
+        viewModel.loginResult.observe(this) { response ->
+            if (response.isSuccess) {
+                Toast.makeText(this, "로그인 성공", Toast.LENGTH_SHORT).show()
+                navigateToMainActivity()
+            } else {
+                Toast.makeText(this, "로그인 실패: ${response.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "로그인 실패: ${response.message}")
+            }
+        }
+        
+        // Google 로그인 결과 관찰
+        viewModel.googleLoginResult.observe(this) { response ->
+            if (response.isSuccess) {
+                if (response.result.isRegistered) {
+                    // 이미 가입된 사용자면 메인 화면으로 이동
+                    Toast.makeText(this, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
+                    navigateToMainActivity()
+                } else {
+                    // 미등록 사용자면 소셜 회원가입 추가 정보 입력 화면으로 이동
+                    val email = response.result.email ?: ""
+                    val name = response.result.name ?: ""
+                    navigateToSocialSignupFragment(
+                        email = email,
+                        name = name,
+                        provider = "GOOGLE",
+                        idToken = response.result.idToken
+                    )
+                }
+            } else {
+                Toast.makeText(this, 
+                    "Google 로그인 실패: ${response.message}", 
+                    Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Google 로그인 실패: ${response.message}")
+            }
+        }
+        
+        // 에러 메시지 관찰
+        viewModel.errorMessage.observe(this) { errorMsg ->
+            Toast.makeText(this, errorMsg, Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "오류: $errorMsg")
+        }
+        
+        // 로딩 상태 관찰
+        viewModel.loading.observe(this) { isLoading ->
+            setLoading(isLoading)
         }
     }
     
@@ -128,26 +188,40 @@ class LoginActivity : AppCompatActivity() {
         
         lifecycleScope.launch {
             try {
-                // TODO: 서버에서 Google 로그인 검증 API 호출
-                // 실제 구현에서는 서버 API 호출하여 Google 토큰 검증 및 로그인 처리
+                // Google 로그인 검증 API 호출
                 val response = authRepository.googleLogin(idToken)
                 
                 if (response.isSuccess) {
-                    // 로그인 성공
-                    Toast.makeText(this@LoginActivity, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
+                    // 서버에서 응답한 isRegistered 값 가정 (실제로는 서버 응답에 이 값이 포함되어야 함)
+                    val isRegistered = true // 이 부분은 실제 서버 응답에 따라 판단해야 함
                     
-                    // 토큰 저장
-                    saveAccessToken(response.result.accessToken)
-                    
-                    try {
-                        val userInfoResponse = authRepository.getUserInfo(response.result.accessToken)
-                        if (userInfoResponse.isSuccess) {
-                            preferencesUtil.saveUserInfo(
-                                userInfoResponse.result.userId,
-                                userInfoResponse.result.name,
-                                userInfoResponse.result.email
-                            )
-                        } else {
+                    if (isRegistered) {
+                        // 이미 가입된 사용자인 경우
+                        Toast.makeText(this@LoginActivity, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
+                        
+                        // 토큰 저장
+                        saveAccessToken(response.result.accessToken)
+                        
+                        try {
+                            val userInfoResponse = authRepository.getUserInfo(response.result.accessToken)
+                            if (userInfoResponse.isSuccess) {
+                                preferencesUtil.saveUserInfo(
+                                    userInfoResponse.result.userId,
+                                    userInfoResponse.result.name,
+                                    userInfoResponse.result.email
+                                )
+                            } else {
+                                // 사용자 정보는 없지만 email로 임시 정보 저장
+                                if (email != null) {
+                                    preferencesUtil.saveUserInfo(
+                                        userId = email.hashCode().toLong(), // 임시 ID
+                                        name = name ?: "Google 사용자",
+                                        email = email
+                                    )
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Google 사용자 정보 조회 실패", e)
                             // 사용자 정보는 없지만 email로 임시 정보 저장
                             if (email != null) {
                                 preferencesUtil.saveUserInfo(
@@ -157,20 +231,18 @@ class LoginActivity : AppCompatActivity() {
                                 )
                             }
                         }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Google 사용자 정보 조회 실패", e)
-                        // 사용자 정보는 없지만 email로 임시 정보 저장
-                        if (email != null) {
-                            preferencesUtil.saveUserInfo(
-                                userId = email.hashCode().toLong(), // 임시 ID
-                                name = name ?: "Google 사용자",
-                                email = email
-                            )
-                        }
+                        
+                        // 메인 화면으로 이동
+                        navigateToMainActivity()
+                    } else {
+                        // 가입되지 않은 사용자인 경우 -> 회원가입 추가 정보 화면으로 이동
+                        navigateToSocialSignupFragment(
+                            email = email ?: "",
+                            name = name ?: "",
+                            provider = "GOOGLE",
+                            idToken = idToken
+                        )
                     }
-                    
-                    // MainActivity로 이동
-                    navigateToMainActivity()
                 } else {
                     // 로그인 실패
                     Toast.makeText(this@LoginActivity, 
@@ -330,6 +402,26 @@ class LoginActivity : AppCompatActivity() {
         val signupFragment = SignupFragment.newInstance()
         supportFragmentManager.beginTransaction()
             .replace(android.R.id.content, signupFragment)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    // 소셜 회원가입 화면으로 이동
+    private fun navigateToSocialSignupFragment(
+        email: String,
+        name: String,
+        provider: String,
+        idToken: String
+    ) {
+        val socialSignupFragment = SocialSignupFragment.newInstance(
+            email = email,
+            name = name,
+            provider = provider,
+            idToken = idToken
+        )
+        
+        supportFragmentManager.beginTransaction()
+            .replace(android.R.id.content, socialSignupFragment)
             .addToBackStack(null)
             .commit()
     }
