@@ -121,6 +121,10 @@ dependencies {
     // Add Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
+    
+    // ✅ Google 로그인 관련 라이브러리
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.android.gms:play-services-base:18.2.0")
 }
 
 configurations.all {

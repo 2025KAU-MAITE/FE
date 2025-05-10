@@ -5,14 +5,21 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.maite.MainActivity
+import com.example.maite.R
 import com.example.maite.databinding.ActivityLoginBinding
 import com.example.maite.repository.AuthRepository
 import kotlinx.coroutines.launch
 import com.example.maite.PreferencesUtil
 import com.example.maite.ApiClient
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 class LoginActivity : AppCompatActivity() {
 
@@ -20,6 +27,10 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private val authRepository by lazy { AuthRepository(this) }
     private val preferencesUtil by lazy { PreferencesUtil(this) }
+    
+    // Google 로그인 관련 변수
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +38,9 @@ class LoginActivity : AppCompatActivity() {
         // View binding setup
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        
+        // Google 로그인 설정
+        setupGoogleSignIn()
         
         // 로그인 버튼 클릭 이벤트
         binding.btnLogin.setOnClickListener {
@@ -51,10 +65,129 @@ class LoginActivity : AppCompatActivity() {
             navigateToSignupFragment()
         }
         
-        // Google 로그인 버튼 (임시로 MainActivity로 직접 이동)
+        // Google 로그인 버튼
         binding.btnGoogleLogin.setOnClickListener {
-            // TODO: 실제 Google 로그인 구현
-            Toast.makeText(this, "Google 로그인 기능은 준비 중입니다.", Toast.LENGTH_SHORT).show()
+            signInWithGoogle()
+        }
+    }
+    
+    // Google 로그인 설정
+    private fun setupGoogleSignIn() {
+        // Google 로그인 옵션 설정
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.google_web_client_id))
+            .requestEmail()
+            .build()
+            
+        // Google 로그인 클라이언트 초기화
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+        
+        // Google 로그인 결과 처리를 위한 ActivityResultLauncher 설정
+        googleSignInLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                try {
+                    val account = task.getResult(ApiException::class.java)
+                    
+                    // 구글 계정 정보 획득 성공
+                    val idToken = account?.idToken
+                    val email = account?.email
+                    val name = account?.displayName
+                    
+                    Log.d(TAG, "Google 로그인 성공: $email")
+                    
+                    // 이 ID 토큰을 백엔드 서버로 전송하여 인증 처리
+                    if (idToken != null) {
+                        authenticateWithServer(idToken, email, name)
+                    } else {
+                        Toast.makeText(this, "Google ID 토큰을 얻지 못했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: ApiException) {
+                    // 구글 로그인 실패
+                    Log.e(TAG, "Google 로그인 실패", e)
+                    Toast.makeText(this, "Google 로그인 실패: ${e.statusCode}", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Log.d(TAG, "Google Sign-In 취소 또는 실패: ${result.resultCode}")
+                Toast.makeText(this, "Google 로그인이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    // Google 로그인 시작
+    private fun signInWithGoogle() {
+        val signInIntent = googleSignInClient.signInIntent
+        googleSignInLauncher.launch(signInIntent)
+    }
+    
+    // 서버로 Google 토큰 인증 요청
+    private fun authenticateWithServer(idToken: String, email: String?, name: String?) {
+        setLoading(true)
+        
+        lifecycleScope.launch {
+            try {
+                // TODO: 서버에서 Google 로그인 검증 API 호출
+                // 실제 구현에서는 서버 API 호출하여 Google 토큰 검증 및 로그인 처리
+                val response = authRepository.googleLogin(idToken)
+                
+                if (response.isSuccess) {
+                    // 로그인 성공
+                    Toast.makeText(this@LoginActivity, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
+                    
+                    // 토큰 저장
+                    saveAccessToken(response.result.accessToken)
+                    
+                    try {
+                        val userInfoResponse = authRepository.getUserInfo(response.result.accessToken)
+                        if (userInfoResponse.isSuccess) {
+                            preferencesUtil.saveUserInfo(
+                                userInfoResponse.result.userId,
+                                userInfoResponse.result.name,
+                                userInfoResponse.result.email
+                            )
+                        } else {
+                            // 사용자 정보는 없지만 email로 임시 정보 저장
+                            if (email != null) {
+                                preferencesUtil.saveUserInfo(
+                                    userId = email.hashCode().toLong(), // 임시 ID
+                                    name = name ?: "Google 사용자",
+                                    email = email
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Google 사용자 정보 조회 실패", e)
+                        // 사용자 정보는 없지만 email로 임시 정보 저장
+                        if (email != null) {
+                            preferencesUtil.saveUserInfo(
+                                userId = email.hashCode().toLong(), // 임시 ID
+                                name = name ?: "Google 사용자",
+                                email = email
+                            )
+                        }
+                    }
+                    
+                    // MainActivity로 이동
+                    navigateToMainActivity()
+                } else {
+                    // 로그인 실패
+                    Toast.makeText(this@LoginActivity, 
+                        "Google 로그인 실패: ${response.message}", 
+                        Toast.LENGTH_SHORT).show()
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Google 인증 중 오류 발생", e)
+                Toast.makeText(
+                    this@LoginActivity,
+                    "서버 인증 처리 중 오류가 발생했습니다: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                setLoading(false)
+            }
         }
     }
     

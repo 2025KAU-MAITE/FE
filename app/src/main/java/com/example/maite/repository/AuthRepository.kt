@@ -14,6 +14,8 @@ import com.example.maite.model.SmsAuthVerifyRequest
 import com.example.maite.model.LoginRequest
 import com.example.maite.model.LoginResponse
 import com.example.maite.model.LoginResult
+import com.example.maite.model.GoogleLoginRequest
+import com.example.maite.model.GoogleLoginResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -83,11 +85,7 @@ class AuthRepository(private val context: Context) {
                 
                 // API 응답 상세 로깅
                 Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, code=${response.code}, message=${response.message}")
-                if (response.result != null) {
-                    Log.d(TAG, "응답 결과 상세: ${response.result}")
-                } else {
-                    Log.d(TAG, "응답 결과가 null입니다.")
-                }
+                Log.d(TAG, "응답 결과 상세: ${response.result}")
                 
                 response
             } catch (e: Exception) {
@@ -128,9 +126,7 @@ class AuthRepository(private val context: Context) {
                 val response = authApi.verifySmsAuth(request)
                 
                 Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
-                if (response.result != null) {
-                    Log.d(TAG, "결과: message=${response.result.message}")
-                }
+                Log.d(TAG, "결과: message=${response.result.message}")
                 
                 response
             } catch (e: Exception) {
@@ -170,9 +166,7 @@ class AuthRepository(private val context: Context) {
                 val response = authApi.signup(request)
                 
                 Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
-                if (response.result != null) {
-                    Log.d(TAG, "회원가입 결과: userId=${response.result.userId}, email=${response.result.email}, registered=${response.result.registered}")
-                }
+                Log.d(TAG, "회원가입 결과: userId=${response.result.userId}, email=${response.result.email}, registered=${response.result.registered}")
                 
                 response
             } catch (e: Exception) {
@@ -214,9 +208,7 @@ class AuthRepository(private val context: Context) {
                 val response = authApi.login(request)
                 
                 Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
-                if (response.result != null) {
-                    Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
-                }
+                Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
                 
                 response
             } catch (e: Exception) {
@@ -230,6 +222,49 @@ class AuthRepository(private val context: Context) {
                     result = LoginResult(
                         accessToken = "",
                         message = "로그인 처리 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Google 로그인 처리 (서버 API 연동)
+     */
+    suspend fun googleLogin(idToken: String): LoginResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Google 로그인 API 호출: idToken 길이=${idToken.length}")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = GoogleLoginRequest(
+                    idToken = idToken
+                )
+                
+                // 실제 API 호출
+                val response = authApi.googleLogin(request)
+                
+                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
+                
+                // GoogleLoginResponse를 LoginResponse로 변환
+                LoginResponse(
+                    isSuccess = response.isSuccess,
+                    code = response.code,
+                    message = response.message,
+                    result = response.result
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Google 로그인 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                LoginResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = LoginResult(
+                        accessToken = "",
+                        message = "Google 로그인 처리 중 오류가 발생했습니다"
                     )
                 )
             }
