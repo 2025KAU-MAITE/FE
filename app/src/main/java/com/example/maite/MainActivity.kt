@@ -1,15 +1,38 @@
 package com.example.maite
 
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import com.example.maite.databinding.ActivityMainBinding
+import com.example.maite.view.ListFragment
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-    }
-}
+        enableEdgeToEdge()
+
+        // 뷰 바인딩 초기화
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // 메인 컨텐츠 영역의 인셋 처리 (ConstraintLayout에 main ID가 없는 경우 rootView 사용)
+        val rootView = binding.root
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0) // 하단 패딩 제거
+            insets
+        }
+
+        // 네비게이션 바의 인셋 처리
+        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNavigation) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, 0, 0, systemBars.bottom) // 하단 인셋만 적용
+            insets
+        }
 
         // BottomNavigationView 설정
         binding.bottomNavigation.setOnItemSelectedListener { item ->
