@@ -27,6 +27,14 @@ interface AuthApi {
     @POST("auth/signup/verify-code")
     suspend fun verifySmsAuth(@Body request: SmsAuthVerifyRequest): SmsAuthResponse
     
+    // ✅ 아이디 찾기 - 인증번호 발송 API (POST /auth/find-id/send-code)
+    @POST("auth/find-id/send-code")
+    suspend fun sendFindIdSmsAuth(@Body request: FindIdSendRequest): SmsAuthResponse
+    
+    // ✅ 아이디 찾기 - 인증번호 확인 API (POST /auth/find-id/verify)
+    @POST("auth/find-id/verify")
+    suspend fun verifyFindId(@Body request: FindIdVerifyRequest): FindIdResponse
+    
     // ✅ 회원가입 API (POST /auth/signup)
     @POST("auth/signup")
     suspend fun signup(@Body request: SignupRequest): SignupResponse

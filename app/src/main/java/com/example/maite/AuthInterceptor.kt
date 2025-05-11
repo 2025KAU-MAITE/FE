@@ -14,7 +14,9 @@ class AuthInterceptor(private val preferencesUtil: PreferencesUtil) : Intercepto
             "/auth/signup",
             "/auth/signup/check",
             "/auth/signup/send-code",
-            "/auth/signup/verify-code"
+            "/auth/signup/verify-code",
+            "/auth/find-id/send-code",   // 아이디 찾기 - 인증번호 발송
+            "/auth/find-id/verify"       // 아이디 찾기 - 인증번호 확인
         )
         
         // 인증이 필요없는 API인 경우 토큰을 추가하지 않음
