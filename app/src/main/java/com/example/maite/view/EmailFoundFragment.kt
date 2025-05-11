@@ -32,7 +32,11 @@ class EmailFoundFragment : Fragment() {
         // Set up navigation to Login screen
         binding.btnLogin.setOnClickListener {
             // Pop back to the login activity
-            requireActivity().supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+            if (activity is LoginActivity) {
+                (activity as LoginActivity).showLoginUI()
+                // Clear the back stack
+                requireActivity().supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+            }
         }
 
         // Set up navigation to Find Password screen
@@ -43,10 +47,12 @@ class EmailFoundFragment : Fragment() {
     
     private fun navigateToFindPasswordFragment() {
         val findPasswordFragment = FindPasswordFragment.newInstance()
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, findPasswordFragment)
-            .addToBackStack(null)
-            .commit()
+        if (activity is LoginActivity) {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.login_container, findPasswordFragment)
+                .addToBackStack(findPasswordFragment.javaClass.simpleName)
+                .commit()
+        }
     }
 
     override fun onDestroyView() {

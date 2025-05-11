@@ -43,7 +43,8 @@ class FindIdFragment : Fragment() {
         
         // Set click listener for back button
         binding.btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            // Navigate back using the activity's onBackPressed
+            requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
         // Set click listener for send authentication button
@@ -105,10 +106,12 @@ class FindIdFragment : Fragment() {
         bundle.putString("userId", "user123@example.com") // Example ID to display
         emailFoundFragment.arguments = bundle
         
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, emailFoundFragment)
-            .addToBackStack(null)
-            .commit()
+        if (activity is LoginActivity) {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.login_container, emailFoundFragment)
+                .addToBackStack(emailFoundFragment.javaClass.simpleName)
+                .commit()
+        }
     }
 
     private fun setupAuthCodeFieldsAutoFocus() {
