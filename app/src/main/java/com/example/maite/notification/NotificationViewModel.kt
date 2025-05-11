@@ -39,12 +39,17 @@ class NotificationViewModel(
                 roomInvitesResult.onSuccess { roomInvites ->
                     roomInvites.forEach { invite ->
                         if (invite.roomId != null && invite.name != null) {
+                            // 호스트 이름 결정
+                            // 1. API에 hostName이 있으면 사용
+                            // 2. 없으면 email에서 @ 앞부분 사용
+                            val hostName = invite.hostName ?: invite.hostEmail?.substringBefore("@") ?: "알 수 없음"
+                            
                             allNotifications.add(
                                 NotificationItem(
                                     id = invite.roomId,  
                                     type = NotificationType.ROOM_INVITE,
-                                    senderName = invite.name,  
-                                    message = "\"${invite.name}\"에서 제안을 받았어요.",
+                                    senderName = invite.name,  // 회의방 이름
+                                    message = "${hostName}의 회의방 초대를 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
                                     roomId = invite.roomId
                                 )
@@ -63,7 +68,7 @@ class NotificationViewModel(
                                     id = notification.meetingId,  
                                     type = NotificationType.MEETING_INVITE,
                                     senderName = notification.proposerName,  
-                                    message = "\"${notification.proposerName}\"에서 제안을 받았어요.",
+                                    message = "${notification.proposerName}의 회의 제안을 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
                                     meetingId = notification.meetingId,
                                     meetingDetails = MeetingDetails(

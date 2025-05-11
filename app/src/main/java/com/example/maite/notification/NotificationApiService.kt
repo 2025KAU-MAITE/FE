@@ -19,6 +19,7 @@ data class RoomInviteNotification(
     val roomId: Int?,
     val name: String?,  // 회의방 이름
     val hostEmail: String?,
+    val hostName: String?,  // 호스트 이름 (추가 필드)
     val description: String?
 )
 
