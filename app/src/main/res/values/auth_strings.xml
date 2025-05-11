@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Google Cloud Platform에서 발급받은 클라이언트 ID -->
+    <string name="google_web_client_id">543275154539-5i03snops2b3vav5tg5k8g7f6179b8vg.apps.googleusercontent.com</string>
+</resources>

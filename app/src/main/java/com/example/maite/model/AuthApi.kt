@@ -4,6 +4,8 @@ import com.example.maite.model.EmailCheckResponse
 import com.example.maite.model.SmsAuthResponse
 import com.example.maite.model.SmsAuthSendRequest
 import com.example.maite.model.SmsAuthVerifyRequest
+import com.example.maite.model.GoogleLoginRequest
+import com.example.maite.model.GoogleLoginResponse
 import com.example.maite.UserInfoResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -32,6 +34,14 @@ interface AuthApi {
     // ✅ 로그인 API (POST /auth/login)
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
+
+    // ✅ Google 로그인 API (POST /auth/google)
+    @POST("auth/google")
+    suspend fun googleLogin(@Body request: GoogleLoginRequest): GoogleLoginResponse
+
+    // ✅ 소셜 로그인 회원가입 API (POST /auth/complete-social-signup)
+    @POST("auth/complete-social-signup")
+    suspend fun completeSocialSignup(@Body request: SocialSignupRequest): SocialSignupResponse
 
     @GET("auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserInfoResponse
