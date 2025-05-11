@@ -289,13 +289,13 @@ class LoginActivity : AppCompatActivity() {
                     Log.d(TAG, "백스택 항목 수: ${supportFragmentManager.backStackEntryCount}")
                     supportFragmentManager.popBackStack()
                     
-                    // 프래그먼트가 더 이상 없으면 로그인 UI 표시
-                    if (supportFragmentManager.backStackEntryCount <= 1) {
-                        Log.d(TAG, "마지막 프래그먼트, 로그인 UI로 돌아갑니다")
-                        // 약간의 지연을 주어 UI 전환이 제대로 이루어지도록 함
-                        binding.root.postDelayed({
+                    // 백스택에서 제거 후 백스택 항목 수를 다시 확인
+                    binding.root.post {
+                        Log.d(TAG, "팝 이후 백스택 항목 수: ${supportFragmentManager.backStackEntryCount}")
+                        if (supportFragmentManager.backStackEntryCount == 0) {
+                            Log.d(TAG, "백스택이 비어있음, 로그인 UI로 돌아갑니다")
                             showLoginUI()
-                        }, 100)
+                        }
                     }
                 } else {
                     // 백스택이 비어있으면 기본 동작 수행 (앱 종료)
@@ -308,7 +308,8 @@ class LoginActivity : AppCompatActivity() {
     }
     
     // 로그인 UI 표시
-    private fun showLoginUI() {
+    fun showLoginUI() {
+        Log.d(TAG, "로그인 UI 표시 함수 호출됨")
         binding.loginUIContainer.visibility = View.VISIBLE
         binding.loginContainer.visibility = View.GONE
         
@@ -328,7 +329,7 @@ class LoginActivity : AppCompatActivity() {
         // 프래그먼트 전환
         supportFragmentManager.beginTransaction()
             .replace(R.id.login_container, fragment)
-            .addToBackStack(null)
+            .addToBackStack(fragment.javaClass.simpleName)  // 프래그먼트 이름으로 백스택 추가
             .commit()
     }
     

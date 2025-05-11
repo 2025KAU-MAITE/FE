@@ -26,7 +26,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="이름과 이메일을\n입력해주세요"
+        android:text="이름과 전화번호를\n입력해주세요"
         android:textColor="@color/black"
         android:textSize="28sp"
         android:textStyle="bold"
@@ -51,15 +51,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvTitle" />
 
-    <!-- Email input field -->
+    <!-- Phone Number input field -->
     <EditText
-        android:id="@+id/etEmail"
+        android:id="@+id/etPhoneNumber"
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/edit_text_background"
-        android:hint="이메일"
-        android:inputType="textEmailAddress"
+        android:hint="전화번호"
+        android:inputType="phone"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:textColor="@color/black"
@@ -83,7 +83,18 @@
         app:cornerRadius="12dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/etEmail" />
+        app:layout_constraintTop_toBottomOf="@+id/etPhoneNumber" />
+
+    <!-- ProgressBar -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnSendAuth" />
 
     <!-- Verify Authentication button -->
     <Button

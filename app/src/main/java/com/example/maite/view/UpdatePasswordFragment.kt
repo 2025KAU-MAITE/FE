@@ -24,6 +24,12 @@ class UpdatePasswordFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Set click listener for back button
+        binding.btnBack.setOnClickListener {
+            // Navigate back using the activity's onBackPressed
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
+        
         // Set click listener for update password button
         binding.btnUpdatePassword.setOnClickListener {
             val password = binding.etPassword.text.toString().trim()
@@ -48,7 +54,10 @@ class UpdatePasswordFragment : Fragment() {
             updatePassword(password)
             
             // Navigate back to login screen
-            requireActivity().supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+            if (activity is LoginActivity) {
+                (activity as LoginActivity).showLoginUI()
+                requireActivity().supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+            }
         }
     }
     

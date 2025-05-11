@@ -43,7 +43,8 @@ class FindPasswordFragment : Fragment() {
         
         // Set click listener for back button
         binding.btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            // Navigate back using the activity's onBackPressed
+            requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
         // Set click listener for send authentication button
@@ -99,10 +100,12 @@ class FindPasswordFragment : Fragment() {
     
     private fun navigateToUpdatePasswordFragment() {
         val updatePasswordFragment = UpdatePasswordFragment.newInstance()
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, updatePasswordFragment)
-            .addToBackStack(null)
-            .commit()
+        if (activity is LoginActivity) {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.login_container, updatePasswordFragment)
+                .addToBackStack(updatePasswordFragment.javaClass.simpleName)
+                .commit()
+        }
     }
 
     private fun setupAuthCodeFieldsAutoFocus() {

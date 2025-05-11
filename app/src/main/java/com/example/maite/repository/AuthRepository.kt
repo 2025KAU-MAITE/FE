@@ -26,6 +26,10 @@ import com.example.maite.UserInfoResult
 import com.example.maite.model.SocialSignupRequest
 import com.example.maite.model.SocialSignupResponse
 import com.example.maite.model.SocialSignupResult
+import com.example.maite.model.FindIdResponse
+import com.example.maite.model.FindIdResult
+import com.example.maite.model.FindIdSendRequest
+import com.example.maite.model.FindIdVerifyRequest
 
 class AuthRepository(private val context: Context) {
     private val TAG = "AuthRepository"
@@ -351,6 +355,118 @@ class AuthRepository(private val context: Context) {
                         registered = false,
                         accessToken = "",
                         idToken = ""
+                    )
+                )
+            }
+        }
+    }
+    /**
+     * 아이디 찾기 - SMS 인증번호 발송 (서버 API 연동)
+     */
+    suspend fun sendFindIdSmsAuth(name: String, phoneNumber: String): SmsAuthResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "아이디 찾기 SMS 인증번호 발송 API 호출: 이름=$name, 전화번호=$phoneNumber")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = FindIdSendRequest(name = name, phonenumber = phoneNumber)
+                Log.d(TAG, "SMS 인증 요청 데이터: $request")
+                
+                try {
+                    // 실제 API 호출 - 토큰 없이 단순 요청
+                    val response = authApi.sendFindIdSmsAuth(request)
+                    
+                    // API 응답 상세 로깅
+                    Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, code=${response.code}, message=${response.message}")
+                    Log.d(TAG, "응답 결과 상세: ${response.result}")
+                    
+                    return@withContext response
+                } catch (e: retrofit2.HttpException) {
+                    Log.e(TAG, "HTTP 에러 발생: ${e.code()}", e)
+                    // HTTP 에러 발생 시 더 자세한 오류 정보 기록
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "에러 응답 바디: $errorBody")
+                    
+                    return@withContext SmsAuthResponse(
+                        isSuccess = false,
+                        code = "ERROR_${e.code()}",
+                        message = "서버 오류: ${e.message()}",
+                        result = SmsAuthResult(
+                            message = "SMS 인증번호 발송 중 오류가 발생했습니다 (HTTP ${e.code()})"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "아이디 찾기 SMS 인증번호 발송 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                SmsAuthResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = SmsAuthResult(
+                        message = "SMS 인증번호 발송 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * 아이디 찾기 - SMS 인증번호 확인 (서버 API 연동)
+     */
+    suspend fun verifyFindId(name: String, phoneNumber: String, verificationCode: String): FindIdResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "아이디 찾기 인증번호 확인 API 호출: 이름=$name, 전화번호=$phoneNumber, 인증번호=$verificationCode")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = FindIdVerifyRequest(
+                    name = name,
+                    phonenumber = phoneNumber,
+                    verificationCode = verificationCode
+                )
+                
+                try {
+                    // 실제 API 호출 - 토큰 필요 없음
+                    val response = authApi.verifyFindId(request)
+                    
+                    Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                    
+                    // 서버에서 반환한 실제 이메일 정보 로깅
+                    if (response.isSuccess) {
+                        Log.d(TAG, "인증 성공, 서버에서 이메일 수신: ${response.result.email}")
+                    }
+                    return@withContext response
+                } catch (e: retrofit2.HttpException) {
+                    Log.e(TAG, "HTTP 에러 발생: ${e.code()}", e)
+                    // HTTP 에러 발생 시 더 자세한 오류 정보 기록
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "에러 응답 바디: $errorBody")
+                    
+                    return@withContext FindIdResponse(
+                        isSuccess = false,
+                        code = "ERROR_${e.code()}",
+                        message = "서버 오류: ${e.message()}",
+                        result = FindIdResult(
+                            status = false,
+                            email = "",
+                            message = "인증번호 확인 중 오류가 발생했습니다 (HTTP ${e.code()})"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "아이디 찾기 인증번호 확인 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                FindIdResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = FindIdResult(
+                        status = false,
+                        email = "",
+                        message = "아이디 찾기 인증번호 확인 중 오류가 발생했습니다"
                     )
                 )
             }
