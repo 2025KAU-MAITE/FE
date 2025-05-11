@@ -131,10 +131,13 @@ class FindPasswordFragment : Fragment() {
     private fun navigateToUpdatePasswordFragment() {
         val updatePasswordFragment = UpdatePasswordFragment.newInstance()
         
-        // Pass the verified email to the UpdatePasswordFragment
+        // Pass the verified email to the UpdatePasswordFragment for password reset
         val bundle = Bundle()
         bundle.putString("email", verifiedEmail)
         updatePasswordFragment.arguments = bundle
+        
+        Log.d(TAG, "Passing verified email to UpdatePasswordFragment: $verifiedEmail")
+        Log.d(TAG, "Also stored email in DataHolder: ${com.example.maite.util.PasswordResetDataHolder.getEmail()}")
         
         if (activity is LoginActivity) {
             requireActivity().supportFragmentManager.beginTransaction()
@@ -252,6 +255,9 @@ class FindPasswordFragment : Fragment() {
                     
                     // Store the verified email
                     verifiedEmail = response.result.email
+                    
+                    // Also store email in the DataHolder for safety
+                    com.example.maite.util.PasswordResetDataHolder.setEmail(verifiedEmail)
                     
                     // Navigate to the UpdatePasswordFragment
                     navigateToUpdatePasswordFragment()
