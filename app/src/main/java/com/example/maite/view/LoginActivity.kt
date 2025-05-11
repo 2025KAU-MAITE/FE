@@ -96,33 +96,31 @@ class LoginActivity : AppCompatActivity() {
         
         // Google 로그인 결과 관찰
         viewModel.googleLoginResult.observe(this) { response ->
+            // 서버 응답 처리:
+            // HTTP 200 (isSuccess = true): 로그인 성공
+            // HTTP 500 (isSuccess = false): 회원가입 필요함
             if (response.isSuccess) {
-                // 서버에서 응답한 isRegistered 값에 따라 처리
-                // 실제 서버 응답이 이 필드를 포함하지 않는 경우,
-                // result.email과 result.name이 null이 아닌 경우 이미 가입된 사용자로 판단할 수 있음
-                val isRegistered = response.result.isRegistered 
-                                   || (response.result.email != null && response.result.name != null)
-                
-                if (isRegistered) {
-                    // 이미 가입된 사용자면 메인 화면으로 이동
-                    Toast.makeText(this, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
-                    navigateToMainActivity()
-                } else {
-                    // 미등록 사용자면 소셜 회원가입 추가 정보 입력 화면으로 이동
-                    val email = response.result.email ?: ""
-                    val name = response.result.name ?: ""
-                    navigateToSocialSignupFragment(
-                        email = email,
-                        name = name,
-                        provider = "GOOGLE",
-                        idToken = response.result.idToken
-                    )
-                }
+                // 로그인 성공 케이스 (HTTP 200)
+                Toast.makeText(this, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "Google 로그인 성공 (HTTP 200) - 메인 화면으로 이동")
+                navigateToMainActivity()
             } else {
-                Toast.makeText(this, 
-                    "Google 로그인 실패: ${response.message}", 
-                    Toast.LENGTH_SHORT).show()
-                Log.e(TAG, "Google 로그인 실패: ${response.message}")
+                // 미등록 사용자 케이스 (HTTP 500)
+                Log.d(TAG, "Google 계정 미등록 (HTTP 500) - 회원가입 화면으로 이동")
+                
+                // Google 계정 정보를 이용해 회원가입 화면으로 이동
+                // 구글 계정에서 제공하는 이메일과 이름을 가져와서 전달
+                val account = GoogleSignIn.getLastSignedInAccount(this)
+                val email = account?.email ?: ""
+                val name = account?.displayName ?: ""
+                val idToken = account?.idToken ?: ""
+                
+                navigateToSocialSignupFragment(
+                    email = email,
+                    name = name,
+                    provider = "GOOGLE",
+                    idToken = idToken
+                )
             }
         }
         
@@ -242,12 +240,14 @@ class LoginActivity : AppCompatActivity() {
         // 전달받은 이메일과 이름을 로그로 기록
         Log.d(TAG, "Google 인증 시작: email=$email, name=$name")
         
-        // ViewModel의 checkGoogleRegistration 메서드 사용
-        // 이 메서드는 서버에 사용자가 등록되어 있는지 확인하고
-        // 등록 상태에 따라 _googleLoginResult LiveData를 업데이트함
-        viewModel.checkGoogleRegistration(idToken)
+        // 로딩 상태 표시
+        setLoading(true)
         
-        // 로그인 결과는 ViewModel observer에서 처리됨 (setupObservers 메서드에 구현)
+        // ViewModel의 googleLogin 메서드 호출하여 서버에 인증 요청
+        // 이 메서드는 서버 응답 코드에 따라 로그인 성공(HTTP 200) 또는 회원가입 필요(HTTP 500)를 판단
+        viewModel.googleLogin(idToken)
+        
+        // 결과는 ViewModel observer에서 처리됨 (setupObservers 메서드에 구현)
     }
     
     // 입력 데이터 유효성 검사

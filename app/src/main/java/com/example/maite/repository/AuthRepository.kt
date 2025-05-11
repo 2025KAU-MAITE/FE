@@ -233,6 +233,7 @@ class AuthRepository(private val context: Context) {
 
     /**
      * Google 로그인 처리 (서버 API 연동)
+     * 서버에서 HTTP 200이면 로그인 성공, 500이면 미등록 사용자
      */
     suspend fun googleLogin(idToken: String): LoginResponse {
         return withContext(Dispatchers.IO) {
@@ -248,30 +249,36 @@ class AuthRepository(private val context: Context) {
                 val response = authApi.googleLogin(request)
                 
                 Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
-                Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
+                
+                // 응답이 성공인 경우만 accessToken 로그 출력
+                if (response.isSuccess) {
+                    Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
+                }
                 
                 // GoogleLoginResponse를 LoginResponse로 변환
-                // GoogleLoginResult는 LoginResult와 다른 구조를 가지므로 필요한 값만 추출
+                // 서버 응답에 따라 처리 (200: 성공, 500: 미등록 사용자)
                 LoginResponse(
                     isSuccess = response.isSuccess,
                     code = response.code,
                     message = response.message,
                     result = LoginResult(
-                        accessToken = response.result.accessToken,
+                        accessToken = if (response.isSuccess) response.result.accessToken else "",
                         message = response.result.message
                     )
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Google 로그인 API 오류: ${e.message}", e)
                 
-                // API 호출 실패 시 오류 응답 생성
+                // 서버에서 HTTP 500을 반환하면 미등록 사용자로 처리
+                // 이 경우 retrofit은 예외를 발생시킬 수 있음
+                // 미등록 사용자로 처리하기 위해 isSuccess = false 설정
                 LoginResponse(
-                    isSuccess = false,
-                    code = "ERROR",
-                    message = "서버 연결 오류: ${e.message}",
+                    isSuccess = false,  // 회원가입이 필요한 상태
+                    code = "NEED_SIGNUP",
+                    message = "Google 계정으로 가입이 필요합니다",
                     result = LoginResult(
                         accessToken = "",
-                        message = "Google 로그인 처리 중 오류가 발생했습니다"
+                        message = "미등록 Google 사용자입니다. 회원가입이 필요합니다."
                     )
                 )
             }
