@@ -23,6 +23,9 @@ import android.util.Log
 import android.content.Context
 import com.example.maite.UserInfoResponse
 import com.example.maite.UserInfoResult
+import com.example.maite.model.SocialSignupRequest
+import com.example.maite.model.SocialSignupResponse
+import com.example.maite.model.SocialSignupResult
 
 class AuthRepository(private val context: Context) {
     private val TAG = "AuthRepository"
@@ -248,11 +251,15 @@ class AuthRepository(private val context: Context) {
                 Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
                 
                 // GoogleLoginResponse를 LoginResponse로 변환
+                // GoogleLoginResult는 LoginResult와 다른 구조를 가지므로 필요한 값만 추출
                 LoginResponse(
                     isSuccess = response.isSuccess,
                     code = response.code,
                     message = response.message,
-                    result = response.result
+                    result = LoginResult(
+                        accessToken = response.result.accessToken,
+                        message = response.result.message
+                    )
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Google 로그인 API 오류: ${e.message}", e)

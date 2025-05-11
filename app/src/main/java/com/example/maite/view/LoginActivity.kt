@@ -21,6 +21,7 @@ import com.example.maite.viewmodel.LoginViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 
 class LoginActivity : AppCompatActivity() {
@@ -96,7 +97,13 @@ class LoginActivity : AppCompatActivity() {
         // Google 로그인 결과 관찰
         viewModel.googleLoginResult.observe(this) { response ->
             if (response.isSuccess) {
-                if (response.result.isRegistered) {
+                // 서버에서 응답한 isRegistered 값에 따라 처리
+                // 실제 서버 응답이 이 필드를 포함하지 않는 경우,
+                // result.email과 result.name이 null이 아닌 경우 이미 가입된 사용자로 판단할 수 있음
+                val isRegistered = response.result.isRegistered 
+                                   || (response.result.email != null && response.result.name != null)
+                
+                if (isRegistered) {
                     // 이미 가입된 사용자면 메인 화면으로 이동
                     Toast.makeText(this, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
                     navigateToMainActivity()
@@ -133,134 +140,114 @@ class LoginActivity : AppCompatActivity() {
     
     // Google 로그인 설정
     private fun setupGoogleSignIn() {
-        // Google 로그인 옵션 설정
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.google_web_client_id))
-            .requestEmail()
-            .build()
+        try {
+            // Google 로그인 옵션 설정
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.google_web_client_id))
+                .requestEmail()
+                .requestProfile()  // 프로필 정보도 요청
+                .build()
             
-        // Google 로그인 클라이언트 초기화
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
-        
-        // Google 로그인 결과 처리를 위한 ActivityResultLauncher 설정
-        googleSignInLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                try {
-                    val account = task.getResult(ApiException::class.java)
-                    
-                    // 구글 계정 정보 획득 성공
-                    val idToken = account?.idToken
-                    val email = account?.email
-                    val name = account?.displayName
-                    
-                    Log.d(TAG, "Google 로그인 성공: $email")
-                    
-                    // 이 ID 토큰을 백엔드 서버로 전송하여 인증 처리
-                    if (idToken != null) {
-                        authenticateWithServer(idToken, email, name)
-                    } else {
-                        Toast.makeText(this, "Google ID 토큰을 얻지 못했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: ApiException) {
-                    // 구글 로그인 실패
-                    Log.e(TAG, "Google 로그인 실패", e)
-                    Toast.makeText(this, "Google 로그인 실패: ${e.statusCode}", Toast.LENGTH_SHORT).show()
+            // Google 로그인 클라이언트 초기화
+            googleSignInClient = GoogleSignIn.getClient(this, gso)
+            
+            // 기존 로그인 상태 체크 및 초기화
+            val lastSignedInAccount = GoogleSignIn.getLastSignedInAccount(this)
+            if (lastSignedInAccount != null) {
+                Log.d(TAG, "이전 Google 로그인 세션 발견: ${lastSignedInAccount.email}")
+                // 필요에 따라 세션 초기화
+                googleSignInClient.signOut().addOnCompleteListener {
+                    Log.d(TAG, "이전 Google 로그인 세션 로그아웃 완료")
                 }
-            } else {
-                Log.d(TAG, "Google Sign-In 취소 또는 실패: ${result.resultCode}")
-                Toast.makeText(this, "Google 로그인이 취소되었습니다.", Toast.LENGTH_SHORT).show()
             }
+            
+            // Google 로그인 결과 처리를 위한 ActivityResultLauncher 설정
+            googleSignInLauncher = registerForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    try {
+                        val account = task.getResult(ApiException::class.java)
+                        
+                        // 구글 계정 정보 획득 성공
+                        val idToken = account?.idToken
+                        val email = account?.email
+                        val name = account?.displayName
+                        
+                        Log.d(TAG, "Google 로그인 성공: $email")
+                        
+                        // 이 ID 토큰을 백엔드 서버로 전송하여 인증 처리
+                        if (idToken != null) {
+                            authenticateWithServer(idToken, email, name)
+                        } else {
+                            Toast.makeText(this, "Google ID 토큰을 얻지 못했습니다.", Toast.LENGTH_SHORT).show()
+                            Log.e(TAG, "ID 토큰이 null입니다.")
+                        }
+                    } catch (e: ApiException) {
+                        // 구글 로그인 실패 - 상세 에러 코드 확인
+                        Log.e(TAG, "Google 로그인 실패: 코드=${e.statusCode}, 메시지=${e.message}", e)
+                        val errorMessage = when (e.statusCode) {
+                            GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "로그인이 취소되었습니다."
+                            GoogleSignInStatusCodes.SIGN_IN_FAILED -> "로그인에 실패했습니다."
+                            GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS -> "로그인이 진행 중입니다."
+                            GoogleSignInStatusCodes.NETWORK_ERROR -> "네트워크 오류가 발생했습니다."
+                            else -> "Google 로그인 오류: ${e.statusCode}"
+                        }
+                        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Log.d(TAG, "Google Sign-In 취소 또는 실패: ${result.resultCode}")
+                    Toast.makeText(this, "Google 로그인이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            
+            Log.d(TAG, "Google 로그인 설정 완료")
+        } catch (e: Exception) {
+            // 설정 중 오류 발생
+            Log.e(TAG, "Google 로그인 설정 오류", e)
+            Toast.makeText(this, "Google 로그인 설정 오류: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
     
     // Google 로그인 시작
     private fun signInWithGoogle() {
-        val signInIntent = googleSignInClient.signInIntent
-        googleSignInLauncher.launch(signInIntent)
+        try {
+            // 로딩 표시
+            setLoading(true)
+            
+            // 이전 로그인 세션 로그아웃 후 다시 로그인 시도
+            googleSignInClient.signOut().addOnCompleteListener {
+                // 로그아웃 완료 후 로그인 시도
+                val signInIntent = googleSignInClient.signInIntent
+                Log.d(TAG, "Google 로그인 화면 시작")
+                googleSignInLauncher.launch(signInIntent)
+                
+                // 로딩 표시 해제는 로그인 결과 처리 시 수행됨
+            }.addOnFailureListener { e ->
+                // 로그아웃 실패
+                Log.e(TAG, "Google 로그아웃 실패", e)
+                Toast.makeText(this, "Google 로그인 준비 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                setLoading(false)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Google 로그인 시작 오류", e)
+            Toast.makeText(this, "Google 로그인을 시작할 수 없습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+            setLoading(false)
+        }
     }
     
     // 서버로 Google 토큰 인증 요청
     private fun authenticateWithServer(idToken: String, email: String?, name: String?) {
-        setLoading(true)
+        // 전달받은 이메일과 이름을 로그로 기록
+        Log.d(TAG, "Google 인증 시작: email=$email, name=$name")
         
-        lifecycleScope.launch {
-            try {
-                // Google 로그인 검증 API 호출
-                val response = authRepository.googleLogin(idToken)
-                
-                if (response.isSuccess) {
-                    // 서버에서 응답한 isRegistered 값 가정 (실제로는 서버 응답에 이 값이 포함되어야 함)
-                    val isRegistered = true // 이 부분은 실제 서버 응답에 따라 판단해야 함
-                    
-                    if (isRegistered) {
-                        // 이미 가입된 사용자인 경우
-                        Toast.makeText(this@LoginActivity, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
-                        
-                        // 토큰 저장
-                        saveAccessToken(response.result.accessToken)
-                        
-                        try {
-                            val userInfoResponse = authRepository.getUserInfo(response.result.accessToken)
-                            if (userInfoResponse.isSuccess) {
-                                preferencesUtil.saveUserInfo(
-                                    userInfoResponse.result.userId,
-                                    userInfoResponse.result.name,
-                                    userInfoResponse.result.email
-                                )
-                            } else {
-                                // 사용자 정보는 없지만 email로 임시 정보 저장
-                                if (email != null) {
-                                    preferencesUtil.saveUserInfo(
-                                        userId = email.hashCode().toLong(), // 임시 ID
-                                        name = name ?: "Google 사용자",
-                                        email = email
-                                    )
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Google 사용자 정보 조회 실패", e)
-                            // 사용자 정보는 없지만 email로 임시 정보 저장
-                            if (email != null) {
-                                preferencesUtil.saveUserInfo(
-                                    userId = email.hashCode().toLong(), // 임시 ID
-                                    name = name ?: "Google 사용자",
-                                    email = email
-                                )
-                            }
-                        }
-                        
-                        // 메인 화면으로 이동
-                        navigateToMainActivity()
-                    } else {
-                        // 가입되지 않은 사용자인 경우 -> 회원가입 추가 정보 화면으로 이동
-                        navigateToSocialSignupFragment(
-                            email = email ?: "",
-                            name = name ?: "",
-                            provider = "GOOGLE",
-                            idToken = idToken
-                        )
-                    }
-                } else {
-                    // 로그인 실패
-                    Toast.makeText(this@LoginActivity, 
-                        "Google 로그인 실패: ${response.message}", 
-                        Toast.LENGTH_SHORT).show()
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "Google 인증 중 오류 발생", e)
-                Toast.makeText(
-                    this@LoginActivity,
-                    "서버 인증 처리 중 오류가 발생했습니다: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } finally {
-                setLoading(false)
-            }
-        }
+        // ViewModel의 checkGoogleRegistration 메서드 사용
+        // 이 메서드는 서버에 사용자가 등록되어 있는지 확인하고
+        // 등록 상태에 따라 _googleLoginResult LiveData를 업데이트함
+        viewModel.checkGoogleRegistration(idToken)
+        
+        // 로그인 결과는 ViewModel observer에서 처리됨 (setupObservers 메서드에 구현)
     }
     
     // 입력 데이터 유효성 검사

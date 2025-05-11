@@ -100,6 +100,14 @@ class SocialSignupFragment : Fragment() {
             return false
         }
         
+        // 전화번호 형식 검사 (간단한 정규식 사용)
+        val phonePattern = "^01(?:0|1|[6-9])[0-9]{7,8}$" // 010-xxxx-xxxx 형식 (하이픈 없이)
+        if (!phoneNumber.matches(phonePattern.toRegex())) {
+            binding.etPhone.error = "올바른 전화번호 형식이 아닙니다 (예: 01012345678)"
+            binding.etPhone.requestFocus()
+            return false
+        }
+        
         // 주소 입력 확인
         if (address.isEmpty()) {
             binding.etAddress.error = "주소를 입력해주세요"
@@ -114,6 +122,11 @@ class SocialSignupFragment : Fragment() {
         val phoneNumber = binding.etPhone.text.toString().trim()
         val address = binding.etAddress.text.toString().trim()
         
+        // 로딩 상태 표시
+        binding.progressBar.visibility = View.VISIBLE
+        binding.btnSignup.isEnabled = false
+        
+        // ViewModel 통해 소셜 회원가입 처리
         viewModel.completeSocialSignup(
             email = email,
             name = name,
@@ -121,24 +134,36 @@ class SocialSignupFragment : Fragment() {
             phoneNumber = phoneNumber,
             address = address
         )
+        
+        // 결과는 viewModel.socialSignupResult LiveData로 전달됨
+        Log.d(TAG, "소셜 회원가입 요청 - 이메일: $email, 이름: $name, 제공자: $provider")
     }
     
     private fun observeViewModel() {
         viewModel.socialSignupResult.observe(viewLifecycleOwner) { response ->
             if (response.isSuccess) {
                 Toast.makeText(requireContext(), "회원가입 성공", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "소셜 회원가입 성공: accessToken=${response.result.accessToken.take(10)}...")
                 navigateToMainActivity()
             } else {
                 Toast.makeText(requireContext(), 
                     "회원가입 실패: ${response.message}", 
                     Toast.LENGTH_SHORT).show()
                 Log.e(TAG, "회원가입 실패: ${response.message}")
+                
+                // 회원가입 실패 시 버튼 활성화
+                binding.btnSignup.isEnabled = true
+                binding.progressBar.visibility = View.GONE
             }
         }
         
         viewModel.errorMessage.observe(viewLifecycleOwner) { errorMsg ->
             Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
             Log.e(TAG, "오류: $errorMsg")
+            
+            // 오류 발생 시 버튼 활성화
+            binding.btnSignup.isEnabled = true
+            binding.progressBar.visibility = View.GONE
         }
         
         viewModel.loading.observe(viewLifecycleOwner) { isLoading ->
