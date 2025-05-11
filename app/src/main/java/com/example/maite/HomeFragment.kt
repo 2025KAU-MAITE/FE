@@ -31,6 +31,7 @@ import kotlin.math.ceil
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
+import com.example.maite.ChatListFragment
 
 class HomeFragment : Fragment() {
 
@@ -175,7 +176,7 @@ class HomeFragment : Fragment() {
                     .commit()
             }
         }
-        
+
         // 알림 개수 관찰 및 배지 업데이트
         notificationViewModel.notifications.observe(viewLifecycleOwner) { notifications ->
             val notificationCount = notifications.size
