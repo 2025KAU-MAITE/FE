@@ -30,6 +30,11 @@ import com.example.maite.model.FindIdResponse
 import com.example.maite.model.FindIdResult
 import com.example.maite.model.FindIdSendRequest
 import com.example.maite.model.FindIdVerifyRequest
+import com.example.maite.model.ResetPasswordSendRequest
+import com.example.maite.model.ResetPasswordVerifyRequest
+import com.example.maite.model.ResetPasswordUpdateRequest
+import com.example.maite.model.ResetPasswordResponse
+import com.example.maite.model.ResetPasswordResult
 
 class AuthRepository(private val context: Context) {
     private val TAG = "AuthRepository"
@@ -467,6 +472,173 @@ class AuthRepository(private val context: Context) {
                         status = false,
                         email = "",
                         message = "아이디 찾기 인증번호 확인 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * 비밀번호 찾기 - 인증번호 발송 (서버 API 연동)
+     */
+    suspend fun sendResetPasswordCode(name: String, email: String, phoneNumber: String): SmsAuthResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "비밀번호 찾기 인증번호 발송 API 호출: 이름=$name, 이메일=$email, 전화번호=$phoneNumber")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = ResetPasswordSendRequest(
+                    name = name,
+                    email = email,
+                    phonenumber = phoneNumber
+                )
+                
+                try {
+                    // 실제 API 호출
+                    val response = authApi.sendResetPasswordCode(request)
+                    
+                    // API 응답 상세 로깅
+                    Log.d(TAG, "API 응답 받음: isSuccess=${response.isSuccess}, code=${response.code}, message=${response.message}")
+                    Log.d(TAG, "응답 결과 상세: ${response.result}")
+                    
+                    return@withContext response
+                } catch (e: retrofit2.HttpException) {
+                    Log.e(TAG, "HTTP 에러 발생: ${e.code()}", e)
+                    // HTTP 에러 발생 시 더 자세한 오류 정보 기록
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "에러 응답 바디: $errorBody")
+                    
+                    return@withContext SmsAuthResponse(
+                        isSuccess = false,
+                        code = "ERROR_${e.code()}",
+                        message = "서버 오류: ${e.message()}",
+                        result = SmsAuthResult(
+                            message = "인증번호 발송 중 오류가 발생했습니다 (HTTP ${e.code()})"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "비밀번호 찾기 인증번호 발송 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                SmsAuthResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = SmsAuthResult(
+                        message = "인증번호 발송 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * 비밀번호 찾기 - 인증번호 확인 (서버 API 연동)
+     */
+    suspend fun verifyResetPasswordCode(phoneNumber: String, verificationCode: String): ResetPasswordResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "비밀번호 찾기 인증번호 확인 API 호출: 전화번호=$phoneNumber, 인증코드=$verificationCode")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = ResetPasswordVerifyRequest(
+                    phonenumber = phoneNumber,
+                    verificationCode = verificationCode
+                )
+                
+                try {
+                    // 실제 API 호출
+                    val response = authApi.verifyResetPasswordCode(request)
+                    
+                    Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                    
+                    if (response.isSuccess) {
+                        Log.d(TAG, "인증 성공, 이메일: ${response.result.email}")
+                    }
+                    
+                    return@withContext response
+                } catch (e: retrofit2.HttpException) {
+                    Log.e(TAG, "HTTP 에러 발생: ${e.code()}", e)
+                    // HTTP 에러 발생 시 더 자세한 오류 정보 기록
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "에러 응답 바디: $errorBody")
+                    
+                    return@withContext ResetPasswordResponse(
+                        isSuccess = false,
+                        code = "ERROR_${e.code()}",
+                        message = "서버 오류: ${e.message()}",
+                        result = ResetPasswordResult(
+                            status = false,
+                            message = "인증번호 확인 중 오류가 발생했습니다 (HTTP ${e.code()})"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "비밀번호 찾기 인증번호 확인 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                ResetPasswordResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = ResetPasswordResult(
+                        status = false,
+                        message = "인증번호 확인 중 오류가 발생했습니다"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * 비밀번호 업데이트 (서버 API 연동)
+     */
+    suspend fun resetPassword(email: String, password: String): ResetPasswordResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "비밀번호 업데이트 API 호출: 이메일=$email")
+                
+                // POST 요청에 필요한 데이터 생성
+                val request = ResetPasswordUpdateRequest(
+                    email = email,
+                    password = password
+                )
+                
+                try {
+                    // 실제 API 호출
+                    val response = authApi.resetPassword(request)
+                    
+                    Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                    
+                    return@withContext response
+                } catch (e: retrofit2.HttpException) {
+                    Log.e(TAG, "HTTP 에러 발생: ${e.code()}", e)
+                    // HTTP 에러 발생 시 더 자세한 오류 정보 기록
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "에러 응답 바디: $errorBody")
+                    
+                    return@withContext ResetPasswordResponse(
+                        isSuccess = false,
+                        code = "ERROR_${e.code()}",
+                        message = "서버 오류: ${e.message()}",
+                        result = ResetPasswordResult(
+                            status = false,
+                            message = "비밀번호 업데이트 중 오류가 발생했습니다 (HTTP ${e.code()})"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "비밀번호 업데이트 API 오류: ${e.message}", e)
+                
+                // API 호출 실패 시 오류 응답 생성
+                ResetPasswordResponse(
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "서버 연결 오류: ${e.message}",
+                    result = ResetPasswordResult(
+                        status = false,
+                        message = "비밀번호 업데이트 중 오류가 발생했습니다"
                     )
                 )
             }
