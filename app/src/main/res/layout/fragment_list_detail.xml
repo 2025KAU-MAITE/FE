@@ -36,7 +36,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/maiteImg"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/maiteImg"
-        app:tint="#727272" />
+        app:tint="@color/gray" />
 
     <ImageView
         android:id="@+id/backBtn"
@@ -47,7 +47,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/maiteImg"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/maiteImg"
-        app:tint="#727272"/>
+        app:tint="@color/gray"/>
 
     <ImageView
         android:id="@+id/maiteImg"
