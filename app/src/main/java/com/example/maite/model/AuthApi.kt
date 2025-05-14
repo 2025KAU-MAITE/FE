@@ -35,6 +35,18 @@ interface AuthApi {
     @POST("auth/find-id/verify")
     suspend fun verifyFindId(@Body request: FindIdVerifyRequest): FindIdResponse
     
+    // ✅ 비밀번호 재설정 - 인증번호 발송 API (POST /auth/reset-password/send-code)
+    @POST("auth/reset-password/send-code")
+    suspend fun sendResetPasswordCode(@Body request: ResetPasswordSendRequest): SmsAuthResponse
+    
+    // ✅ 비밀번호 재설정 - 인증번호 확인 API (POST /auth/reset-password/verify)
+    @POST("auth/reset-password/verify")
+    suspend fun verifyResetPasswordCode(@Body request: ResetPasswordVerifyRequest): ResetPasswordResponse
+    
+    // ✅ 비밀번호 재설정 - 비밀번호 업데이트 API (POST /auth/reset-password)
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordUpdateRequest): ResetPasswordResponse
+    
     // ✅ 회원가입 API (POST /auth/signup)
     @POST("auth/signup")
     suspend fun signup(@Body request: SignupRequest): SignupResponse
