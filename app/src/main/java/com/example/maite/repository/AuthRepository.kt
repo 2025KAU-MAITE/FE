@@ -554,7 +554,7 @@ class AuthRepository(private val context: Context) {
                     Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
                     
                     if (response.isSuccess) {
-                        Log.d(TAG, "인증 성공, 이메일: ${response.result.email}")
+                        Log.d(TAG, "인증 성공, 이메일: ${response.getEmail()}")
                     }
                     
                     return@withContext response
@@ -609,7 +609,7 @@ class AuthRepository(private val context: Context) {
                     // 실제 API 호출
                     val response = authApi.resetPassword(request)
                     
-                    Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
+                    Log.d(TAG, "Reset password API response: isSuccess=${response.isSuccess}, message=${response.message}")
                     
                     return@withContext response
                 } catch (e: retrofit2.HttpException) {

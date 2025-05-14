@@ -83,21 +83,83 @@ class UpdatePasswordFragment : Fragment() {
     private fun updatePassword(newPassword: String) {
         // Get email from arguments bundle
         var email = arguments?.getString("email")
+        Log.d(TAG, "Arguments에서 가져온 이메일: '$email'")
         
         // If email is null or empty, try to get it from DataHolder as backup
         if (email.isNullOrEmpty()) {
             Log.w(TAG, "Email is null or empty in arguments, trying DataHolder...")
             email = com.example.maite.util.PasswordResetDataHolder.getEmail()
+            Log.d(TAG, "DataHolder에서 가져온 이메일: '$email'")
         }
         
         if (email.isNullOrEmpty()) {
             Log.e(TAG, "Email is null or empty in both arguments and DataHolder")
-            Toast.makeText(requireContext(), "이메일 정보가 없습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+            
+            // 추가적인 디버깅 정보
+            Log.e(TAG, "Arguments 번들 내용: ${arguments?.keySet()?.joinToString()}")
+            Log.e(TAG, "Arguments 번들 null 여부: ${arguments == null}")
+            
+            // 이메일 입력을 받는 대화상자 표시 (최후의 방법)
+            showEmailInputDialog(newPassword)
             return
         }
         
-        Log.d(TAG, "Resetting password for email: $email")
+        Log.d(TAG, "Resetting password for email: '$email'")
+        proceedWithPasswordReset(email, newPassword)
+    }
+
+    /**
+     * 비밀번호 유효성 검사
+     * 최소 6자
+     */
+    private fun isValidPassword(password: String): Boolean {
+        return password.length >= 6
+    }
+
+    /**
+     * 이메일 정보가 없을 때 사용자에게 직접 이메일을 입력받는 대화상자 표시
+     */
+    private fun showEmailInputDialog(newPassword: String) {
+        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        builder.setTitle("이메일 입력")
+        builder.setMessage("비밀번호 재설정을 위해 이메일을 입력해주세요.")
         
+        // 이메일 입력 필드 생성
+        val input = android.widget.EditText(requireContext())
+        input.inputType = android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        input.hint = "example@email.com"
+        builder.setView(input)
+        
+        // 확인 버튼 설정
+        builder.setPositiveButton("확인") { _, _ ->
+            val email = input.text.toString().trim()
+            if (email.isNotEmpty()) {
+                // 입력된 이메일로 비밀번호 재설정 API 호출
+                Log.d(TAG, "사용자가 입력한 이메일로 비밀번호 재설정 시도: '$email'")
+                
+                // DataHolder에도 저장
+                com.example.maite.util.PasswordResetDataHolder.setEmail(email)
+                
+                // 비밀번호 재설정 API 호출
+                proceedWithPasswordReset(email, newPassword)
+            } else {
+                Toast.makeText(requireContext(), "이메일을 입력해주세요.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        // 취소 버튼 설정
+        builder.setNegativeButton("취소") { dialog, _ ->
+            dialog.cancel()
+            Toast.makeText(requireContext(), "비밀번호 재설정이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+        
+        builder.show()
+    }
+    
+    /**
+     * 이메일과 비밀번호로 재설정 API 호출
+     */
+    private fun proceedWithPasswordReset(email: String, newPassword: String) {
         // Show loading state
         binding.progressBar.visibility = View.VISIBLE
         binding.btnUpdatePassword.isEnabled = false
@@ -140,14 +202,6 @@ class UpdatePasswordFragment : Fragment() {
         }
     }
 
-    /**
-     * 비밀번호 유효성 검사
-     * 최소 6자
-     */
-    private fun isValidPassword(password: String): Boolean {
-        return password.length >= 6
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -160,7 +214,19 @@ class UpdatePasswordFragment : Fragment() {
     }
 
     companion object {
+        private const val ARG_EMAIL = "email"
+        
         @JvmStatic
         fun newInstance() = UpdatePasswordFragment()
+        
+        @JvmStatic
+        fun newInstance(email: String): UpdatePasswordFragment {
+            val fragment = UpdatePasswordFragment()
+            val args = Bundle().apply {
+                putString(ARG_EMAIL, email)
+            }
+            fragment.arguments = args
+            return fragment
+        }
     }
 }

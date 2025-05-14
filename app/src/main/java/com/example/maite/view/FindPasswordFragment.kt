@@ -129,15 +129,24 @@ class FindPasswordFragment : Fragment() {
     }
     
     private fun navigateToUpdatePasswordFragment() {
-        val updatePasswordFragment = UpdatePasswordFragment.newInstance()
+        // 이메일이 null이 아닌지 한번 더 확인
+        if (verifiedEmail.isNullOrEmpty()) {
+            verifiedEmail = binding.etEmail.text.toString().trim()
+            Log.d(TAG, "Fragment 전환 전 이메일이 비어 있어 입력 이메일로 대체: '$verifiedEmail'")
+            // 백업용 DataHolder에도 저장
+            com.example.maite.util.PasswordResetDataHolder.setEmail(verifiedEmail)
+        }
         
-        // Pass the verified email to the UpdatePasswordFragment for password reset
-        val bundle = Bundle()
+        // 이메일을 직접 생성자에 전달하는 방식으로 Fragment 생성
+        val updatePasswordFragment = UpdatePasswordFragment.newInstance(verifiedEmail)
+        
+        // 추가적인 안전장치로 Bundle도 함께 설정
+        val bundle = updatePasswordFragment.arguments ?: Bundle()
         bundle.putString("email", verifiedEmail)
         updatePasswordFragment.arguments = bundle
         
-        Log.d(TAG, "Passing verified email to UpdatePasswordFragment: $verifiedEmail")
-        Log.d(TAG, "Also stored email in DataHolder: ${com.example.maite.util.PasswordResetDataHolder.getEmail()}")
+        Log.d(TAG, "Passing verified email to UpdatePasswordFragment: '$verifiedEmail'")
+        Log.d(TAG, "Also stored email in DataHolder: '${com.example.maite.util.PasswordResetDataHolder.getEmail()}'")
         
         if (activity is LoginActivity) {
             requireActivity().supportFragmentManager.beginTransaction()
@@ -254,10 +263,18 @@ class FindPasswordFragment : Fragment() {
                     isAuthVerified = true
                     
                     // Store the verified email
-                    verifiedEmail = response.result.email
+                    verifiedEmail = response.getEmail()
+                    Log.d(TAG, "서버에서 받은 이메일: '$verifiedEmail'")
+                    
+                    // 서버에서 받은 이메일이 비어있는 경우, 사용자가 입력한 이메일 사용
+                    if (verifiedEmail.isNullOrEmpty()) {
+                        verifiedEmail = binding.etEmail.text.toString().trim()
+                        Log.d(TAG, "서버에서 이메일이 비어있어 사용자 입력 이메일로 대체: '$verifiedEmail'")
+                    }
                     
                     // Also store email in the DataHolder for safety
                     com.example.maite.util.PasswordResetDataHolder.setEmail(verifiedEmail)
+                    Log.d(TAG, "DataHolder에 저장된 이메일: '${com.example.maite.util.PasswordResetDataHolder.getEmail()}'")
                     
                     // Navigate to the UpdatePasswordFragment
                     navigateToUpdatePasswordFragment()

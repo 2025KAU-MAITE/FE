@@ -24,8 +24,27 @@ data class ResetPasswordResponse(
     val isSuccess: Boolean,
     val code: String,
     val message: String,
-    val result: ResetPasswordResult
-)
+    val result: Any // Can be a String or a ResetPasswordResult object
+) {
+    // Helper method to get email safely
+    fun getEmail(): String {
+        return when (result) {
+            is ResetPasswordResult -> result.email
+            is Map<*,*> -> (result as? Map<*,*>)?.get("email") as? String ?: ""
+            else -> ""
+        }
+    }
+    
+    // Helper method to get status safely
+    fun getStatus(): Boolean {
+        return when (result) {
+            is ResetPasswordResult -> result.status
+            is Map<*,*> -> (result as? Map<*,*>)?.get("status") as? Boolean ?: false
+            is String -> true // If result is a string, assume status is true
+            else -> false
+        }
+    }
+}
 
 data class ResetPasswordResult(
     val status: Boolean = false,
