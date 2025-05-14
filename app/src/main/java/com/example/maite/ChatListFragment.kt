@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.databinding.FragmentChatListBinding
 import com.example.maite.model.ChatListRepository
 import com.example.maite.view.ChatListAdapter
+import com.example.maite.view.ChatRoomFragment
 import com.example.maite.viewmodel.ChatListViewModel
 import com.example.maite.viewmodel.ChatListViewModelFactory
 
@@ -50,14 +51,11 @@ class ChatListFragment : Fragment() {
     private fun setupUI() {
         // 어댑터 초기화
         chatAdapter = ChatListAdapter { chatItem ->
-            // 채팅방 클릭 처리
-            val message = if (chatItem.isGroup) {
-                "${chatItem.name} 단체 채팅방으로 이동합니다"
-            } else {
-                "${chatItem.name}님과의 채팅방으로 이동합니다"
-            }
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-            // TODO: 채팅방 화면으로 이동 구현
+            val chatRoomFragment = ChatRoomFragment.newInstance(chatItem.id)
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, chatRoomFragment, ChatRoomFragment.TAG)
+                .addToBackStack(null)
+                .commit()
         }
 
         // RecyclerView 설정
