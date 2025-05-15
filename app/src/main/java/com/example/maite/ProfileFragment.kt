@@ -21,6 +21,8 @@ import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
 import android.util.Log
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 
 class ProfileFragment : Fragment() {
@@ -53,7 +55,9 @@ class ProfileFragment : Fragment() {
         if (userId != null) {
             // 서버에서 시간표 불러오기
             Log.d("ProfileFragment", "Loading timetable for userId: $userId")
-            viewModel.loadTimetableFromServer(userId)
+            lifecycleScope.launch {
+                viewModel.loadTimetableFromServer(userId)
+            }
             // 사용자 정보 불러오기
             viewModel.loadUserInfo(userId)
         } else {
@@ -104,7 +108,9 @@ class ProfileFragment : Fragment() {
         val userId = preferencesUtil.getUserId()
         if (userId != null) {
             Log.d("ProfileFragment", "onResume: Loading timetable for userId: $userId")
-            viewModel.loadTimetableFromServer(userId)
+            lifecycleScope.launch {
+                viewModel.loadTimetableFromServer(userId)
+            }
         }
     }
 

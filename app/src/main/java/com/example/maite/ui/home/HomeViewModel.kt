@@ -54,17 +54,28 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
         // 시간표 데이터 가져오기
         TimetableDataHolder.timetableEntries
             .onEach { entries ->
+                Log.d(TAG, "TimetableDataHolder Flow에서 시간표 갱신: ${entries.size}개 항목")
                 _timetableEntries.postValue(entries)
             }
             .launchIn(viewModelScope)
         
-        // 현재 TimetableDataHolder에 한 값이 있으면 즉시 반영
-        _timetableEntries.postValue(TimetableDataHolder.timetableEntries.value)
+        // 현재 TimetableDataHolder에 값이 있으면 즉시 반영
+        val currentEntries = TimetableDataHolder.timetableEntries.value
+        Log.d(TAG, "init: TimetableDataHolder에서 초기 시간표 데이터 가져옴 (${currentEntries.size}개 항목)")
+        _timetableEntries.postValue(currentEntries)
         
-        // 제안 데이터를 서버에서 가져오기
-        if (proposalRepository != null) {
-            loadProposals()
-            loadNearestMeeting()
+        // 시간표가 비어 있을 경우 새로 불러오는 시도
+        viewModelScope.launch {
+            // DataHolder에 시간표 데이터가 없는 경우 - 로그 추가
+            if (currentEntries.isEmpty()) {
+                Log.d(TAG, "TimetableDataHolder가 비어있음. ProfileViewModel에서 시간표 갱신 기다림")
+            }
+            
+            // 기타 데이터 초기화
+            if (proposalRepository != null) {
+                loadProposals()
+                loadNearestMeeting()
+            }
         }
     }
 
