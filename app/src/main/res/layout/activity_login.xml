@@ -8,8 +8,9 @@
     android:foregroundTint="@color/mainColor"
     tools:context=".view.LoginActivity">
 
-    <!-- Border around the entire layout as seen in the second image -->
+    <!-- UI 컨테이너 - 일반 로그인 화면 -->
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/loginUIContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_margin="1dp"
@@ -196,8 +197,27 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/btnGoogleLogin" />
 
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Purple border as seen in the second image -->
+    <!-- FrameLayout for fragments - 최상단에 배치 -->
+    <FrameLayout
+        android:id="@+id/login_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

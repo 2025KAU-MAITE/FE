@@ -41,8 +41,8 @@ class SignupFragment : Fragment() {
         
         // Set up back button click listener
         binding.btnBack.setOnClickListener {
-            // Navigate back to previous screen
-            requireActivity().supportFragmentManager.popBackStack()
+            // Navigate back using the activity's onBackPressed
+            requireActivity().onBackPressedDispatcher.onBackPressed()
         }
         
         // Set up duplicate check button click listener

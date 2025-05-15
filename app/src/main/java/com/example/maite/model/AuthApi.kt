@@ -4,6 +4,8 @@ import com.example.maite.model.EmailCheckResponse
 import com.example.maite.model.SmsAuthResponse
 import com.example.maite.model.SmsAuthSendRequest
 import com.example.maite.model.SmsAuthVerifyRequest
+import com.example.maite.model.GoogleLoginRequest
+import com.example.maite.model.GoogleLoginResponse
 import com.example.maite.UserInfoResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -25,6 +27,26 @@ interface AuthApi {
     @POST("auth/signup/verify-code")
     suspend fun verifySmsAuth(@Body request: SmsAuthVerifyRequest): SmsAuthResponse
     
+    // ✅ 아이디 찾기 - 인증번호 발송 API (POST /auth/find-id/send-code)
+    @POST("auth/find-id/send-code")
+    suspend fun sendFindIdSmsAuth(@Body request: FindIdSendRequest): SmsAuthResponse
+    
+    // ✅ 아이디 찾기 - 인증번호 확인 API (POST /auth/find-id/verify)
+    @POST("auth/find-id/verify")
+    suspend fun verifyFindId(@Body request: FindIdVerifyRequest): FindIdResponse
+    
+    // ✅ 비밀번호 재설정 - 인증번호 발송 API (POST /auth/reset-password/send-code)
+    @POST("auth/reset-password/send-code")
+    suspend fun sendResetPasswordCode(@Body request: ResetPasswordSendRequest): SmsAuthResponse
+    
+    // ✅ 비밀번호 재설정 - 인증번호 확인 API (POST /auth/reset-password/verify)
+    @POST("auth/reset-password/verify")
+    suspend fun verifyResetPasswordCode(@Body request: ResetPasswordVerifyRequest): ResetPasswordResponse
+    
+    // ✅ 비밀번호 재설정 - 비밀번호 업데이트 API (POST /auth/reset-password)
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordUpdateRequest): ResetPasswordResponse
+    
     // ✅ 회원가입 API (POST /auth/signup)
     @POST("auth/signup")
     suspend fun signup(@Body request: SignupRequest): SignupResponse
@@ -32,6 +54,14 @@ interface AuthApi {
     // ✅ 로그인 API (POST /auth/login)
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
+
+    // ✅ Google 로그인 API (POST /auth/google)
+    @POST("auth/google")
+    suspend fun googleLogin(@Body request: GoogleLoginRequest): GoogleLoginResponse
+
+    // ✅ 소셜 로그인 회원가입 API (POST /auth/complete-social-signup)
+    @POST("auth/complete-social-signup")
+    suspend fun completeSocialSignup(@Body request: SocialSignupRequest): SocialSignupResponse
 
     @GET("auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserInfoResponse
