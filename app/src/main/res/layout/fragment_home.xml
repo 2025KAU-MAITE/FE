@@ -28,17 +28,44 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/maite" />
 
-    <ImageView
-        android:id="@+id/iv_notification"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+    <!-- 알림 아이콘과 배지 그룹 -->
+    <FrameLayout
+        android:id="@+id/notificationContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:contentDescription="알림"
-        android:src="@drawable/ic_notification"
         app:layout_constraintBottom_toBottomOf="@+id/iv_chat"
         app:layout_constraintEnd_toStartOf="@+id/iv_chat"
-        app:layout_constraintTop_toTopOf="@+id/iv_chat"
-        app:tint="#727272" />
+        app:layout_constraintTop_toTopOf="@+id/iv_chat">
+
+        <ImageView
+            android:id="@+id/iv_notification"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="알림"
+            android:src="@drawable/ic_notification"
+            app:tint="#727272" />
+
+        <!-- 알림 배지 -->
+        <TextView
+            android:id="@+id/notification_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="16dp"
+            android:minWidth="16dp"
+            android:minHeight="16dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginBottom="0dp"
+            android:layout_marginEnd="0dp"
+            android:background="@drawable/bg_notification_badge"
+            android:gravity="center"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false"
+            android:paddingHorizontal="4dp"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <ScrollView
         android:id="@+id/scrollView2"

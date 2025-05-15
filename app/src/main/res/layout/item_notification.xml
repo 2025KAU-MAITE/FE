@@ -2,26 +2,85 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="12dp"
-    android:background="@android:color/white">
+    android:orientation="vertical"
+    android:paddingVertical="8dp">
 
-    <ImageView
-        android:id="@+id/img_profile"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_launcher_foreground"
-        android:scaleType="centerCrop"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/bg_circle"
-        android:contentDescription="프로필 이미지" />
-
-    <TextView
-        android:id="@+id/tv_message"
-        android:layout_width="0dp"
+    <!-- 메인 알림 컨텐츠 -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="알림 내용"
-        android:textSize="14sp"
-        android:textColor="#000000" />
+        android:orientation="horizontal"
+        android:paddingVertical="8dp">
+
+        <ImageView
+            android:id="@+id/img_profile"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_launcher_foreground"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_circle"
+            android:contentDescription="프로필 이미지" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_sender_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="킴정훈의 MAITE"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black" />
+
+            <TextView
+                android:id="@+id/tv_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="킴정훈의 MAITE에서 제안을 받았어요."
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 버튼 영역 (수락/거절) -->
+    <LinearLayout
+        android:id="@+id/buttons_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_accept"
+            style="@style/NotificationButton"
+            android:layout_width="72dp"
+            android:layout_height="36dp"
+            android:backgroundTint="#6B8AED"
+            android:text="수락"
+            android:textColor="@android:color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_decline"
+            style="@style/NotificationButton" 
+            android:layout_width="72dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="12dp"
+            android:backgroundTint="#EEEEEE"
+            android:text="거절"
+            android:textColor="#757575" />
+
+    </LinearLayout>
+
 </LinearLayout>

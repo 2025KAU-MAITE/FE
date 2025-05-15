@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <FrameLayout
-        android:id="@+id/notificationContainer"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#80000000"> <!-- 홈화면 어두워짐 -->
+        android:layout_height="match_parent">
+
+        <!-- 딤 배경 -->
+        <View
+            android:id="@+id/dimBackground"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#66000000"
+            android:alpha="0" />
 
         <LinearLayout
             android:id="@+id/notificationPanel"
@@ -14,40 +21,141 @@
             android:layout_height="match_parent"
             android:layout_gravity="end"
             android:orientation="vertical"
-            android:background="@android:color/white"
-            android:elevation="8dp"
-            android:padding="16dp">
+            android:background="@android:color/white">
 
-            <!-- 닫기 버튼 -->
-            <ImageButton
-                android:id="@+id/btn_close"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="end"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="닫기"
-                app:srcCompat="@drawable/ic_close"
-                app:tint="@android:color/darker_gray" />
-
-            <!-- 제목 -->
-            <TextView
-                android:id="@+id/tv_title"
-                android:layout_width="wrap_content"
+            <!-- 헤더 영역 -->
+            <RelativeLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="내 알림"
-                android:textSize="18sp"
-                android:textStyle="bold"
+                android:layout_marginTop="0dp"
                 android:paddingTop="8dp"
-                android:paddingBottom="16dp" />
+                android:paddingBottom="12dp"
+                android:paddingHorizontal="16dp">
 
-            <!-- 알림 목록 (RecyclerView) -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_notifications"
+                <TextView
+                    android:id="@+id/tv_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="내 알림"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_centerVertical="true"
+                    android:textColor="@android:color/black"
+                    android:includeFontPadding="true"
+                    android:lineHeight="24sp" />
+
+                <ImageButton
+                    android:id="@+id/btn_close"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="닫기"
+                    app:srcCompat="@drawable/ic_close"
+                    app:tint="@android:color/darker_gray" />
+
+            </RelativeLayout>
+
+            <!-- 알림 컨텐츠 스크롤뷰 -->
+            <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:scrollbars="vertical"
-                android:importantForAccessibility="no" />
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- 로딩 프로그레스바 -->
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="32dp"
+                        android:visibility="gone" />
+
+                    <!-- 받은 초대 섹션 -->
+                    <LinearLayout
+                        android:id="@+id/section_invites"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="받은 초대"
+                            android:textSize="14sp"
+                            android:textColor="#666666"
+                            android:layout_marginBottom="8dp"
+                            android:paddingHorizontal="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E0E0E0"
+                            android:layout_marginBottom="16dp" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_invites"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="16dp"
+                            tools:listitem="@layout/item_notification" />
+
+                    </LinearLayout>
+
+                    <!-- 약속 제안 섹션 -->
+                    <LinearLayout
+                        android:id="@+id/section_proposals"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="24dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="약속 제안"
+                            android:textSize="14sp"
+                            android:textColor="#666666"
+                            android:layout_marginBottom="8dp"
+                            android:paddingHorizontal="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E0E0E0"
+                            android:layout_marginBottom="16dp" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_proposals"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="16dp"
+                            tools:listitem="@layout/item_notification" />
+
+                    </LinearLayout>
+
+                    <!-- 알림이 없을 때 메시지 -->
+                    <TextView
+                        android:id="@+id/tv_no_notifications"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="새로운 알림이 없습니다."
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="16sp"
+                        android:layout_marginTop="100dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+            </ScrollView>
 
         </LinearLayout>
 
