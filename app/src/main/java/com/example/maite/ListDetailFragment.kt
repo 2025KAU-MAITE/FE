@@ -40,32 +40,15 @@ class ListDetailFragment : Fragment() {
 
     private val weekDays = arrayOf("", "월", "화", "수", "목", "금", "토", "일")
     private val timeSlots = Array(25) { String.format("%02d", it) } // 00 ~ 24
-    private val classes = listOf(
-        TimetableItem(10, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 10시
-        TimetableItem(11, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 11시
-        TimetableItem(12, 2, "머신러닝", Color.parseColor("#4C7EED")), // 화 12시
-
-        TimetableItem(15, 2, "컴네", Color.parseColor("#4C7EED")), // 화 15시
-        TimetableItem(16, 2, "컴네", Color.parseColor("#4C7EED")), // 화 16시
-
-        TimetableItem(10, 3, "딥러닝", Color.parseColor("#4C7EED")), // 수 10시
-        TimetableItem(11, 3, "딥러닝", Color.parseColor("#4C7EED")), // 수 11시
-        TimetableItem(12, 3, "딥러닝", Color.parseColor("#4C7EED")), // 수 12시
-
-        TimetableItem(15, 3, "산학", Color.parseColor("#4C7EED")), // 수 15시
-        TimetableItem(16, 3, "산학", Color.parseColor("#4C7EED")), // 수 16시
-        TimetableItem(17, 3, "산학", Color.parseColor("#4C7EED")), // 수 17시
-
-        TimetableItem(13, 7, "알바", Color.parseColor("#4C7EED")), // 일 13시
-        TimetableItem(14, 7, "알바", Color.parseColor("#4C7EED")), // 일 14시
-        TimetableItem(15, 7, "알바", Color.parseColor("#4C7EED")), // 일 15시
-        TimetableItem(16, 7, "알바", Color.parseColor("#4C7EED")), // 일 16시
-        TimetableItem(17, 7, "알바", Color.parseColor("#4C7EED")), // 일 17시
+    private var classes = listOf<TimetableItem>(
+        // 기존 하드코딩된 데이터는 API 응답으로 대체됨
     )
 
     private lateinit var availableDaysOfWeek: Set<Int>
 
     private var participantEmails: List<String> = emptyList()
+
+    private var userEmail: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -152,6 +135,7 @@ class ListDetailFragment : Fragment() {
 
             // UI 업데이트
             updateParticipantProfiles()
+
         }
 
         binding.timetableLayout.setOnClickListener {
@@ -176,6 +160,99 @@ class ListDetailFragment : Fragment() {
         }
 
         createTimetable()
+        loadTimetableData()
+    }
+
+    private fun loadTimetableData() {
+        // 참가자 이메일이 없으면 기본 시간표 생성
+        if (participantEmails.isEmpty()) {
+            Log.d("ListDetailFragment", "참가자가 없습니다. 기본 시간표를 사용합니다.")
+            return
+        }
+
+        // 모든 참가자의 시간표 데이터를 로드
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val allUsersBusyHours = mutableListOf<Map<Int, Set<Int>>>()
+
+                // 각 참가자에 대한 API 호출 수행
+                for (email in participantEmails) {
+                    Log.d("ListDetailFragment", "사용자 $email 시간표 데이터 로드 중...")
+
+                    try {
+                        val response = withContext(Dispatchers.IO) {
+                            apiService.getTimetableByEmail(email)
+                        }
+
+                        if (response.isSuccessful && response.body()?.isSuccess == true) {
+                            val timetableResponse = response.body()!!
+
+                            // API 응답 내용 로깅
+                            Log.d("ListDetailFragment", "사용자 $email 이벤트 수: ${timetableResponse.result.events.size}")
+
+                            // 사용자의 바쁜 시간 맵 생성 및 리스트에 추가
+                            val userBusyHours = RoomTimetableUtils.convertToUserBusyHours(timetableResponse)
+                            allUsersBusyHours.add(userBusyHours)
+
+                            Log.d("ListDetailFragment", "사용자 $email 시간표 로드 성공")
+                        } else {
+                            // 에러 처리
+                            val errorBody = response.errorBody()?.string() ?: "알 수 없는 오류"
+                            Log.e("ListDetailFragment", "사용자 $email 시간표 로드 실패: $errorBody")
+
+                            // 에러가 발생해도 계속 진행 (다른 사용자 데이터는 사용)
+                            // 토스트 메시지는 한 번만 표시하기 위해 여기서는 생략
+                        }
+                    } catch (e: Exception) {
+                        Log.e("ListDetailFragment", "사용자 $email 시간표 로드 중 오류 발생", e)
+                        // 예외가 발생해도 계속 진행
+                    }
+                }
+
+                // 모든 사용자의 바쁜 시간 병합
+                val combinedBusyHours = RoomTimetableUtils.combineAllUserBusyHours(allUsersBusyHours)
+
+                // 병합된 바쁜 시간을 기반으로 모두가 비는 시간 찾기
+                val freeTimeColor = Color.parseColor("#4C7EED")
+                val newClasses = RoomTimetableUtils.convertCombinedBusyHoursToFreeTimetableItems(
+                    combinedBusyHours,
+                    freeTimeColor
+                )
+
+                // UI 업데이트는 메인 스레드에서 실행
+                withContext(Dispatchers.Main) {
+                    // 로그 추가
+                    Log.d("ListDetailFragment", "모든 참가자(${participantEmails.size}명)의 시간표 병합 완료")
+                    Log.d("ListDetailFragment", "모두가 비는 시간: ${newClasses.size}개 항목")
+
+                    // 기존 classes 데이터 대체
+                    classes = newClasses
+
+                    // 사용 가능한 요일 업데이트
+                    availableDaysOfWeek = classes.map { it.dayOfWeek }.toSet()
+                    Log.d("ListDetailFragment", "사용 가능한 요일: $availableDaysOfWeek")
+
+                    // ViewModel 업데이트
+                    sharedViewModel.setTimetableData(classes)
+
+                    // 시간표 UI 다시 그리기
+                    createTimetable()
+
+                    // 추가 로그
+                    Log.d("ListDetailFragment", "시간표 UI 업데이트 완료")
+
+                    // 모든 참가자의 시간표를 로드했다는 메시지
+                    Toast.makeText(
+                        requireContext(),
+                        "${participantEmails.size}명의 참가자 시간표를 분석하여 모두 비는 시간을 찾았습니다.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "시간표 데이터 로드 중 오류 발생", e)
+                Toast.makeText(requireContext(), "시간표 로드 중 오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun inviteNewUsers(roomId: Long, emails: List<String>) {
@@ -275,7 +352,6 @@ class ListDetailFragment : Fragment() {
         }
     }
 
-    // 시간표 생성 함수 (수정됨: 동적 시간 범위)
     private fun createTimetable() {
         val tableLayout = binding.root.findViewById<TableLayout>(R.id.timetableLayout)
         tableLayout.removeAllViews() // 기존 뷰 제거
@@ -309,6 +385,7 @@ class ListDetailFragment : Fragment() {
             setPadding(4, 8, 4, 8)
         }
         headerRow.addView(timeHeaderCell)
+
         for (i in 1 until weekDays.size) {
             val dayHeaderCell = TextView(context).apply {
                 text = weekDays[i]
@@ -322,47 +399,100 @@ class ListDetailFragment : Fragment() {
         }
         tableLayout.addView(headerRow)
 
-        // 시간대별 행 추가 (minTime부터 maxTime까지)
+        // 연속된 시간대 찾기
+        val timeRanges = findConsecutiveTimeRanges(minTime, maxTime)
+
+        // 각 시간 범위별 행 추가
         val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
-        for (time in minTime..maxTime) {
+        for (range in timeRanges) {
             val row = TableRow(context)
-            val rowParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, cellHeight)
+            val rowParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT)
             row.layoutParams = rowParams
 
-            // 시간 셀 추가
+            // 시간 범위 셀 추가
+            val timeRangeText = if (range.first == range.second) {
+                timeSlots.getOrNull(range.first) ?: ""
+            } else {
+                "${timeSlots.getOrNull(range.first) ?: ""}\n~\n${timeSlots.getOrNull(range.second) ?: ""}"
+            }
+
             val timeCell = TextView(context).apply {
-                text = timeSlots.getOrNull(time) ?: ""
+                text = timeRangeText
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setBackgroundColor(Color.WHITE)
-                setPadding(4, 4, 4, 4)
-                layoutParams = TableRow.LayoutParams(timeColumnWidth, TableRow.LayoutParams.MATCH_PARENT)
+                setPadding(4, 8, 4, 8)
+                layoutParams = TableRow.LayoutParams(timeColumnWidth, TableRow.LayoutParams.WRAP_CONTENT)
             }
             row.addView(timeCell)
 
             // 요일별 셀 추가
             for (day in 1 until weekDays.size) {
-                val classItem = classes.find { it.timeSlot == time && it.dayOfWeek == day }
                 val containerView = LinearLayout(context).apply {
                     layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.MATCH_PARENT, 1f)
                     gravity = Gravity.CENTER
                     setBackgroundResource(R.drawable.timetable_cell_border)
                     orientation = LinearLayout.VERTICAL
-                    minimumHeight = cellHeight
+                    val heightFactor = range.second - range.first + 1
+                    minimumHeight = cellHeight * (if (heightFactor > 1) 2 else 1) // 범위가 넓을수록 높이 증가
                 }
 
-                if (classItem != null) {
-                    containerView.setBackgroundColor(classItem.color)
-                    containerView.setOnLongClickListener {
-                        Toast.makeText(context, classItem.className, Toast.LENGTH_SHORT).show()
-                        true
+                // 이 범위의 시간대에 대해 클래스 찾기
+                var hasClass = false
+                for (hour in range.first..range.second) {
+                    val classItem = classes.find { it.timeSlot == hour && it.dayOfWeek == day }
+                    if (classItem != null) {
+                        containerView.setBackgroundColor(classItem.color)
+                        containerView.setOnLongClickListener {
+                            Toast.makeText(context, classItem.className, Toast.LENGTH_SHORT).show()
+                            true
+                        }
+                        hasClass = true
+                        break // 이 범위에 하나라도 클래스가 있으면 색상 적용하고 중단
                     }
                 }
+
                 row.addView(containerView)
             }
+
             tableLayout.addView(row)
         }
     }
+
+    // 연속된 시간대를 찾는 함수
+    private fun findConsecutiveTimeRanges(minTime: Int, maxTime: Int): List<Pair<Int, Int>> {
+        val ranges = mutableListOf<Pair<Int, Int>>()
+
+        // 시간대별로 모든 요일에 대한 클래스 상태 맵 생성
+        val timeStatusMap = mutableMapOf<Int, MutableMap<Int, Boolean>>()
+        for (time in minTime..maxTime) {
+            timeStatusMap[time] = mutableMapOf()
+            for (day in 1..7) {
+                timeStatusMap[time]!![day] = classes.any { it.timeSlot == time && it.dayOfWeek == day }
+            }
+        }
+
+        // 패턴이 동일한 연속된 시간 범위 찾기
+        var rangeStart = minTime
+        var currentPattern = timeStatusMap[minTime]
+
+        for (time in minTime + 1..maxTime + 1) { // maxTime + 1까지 검사하여 마지막 범위도 처리
+            val nextPattern = if (time <= maxTime) timeStatusMap[time] else null
+
+            // 패턴이 바뀌었거나 마지막 시간에 도달한 경우
+            if (nextPattern != currentPattern) {
+                ranges.add(Pair(rangeStart, time - 1))
+
+                if (time <= maxTime) {
+                    rangeStart = time
+                    currentPattern = nextPattern
+                }
+            }
+        }
+
+        return ranges
+    }
+
 
     // 텍스트 너비 계산 함수
     private fun calculateTextWidth(text: String): Int {
@@ -389,6 +519,13 @@ class ListDetailFragment : Fragment() {
         val timeSlot: Int,   // 시간대 인덱스 (0~23)
         val dayOfWeek: Int,  // 요일 인덱스 (1: 월, ..., 7: 일)
         val className: String,
+        val color: Int
+    )
+
+    data class TimeRange(
+        val startTime: Int,
+        val endTime: Int,
+        val dayOfWeek: Int,
         val color: Int
     )
 

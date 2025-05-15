@@ -40,4 +40,7 @@ interface MaiteApiService {
         @Path("roomId") roomId: Long,
         @Body request: InviteUserRequest
     ): Response<ResponseBody>
+
+    @GET("/api/timetables/users/{userEmail}")
+    suspend fun getTimetableByEmail(@Path("userEmail") userEmail: String): Response<RoomTimetableResponse>
 }
