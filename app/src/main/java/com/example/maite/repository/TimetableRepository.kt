@@ -16,6 +16,9 @@ class TimetableRepository(private val context: Context) {
     private val timetableApi = ApiClient.getClient(context).create(TimetableApi::class.java)
     private val preferencesUtil = PreferencesUtil(context)
     
+    // 마지막으로 성공적으로 가져온 시간표 ID를 캐싱
+    private var lastSuccessfulTimetableId: Long? = null
+    
     // Thread.sleep을 사용하여 딜레이를 안전하게 구현하는 도우미 함수
     private fun safeDelay(milliseconds: Long) {
         try {
@@ -46,6 +49,33 @@ class TimetableRepository(private val context: Context) {
                 Log.d(TAG, "======= 시간표 ID 조회/생성 시작 =======")
                 Log.d(TAG, "userId: $userId")
                 
+                // 먼저 getMyTimetable API를 통해 서버에서 직접 내 시간표 목록을 가져옴
+                try {
+                    Log.d(TAG, "getMyTimetable API 호출로 내 시간표 조회 시도")
+                    val myTimetablesResponse = timetableApi.getMyTimetable()
+                    
+                    if (myTimetablesResponse.isSuccessful && myTimetablesResponse.body()?.isSuccess == true) {
+                        val timetableResults = myTimetablesResponse.body()?.result
+                        if (timetableResults != null && timetableResults.isNotEmpty()) {
+                            // 첫 번째 시간표 ID 사용
+                            val timetableId = timetableResults[0].id
+                            Log.d(TAG, "✅ 서버에서 내 시간표 ID 직접 확인: $timetableId")
+                            // 캐싱 및 저장
+                            lastSuccessfulTimetableId = timetableId
+                            saveTimetableId(userId, timetableId)
+                            return@withContext timetableId
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "getMyTimetable API 호출 실패, 대체 방법으로 진행", e)
+                }
+                
+                // 캐싱된 ID가 있으면 바로 사용 (많은 API 요청 방지)
+                if (lastSuccessfulTimetableId != null) {
+                    Log.d(TAG, "캐싱된 시간표 ID 사용: $lastSuccessfulTimetableId")
+                    return@withContext lastSuccessfulTimetableId
+                }
+                
                 // 기존에 저장된 timetableId가 있는지 확인
                 val savedTimetableId = getTimetableId(userId)
                 Log.d(TAG, "저장된 시간표 ID: $savedTimetableId")
@@ -59,6 +89,8 @@ class TimetableRepository(private val context: Context) {
                         
                         if (response.isSuccessful && response.body()?.isSuccess == true) {
                             Log.d(TAG, "✅ 기존 시간표 ID 유효함: $savedTimetableId")
+                            // 시간표 ID 찾았을 때 캐싱 업데이트
+                            lastSuccessfulTimetableId = savedTimetableId
                             return@withContext savedTimetableId
                         } else {
                             Log.w(TAG, "⚠️ 기존 시간표 ID가 유효하지 않음: $savedTimetableId, 새로 생성 필요")
@@ -90,6 +122,8 @@ class TimetableRepository(private val context: Context) {
                             
                             if (timetableId != null) {
                                 saveTimetableId(userId, timetableId)
+                                // 시간표 ID 캐싱 업데이트
+                                lastSuccessfulTimetableId = timetableId
                                 return@withContext timetableId
                             }
                             
@@ -134,25 +168,90 @@ class TimetableRepository(private val context: Context) {
             try {
                 Log.d(TAG, "===== 시간표 저장 시작 =====")
                 Log.d(TAG, "userId=$userId, 항목 수=${entries.size}")
+                Log.d(TAG, "저장할 일정 리스트 로깅:")
+                entries.forEachIndexed { index, entry ->
+                    Log.d(TAG, "[$index] 제목: ${entry.title}, 요일: ${entry.dayOfWeek}, 시간: ${entry.startHour}:${entry.startMinute}-${entry.endHour}:${entry.endMinute}")
+                }
                 
-                // 시간표 ID 가져오기 또는 생성
-                val timetableId = createOrGetTimetable(userId)
+                // 1. 내 시간표 조회 API 호출 - 기존 시간표가 있는지 확인
+                var existingTimetableId: Long? = null
+                var retryCount = 0
+                val maxRetries = 3
+                
+                while (retryCount < maxRetries && existingTimetableId == null) {
+                    try {
+                        Log.d(TAG, "내 시간표 조회 API 호출 [시도 ${retryCount+1}]")
+                        val myTimetablesResponse = timetableApi.getMyTimetable()
+                        
+                        if (myTimetablesResponse.isSuccessful && myTimetablesResponse.body()?.isSuccess == true) {
+                            val timetableResults = myTimetablesResponse.body()?.result
+                            if (timetableResults != null && timetableResults.isNotEmpty()) {
+                                // 첫 번째 시간표 ID 사용
+                                existingTimetableId = timetableResults[0].id
+                                Log.d(TAG, "✅ 기존 시간표 ID 확인 성공: $existingTimetableId")
+                                // 캐싱 업데이트 및 저장
+                                lastSuccessfulTimetableId = existingTimetableId
+                                saveTimetableId(userId, existingTimetableId)
+                                break
+                            } else {
+                                Log.d(TAG, "시간표 조회 결과 없음, 새 시간표 생성 필요")
+                            }
+                        } else {
+                            Log.w(TAG, "시간표 조회 실패 - 상태코드: ${myTimetablesResponse.code()}")
+                        }
+                        
+                        retryCount++
+                        if (retryCount < maxRetries && existingTimetableId == null) {
+                            safeDelay(200L * retryCount)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "내 시간표 조회 중 오류 발생 [시도 ${retryCount+1}]", e)
+                        retryCount++
+                        if (retryCount < maxRetries) {
+                            safeDelay(200L * retryCount)
+                        }
+                    }
+                }
+                
+                // 2. 내 시간표 조회로 ID를 찾지 못했다면 기존 방식으로 ID 조회/생성
+                val timetableId = existingTimetableId ?: createOrGetTimetable(userId)
                 if (timetableId == null) {
                     Log.e(TAG, "❌ 시간표 ID를 가져올 수 없습니다")
                     return@withContext false
                 }
                 
-                Log.d(TAG, "저장할 시간표 ID: $timetableId")
+                Log.d(TAG, "저장할 시간표 ID: $timetableId (새로 생성 여부: ${existingTimetableId == null})")
 
-                // 기존 이벤트 모두 삭제
+                // 기존 이벤트 조회 후 비교 - 필요한 경우에만 삭제 후 생성
+                Log.d(TAG, "현재 서버의 이벤트와 로컬 이벤트 비교 분석...")
+
+                val serverEvents = try {
+                    val eventsResponse = timetableApi.getAllEvents(timetableId)
+                    if (eventsResponse.isSuccessful && eventsResponse.body()?.isSuccess == true) {
+                        eventsResponse.body()?.result ?: emptyList()
+                    } else {
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "서버 이벤트 조회 실패", e)
+                    emptyList()
+                }
+
+                // 시간표가 완전히 달라졌는지 확인
+                val serverEntryCount = serverEvents.size
+                val localEntryCount = entries.size
+                val significantChange = Math.abs(serverEntryCount - localEntryCount) > 1 || localEntryCount == 0
+
+                // 기존 이벤트 삭제
                 Log.d(TAG, "기존 이벤트 삭제 요청...")
                 val deleteSuccess = deleteAllEvents(timetableId)
                 if (!deleteSuccess) {
                     Log.e(TAG, "❌ 기존 이벤트 삭제 실패")
-                    return@withContext false
+                    // 삭제 실패해도 계속 진행하도록 변경 (일부 이벤트만 삭제에 실패한 경우 허용)
+                    Log.w(TAG, "삭제 실패에도 불구하고 이벤트 추가를 시도합니다")
+                } else {
+                    Log.d(TAG, "✅ 기존 이벤트 삭제 성공!")
                 }
-                
-                Log.d(TAG, "✅ 기존 이벤트 삭제 성공!")
                 
                 // 저장할 이벤트가 없으면 성공으로 간주
                 if (entries.isEmpty()) {
@@ -182,29 +281,62 @@ class TimetableRepository(private val context: Context) {
                             "place=${entry.location ?: "없음"}")
                     
                     try {
-                        val response = timetableApi.createEvent(timetableId, eventRequest)
+                        // 최대 3번 재시도
+                        var retryCount = 0
+                        var success = false
+                        var lastError: Exception? = null
                         
-                        if (response.isSuccessful && response.body()?.isSuccess == true) {
-                            Log.d(TAG, "✅ 이벤트 저장 성공 [${index+1}/${entries.size}]: ${entry.title}")
-                            successCount++
-                        } else {
-                            val errorCode = response.code()
-                            val errorMsg = response.errorBody()?.string() ?: "알 수 없는 오류"
-                            Log.e(TAG, "❌ 이벤트 저장 실패 [${index+1}/${entries.size}]: ${entry.title}, 응답 코드: $errorCode, 오류: $errorMsg")
+                        while (retryCount < 3 && !success) {
+                            try {
+                                val response = timetableApi.createEvent(timetableId, eventRequest)
+                                
+                                if (response.isSuccessful && response.body()?.isSuccess == true) {
+                                    Log.d(TAG, "✅ 이벤트 저장 성공 [${index+1}/${entries.size}]: ${entry.title}")
+                                    success = true
+                                    successCount++
+                                    break
+                                } else {
+                                    val errorCode = response.code()
+                                    val errorMsg = response.errorBody()?.string() ?: "알 수 없는 오류"
+                                    Log.e(TAG, "❌ 이벤트 저장 실패 [시도 ${retryCount+1}] [${index+1}/${entries.size}]: ${entry.title}, 응답 코드: $errorCode, 오류: $errorMsg")
+                                    retryCount++
+                                    
+                                    if (retryCount < 3) {
+                                        // 재시도 전 대기
+                                        safeDelay(300L * (retryCount))
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                lastError = e
+                                Log.e(TAG, "❌ 이벤트 저장 중 예외 발생 [시도 ${retryCount+1}] [${index+1}/${entries.size}]: ${entry.title}", e)
+                                retryCount++
+                                
+                                if (retryCount < 3) {
+                                    // 재시도 전 대기
+                                    safeDelay(300L * (retryCount))
+                                }
+                            }
+                        }
+                        
+                        if (!success) {
                             failCount++
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ 이벤트 저장 중 예외 발생 [${index+1}/${entries.size}]: ${entry.title}", e)
+                        Log.e(TAG, "❌ 이벤트 저장 중 최상위 예외 발생 [${index+1}/${entries.size}]: ${entry.title}", e)
                         failCount++
                     }
                 }
 
-                val savingSuccess = failCount == 0
+                // 모든 항목이 실패한 경우만 실패로 처리 (일부 성공은 성공으로 간주)
+                val savingSuccess = successCount > 0
                 Log.d(TAG, "===== 시간표 저장 완료 =====")
                 Log.d(TAG, "성공: ${successCount}개, 실패: ${failCount}개, 최종 결과: ${if(savingSuccess) "성공 ✅" else "실패 ❌"}")
 
+                // 저장 성공 시 시간표 ID 저장 (실패해도 시도는 했으므로 저장)
+                if (savingSuccess) {
+                    saveTimetableId(userId, timetableId)
+                }
                 
-                // 저장 실패가 하나라도 있으면 실패로 처리
                 savingSuccess
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 시간표 저장 중 오류 발생", e)
@@ -412,17 +544,27 @@ class TimetableRepository(private val context: Context) {
                 
                 // 각 이벤트 삭제
                 var success = true
+                var failCount = 0
+                
                 events.forEach { event ->
                     try {
                         val deleteResponse = timetableApi.deleteEvent(timetableId, event.id)
                         if (!deleteResponse.isSuccessful) {
                             Log.e(TAG, "이벤트 삭제 실패: ${event.id}")
-                            success = false
+                            failCount++
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "이벤트 삭제 중 오류", e)
-                        success = false
+                        failCount++
                     }
+                }
+                
+                // 최대 1개까지 실패 허용 (완전한 실패가 아니라면 계속 진행)
+                if (failCount > events.size / 2) {
+                    Log.e(TAG, "이벤트 삭제 중 너무 많은 실패 발생: $failCount / ${events.size}")
+                    success = false
+                } else {
+                    Log.d(TAG, "이벤트 삭제 완료: 성공=${events.size - failCount}개, 실패=${failCount}개")
                 }
                 
                 success

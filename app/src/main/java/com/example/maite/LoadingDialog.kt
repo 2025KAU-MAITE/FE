@@ -127,18 +127,35 @@ class LoadingDialog(private val context: Context) {
         if (!isShowing) return
         handler.removeCallbacks(updateLoadingText)
         handler.removeCallbacks(updateImageColors) // 이미지 색상 애니메이션 제거
-        val activity = context as? Activity ?: return
-        val decorView = activity.window.decorView as ViewGroup
-        val rootView = decorView.findViewById<ViewGroup>(android.R.id.content)
+        
+        try {
+            val activity = context as? Activity ?: return
+            if (activity.isFinishing || activity.isDestroyed) return
+            
+            val decorView = activity.window.decorView as? ViewGroup ?: return
+            val rootView = decorView.findViewById<ViewGroup>(android.R.id.content) ?: return
 
-        // 루트 뷰에서 배경 뷰와 콘텐츠 뷰 제거
-        rootView.removeView(backgroundView)
-        rootView.removeView(contentView)
-
-        isShowing = false
-        // 필요에 따라 뷰 재사용 안 할 경우 null 설정
-        // backgroundView = null
-        // contentView = null
+            // 루트 뷰에서 배경 뷰와 콘텐츠 뷰 제거
+            try {
+                if (backgroundView != null && backgroundView?.parent != null) {
+                    rootView.removeView(backgroundView)
+                }
+                if (contentView != null && contentView?.parent != null) {
+                    rootView.removeView(contentView)
+                }
+            } catch (e: Exception) {
+                // 뷰 제거 중 예외 발생 - 무시
+                e.printStackTrace()
+            }
+        } catch (e: Exception) {
+            // 화면 전환 중 예외 발생 - 무시
+            e.printStackTrace()
+        } finally {
+            isShowing = false
+            // 필요에 따라 뷰 재사용 안 할 경우 null 설정
+            // backgroundView = null
+            // contentView = null
+        }
     }
 
     val isDialogShowing: Boolean

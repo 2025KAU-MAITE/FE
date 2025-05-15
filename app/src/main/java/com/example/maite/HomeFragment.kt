@@ -18,6 +18,7 @@ import com.example.maite.notification.NotificationViewModelFactory
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.ViewModelProvider
 import com.example.maite.databinding.FragmentHomeBinding
 import com.example.maite.data.model.MeetingItem
@@ -32,6 +33,7 @@ import android.util.Log
 import android.os.Handler
 import android.os.Looper
 import com.example.maite.ChatListFragment
+import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
 
@@ -68,14 +70,18 @@ class HomeFragment : Fragment() {
         if (userId != null) {
             Log.d("HomeFragment", "강제 시간표 로드 시작: userId=$userId")
             
-            // 강제로 서버에서 시간표 다시 로드
-            profileViewModel.loadTimetableFromServer(userId)
+            // 강제로 서버에서 시간표 다시 로드 (코루틴 스코프 내에서 호출)
+            lifecycleScope.launch {
+                profileViewModel.loadTimetableFromServer(userId)
+            }
             
             // 5초 후에도 시간표가 비어있으면 다시 로드 시도
             Handler(Looper.getMainLooper()).postDelayed({
                 if (viewModel.timetableEntries.value?.isEmpty() == true) {
                     Log.d("HomeFragment", "시간표가 여전히 비어있어 다시 로드 시도")
-                    profileViewModel.loadTimetableFromServer(userId)
+                    lifecycleScope.launch {
+                        profileViewModel.loadTimetableFromServer(userId)
+                    }
                 }
             }, 5000)
         } else {

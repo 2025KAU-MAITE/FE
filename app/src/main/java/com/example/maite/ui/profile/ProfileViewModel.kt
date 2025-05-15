@@ -153,20 +153,34 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    // 서버에 시간표 저장 - userId 파라미터 추가
-    fun saveTimetableToServer(userId: Long) {
+    // 서버에 시간표 저장 - userId 파라미터 추가 (성공 여부 반환)
+    suspend fun saveTimetableToServer(userId: Long): Boolean {
         currentUserId = userId
-        viewModelScope.launch {
-            try {
-                val success = timetableRepository.saveTimetable(userId, _timetable.value ?: emptyList())
-                if (success) {
-                    _timetableEvent.emit(TimetableEvent.SavedToServer)
-                } else {
-                    _timetableEvent.emit(TimetableEvent.Error("시간표 저장에 실패했습니다"))
-                }
-            } catch (e: Exception) {
-                _timetableEvent.emit(TimetableEvent.Error("서버에 저장하는 중 오류가 발생했습니다: ${e.message}"))
+        try {
+            // 저장 시작 이벤트 발행
+            _timetableEvent.emit(TimetableEvent.SyncStarted("서버에 시간표 저장 중..."))
+            
+            Log.d(TAG, "서버 저장 시도: userId=$userId, 항목 수=${_timetable.value?.size ?: 0}")
+            
+            val success = timetableRepository.saveTimetable(userId, _timetable.value ?: emptyList())
+            
+            if (success) {
+                _timetableEvent.emit(TimetableEvent.SavedToServer)
+                Log.d(TAG, "서버 저장 성공!")
+            } else {
+                _timetableEvent.emit(TimetableEvent.Error("시간표 저장에 실패했습니다"))
+                Log.e(TAG, "서버 저장 실패")
             }
+            
+            // 저장 완료 이벤트 발행
+            _timetableEvent.emit(TimetableEvent.SyncCompleted(success, if (success) "저장 완료" else "저장 실패"))
+            
+            return success
+        } catch (e: Exception) {
+            Log.e(TAG, "서버 저장 중 예외 발생", e)
+            _timetableEvent.emit(TimetableEvent.Error("서버에 저장하는 중 오류가 발생했습니다: ${e.message}"))
+            _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "저장 중 오류 발생"))
+            return false
         }
     }
 
