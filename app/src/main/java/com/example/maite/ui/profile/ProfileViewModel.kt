@@ -1,6 +1,7 @@
 package com.example.maite.ui.profile
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -316,6 +317,84 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 _timetableEvent.emit(TimetableEvent.Error("사용자 정보를 로드하는 중 오류가 발생했습니다: ${e.message}"))
             }
         }
+    }
+    
+    // 프로필 이미지 업로드 기능 추가
+    fun uploadProfileImage(imageUri: Uri, fileName: String): LiveData<Boolean> {
+        val resultLiveData = MutableLiveData<Boolean>()
+        
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "프로필 이미지 업로드 시작: $fileName")
+                
+                // 사용자 ID 확인
+                val userId = currentUserId
+                if (userId == null) {
+                    Log.e(TAG, "프로필 이미지 업로드 실패: 사용자 ID가 없습니다")
+                    resultLiveData.postValue(false)
+                    return@launch
+                }
+                
+                // 이미지 업로드 요청
+                val success = userRepository.uploadProfileImage(userId, imageUri, fileName)
+                
+                if (success) {
+                    Log.d(TAG, "프로필 이미지 업로드 성공")
+                    
+                    // 사용자 정보 새로고침 (이미지 URL 업데이트를 위해)
+                    loadUserInfo(userId)
+                    
+                    resultLiveData.postValue(true)
+                } else {
+                    Log.e(TAG, "프로필 이미지 업로드 실패")
+                    resultLiveData.postValue(false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "프로필 이미지 업로드 중 오류 발생", e)
+                resultLiveData.postValue(false)
+            }
+        }
+        
+        return resultLiveData
+    }
+    
+    // 프로필 이미지 초기화 기능
+    fun resetProfileImage(): LiveData<Boolean> {
+        val resultLiveData = MutableLiveData<Boolean>()
+        
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "프로필 이미지 초기화 시작")
+                
+                // 사용자 ID 확인
+                val userId = currentUserId
+                if (userId == null) {
+                    Log.e(TAG, "프로필 이미지 초기화 실패: 사용자 ID가 없습니다")
+                    resultLiveData.postValue(false)
+                    return@launch
+                }
+                
+                // 초기화 요청 (최상위 레포지토리에 있는 기능 사용)
+                val success = userRepository.resetProfileImage(userId)
+                
+                if (success) {
+                    Log.d(TAG, "프로필 이미지 초기화 성공")
+                    
+                    // 사용자 정보 새로고침
+                    loadUserInfo(userId)
+                    
+                    resultLiveData.postValue(true)
+                } else {
+                    Log.e(TAG, "프로필 이미지 초기화 실패")
+                    resultLiveData.postValue(false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "프로필 이미지 초기화 중 오류 발생", e)
+                resultLiveData.postValue(false)
+            }
+        }
+        
+        return resultLiveData
     }
 
     // 시간표 관련 이벤트 봉인 클래스

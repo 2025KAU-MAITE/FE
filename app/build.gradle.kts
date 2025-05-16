@@ -15,7 +15,7 @@ plugins {
 
 android {
     namespace = "com.example.maite"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.maite"
@@ -130,7 +130,7 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // Support 라이브러리 강제 제거
-        force("androidx.core:core:1.15.0")
+        force("androidx.core:core:1.12.0")
 
         // 충돌하는 클래스 명시적으로 제외
         exclude(group = "com.android.support", module = "support-compat")

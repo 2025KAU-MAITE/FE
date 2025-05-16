@@ -17,15 +17,18 @@ import com.example.maite.databinding.FragmentProfileBinding
 import com.example.maite.model.TimetableEntry
 import com.example.maite.model.UserInfo
 import com.example.maite.ui.profile.EditTimetableFragment
+import com.example.maite.ui.profile.ProfileEditBottomSheet
 import com.example.maite.ui.profile.ProfileViewModel
 import kotlin.math.ceil
 import android.util.Log
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
+import com.example.maite.PreferencesUtil
 import kotlinx.coroutines.launch
 
 
-class ProfileFragment : Fragment() {
+class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateListener {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
@@ -70,13 +73,15 @@ class ProfileFragment : Fragment() {
                 binding.tvName.text = it.name
                 binding.tvMateCount.text = "${it.mateCount}명의 Mate가 있습니다"
 
-                // TODO: 프로필 이미지 로드 로직 구현
-                // if (it.profileImageUrl != null) {
-                //     Glide.with(this)
-                //         .load(it.profileImageUrl)
-                //         .circleCrop()
-                //         .into(binding.ivProfile)
-                // }
+                // 프로필 이미지 로드 - null 안전 처리
+                if (it.profileImageUrl != null && it.profileImageUrl.isNotEmpty()) {
+                    Glide.with(this)
+                        .load(it.profileImageUrl)
+                        .circleCrop()
+                        .placeholder(R.drawable.img_profile_default)
+                        .error(R.drawable.img_profile_default)
+                        .into(binding.ivProfile)
+                }
             }
         }
 
@@ -94,9 +99,29 @@ class ProfileFragment : Fragment() {
                 .commit()
         }
 
+        // 프로필 이미지 클릭 이벤트 추가
+        binding.ivProfile.setOnClickListener {
+            showProfileEditBottomSheet()
+        }
+
         // 상단 설정 버튼 클릭 이벤트 (추가 기능)
         binding.ivSettings.setOnClickListener {
             // TODO: 설정 화면으로 이동 또는 설정 메뉴 표시
+        }
+    }
+
+    // 프로필 수정 바텀시트 표시
+    private fun showProfileEditBottomSheet() {
+        val bottomSheet = ProfileEditBottomSheet.newInstance()
+        bottomSheet.show(childFragmentManager, ProfileEditBottomSheet.TAG)
+    }
+
+    // 프로필 이미지 업데이트 콜백
+    override fun onProfileImageUpdated() {
+        // 사용자 정보 새로고침 (프로필 이미지 업데이트)
+        val userId = PreferencesUtil(requireContext()).getUserId()
+        if (userId != null) {
+            viewModel.loadUserInfo(userId)
         }
     }
 
