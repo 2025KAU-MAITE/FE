@@ -24,22 +24,14 @@ interface UserApiService {
     @POST("users/friend-requests")
     suspend fun sendFriendRequests(@Query("userIds") userIds: List<String>): Response<Boolean>
     
-    // 프로필 이미지 업로드 API 추가
+    // 프로필 이미지 업로드 API
     @Multipart
-    @POST("api/users/{userId}/profile-image")
+    @POST("api/profile/image")
     suspend fun uploadProfileImage(
-        @Path("userId") userId: Long,
-        @Part image: MultipartBody.Part
-    ): Response<ApiResponse<ProfileImageResult>>
+        @Part file: MultipartBody.Part
+    ): Response<ApiResponse<Any?>>
     
-    // 프로필 이미지 초기화 API 추가
-    @POST("api/users/{userId}/reset-profile-image")
-    suspend fun resetProfileImage(
-        @Path("userId") userId: Long
-    ): Response<ApiResponse<ProfileImageResult>>
+    // 프로필 이미지 초기화 API
+    @POST("api/profile/image-to-basic")
+    suspend fun resetProfileImage(): Response<ApiResponse<Any?>>
 }
-
-// 프로필 이미지 업로드 결과
-data class ProfileImageResult(
-    val profileImageUrl: String
-)
