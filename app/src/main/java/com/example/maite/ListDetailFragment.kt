@@ -425,6 +425,9 @@ class ListDetailFragment : Fragment() {
                             Toast.makeText(context, classNamesInRange, Toast.LENGTH_SHORT).show()
                             true
                         }
+                        containerView.setOnClickListener {
+                            binding.timetableLayout.performClick()
+                        }
                     }
                     row.addView(containerView)
                 }
@@ -463,6 +466,9 @@ class ListDetailFragment : Fragment() {
                             containerView.setOnLongClickListener {
                                 Toast.makeText(context, classNameForSlot, Toast.LENGTH_SHORT).show()
                                 true
+                            }
+                            containerView.setOnClickListener {
+                                binding.timetableLayout.performClick()
                             }
                         }
                         singleHourRow.addView(containerView)
