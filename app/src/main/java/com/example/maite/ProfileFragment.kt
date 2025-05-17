@@ -100,7 +100,11 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                 } else {
                     // 둘 다 없으면 기본 이미지 사용
                     Log.d("ProfileFragment", "프로필 이미지 URL이 없어 기본 이미지 사용")
-                    binding.ivProfile.setImageResource(R.drawable.img_profile_default)
+                    // Glide를 사용하여 기본 이미지도 원형으로 잘라냄
+                    Glide.with(this@ProfileFragment)
+                        .load(R.drawable.img_profile_default)
+                        .circleCrop()
+                        .into(binding.ivProfile)
                 }
             }
         }
@@ -197,38 +201,59 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                         Log.d("ProfileFragment", "URL 로드 성공, 로컬에 저장: $url")
                     } catch (e2: Exception) {
                         Log.e("ProfileFragment", "URL 로드도 실패하여 기본 이미지 사용", e2)
-                        binding.ivProfile.setImageResource(R.drawable.img_profile_default)
+                        // Glide를 사용하여 기본 이미지도 원형으로 잘라냄
+                        Glide.with(this)
+                            .load(R.drawable.img_profile_default)
+                            .circleCrop()
+                            .into(binding.ivProfile)
                     }
                 }
             }
         } else {
             Log.d("ProfileFragment", "유효하지 않은 URL. 기본 이미지 표시")
-            binding.ivProfile.setImageResource(R.drawable.img_profile_default)
+            // Glide를 사용하여 기본 이미지도 원형으로 잘라냄
+            Glide.with(this)
+                .load(R.drawable.img_profile_default)
+                .circleCrop()
+                .into(binding.ivProfile)
         }
     }
 
     // 프로필 수정 바텀시트 표시
     private fun showProfileEditBottomSheet() {
-        // 현재 이미지 URI 확인
-        val preferencesUtil = PreferencesUtil(requireContext())
-        var imageUri = preferencesUtil.getString("user_profile_image_uri")
+        // 사용자 정보에서 프로필 이미지 URL 가져오기
+        val userProfileImageUrl = viewModel.userInfo.value?.profileImageUrl
         
-        // URI가 없으면 URL 확인
-        if (imageUri.isNullOrEmpty()) {
-            imageUri = preferencesUtil.getString("user_profile_image_url")
-            Log.d("ProfileFragment", "로컬 URI 없음, URL 사용: $imageUri")
-        } else {
-            Log.d("ProfileFragment", "바텀시트에 전달할 로컬 URI: $imageUri")
+        // 현재 이미지 소스 확인 (우선순위: 서버 URL > 로컬 URI > 캐시된 URL)
+        val preferencesUtil = PreferencesUtil(requireContext())
+        var imageSource: String? = null
+        
+        // 1. 서버에서 가져온 이미지 URL이 있으면 우선 사용
+        if (!userProfileImageUrl.isNullOrEmpty()) {
+            imageSource = userProfileImageUrl
+            Log.d("ProfileFragment", "서버 URL 사용: $imageSource")
+        } 
+        // 2. 로컬 URI 확인
+        else if (!preferencesUtil.getProfileImageUri().isNullOrEmpty()) {
+            imageSource = preferencesUtil.getProfileImageUri()
+            Log.d("ProfileFragment", "로컬 URI 사용: $imageSource")
+        } 
+        // 3. 캐시된 URL 확인
+        else if (!preferencesUtil.getProfileImageUrl().isNullOrEmpty()) {
+            imageSource = preferencesUtil.getProfileImageUrl()
+            Log.d("ProfileFragment", "캐시된 URL 사용: $imageSource")
         }
         
-        // 현재 이미지와 관련된 모든 정보 로그 기록 (디버깅용)
+        // 디버깅 정보 로그
         Log.d("ProfileFragment", "바텀시트 열기 전 정보 확인:")
-        Log.d("ProfileFragment", "- 로컬 URI: ${preferencesUtil.getString("user_profile_image_uri")}")
-        Log.d("ProfileFragment", "- 캐시된 URL: ${preferencesUtil.getString("user_profile_image_url")}")
-        Log.d("ProfileFragment", "- 전달할 이미지 URI/URL: $imageUri")
+        Log.d("ProfileFragment", "- 서버 URL: $userProfileImageUrl")
+        Log.d("ProfileFragment", "- 로컬 URI: ${preferencesUtil.getProfileImageUri()}")
+        Log.d("ProfileFragment", "- 캐시된 URL: ${preferencesUtil.getProfileImageUrl()}")
+        Log.d("ProfileFragment", "- 전달할 이미지 소스: $imageSource")
         
-        // 바텀시트 생성 및 이미지 URI 전달
-        val bottomSheet = ProfileEditBottomSheet.newInstance(imageUri)
+        // 바텀시트 생성 및 이미지 소스 전달
+        val bottomSheet = ProfileEditBottomSheet.newInstance(imageSource)
+        bottomSheet.setProfileImageUpdateListener(this) // 리스너 설정 추가
         bottomSheet.show(childFragmentManager, ProfileEditBottomSheet.TAG)
     }
 

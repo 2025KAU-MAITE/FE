@@ -110,16 +110,18 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
         binding.btnSaveProfile.isEnabled = false
         binding.btnSaveProfile.visibility = View.VISIBLE
         
-        // ProfileFragment로부터 현재 이미지 정보 가져오기
-        val preferencesUtil = PreferencesUtil(requireContext())
-        val cachedImageUrl = preferencesUtil.getString("user_profile_image_url")
-        val localImageUri = preferencesUtil.getString("user_profile_image_uri")
-        
-        // 전달받은 이미지 URI 파라미터 확인
+        // 전달받은 이미지 URI 파라미터 확인 (가장 중요 - ProfileFragment에서 전달한 값)
         val argumentImageUri = arguments?.getString(ARG_CURRENT_IMAGE_URI)
-        android.util.Log.d(TAG, "전달받은 이미지 URI: $argumentImageUri")
-        android.util.Log.d(TAG, "로컬 이미지 URI: $localImageUri")
-        android.util.Log.d(TAG, "캐시된 이미지 URL: $cachedImageUrl")
+        
+        // 추가 백업 데이터 확인
+        val preferencesUtil = PreferencesUtil(requireContext())
+        val cachedImageUrl = preferencesUtil.getProfileImageUrl()
+        val localImageUri = preferencesUtil.getProfileImageUri()
+        
+        android.util.Log.d(TAG, "이미지 소스 확인 시작")
+        android.util.Log.d(TAG, "- ProfileFragment에서 전달받은 이미지 URI/URL: $argumentImageUri")
+        android.util.Log.d(TAG, "- 로컬 이미지 URI: $localImageUri")
+        android.util.Log.d(TAG, "- 캐시된 이미지 URL: $cachedImageUrl")
         
         // 이미지 소스 선택 (우선순위: 전달받은 URI > 로컬 저장 URI > 캐시된 URL)
         val imageSource = when {
@@ -136,16 +138,18 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
             preferencesUtil.setString("active_bottomsheet_image", imageSource)
             
             try {
-                // URI인지 URL인지 확인
-                val isUri = imageSource.startsWith("content:") || imageSource.startsWith("file:")
+                // 이미지 소스가 웬서버 이미지 URL인지 확인
+                val isWebUrl = imageSource.startsWith("http") || imageSource.startsWith("https")
+                // 로컬 URI인지 확인
+                val isLocalUri = imageSource.startsWith("content:") || imageSource.startsWith("file:")
                 
-                if (isUri) {
-                    // URI로 이미지 로드
-                    val uri = Uri.parse(imageSource)
-                    android.util.Log.d(TAG, "URI로 이미지 즉시 로드: $uri")
+                if (isWebUrl) {
+                    // URL로 이미지 로드 (웹 서버 이미지)
+                    android.util.Log.d(TAG, "웹 URL로 이미지 로드: $imageSource")
                     
+                    // 프로필 상세화면에 표시가 잘 되는지 확인하기 위해 캐시 끄기
                     Glide.with(requireContext())
-                        .load(uri)
+                        .load(imageSource)
                         .centerCrop()
                         .skipMemoryCache(true)
                         .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
@@ -153,9 +157,38 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                         .placeholder(R.drawable.img_profile_default)
                         .error(R.drawable.img_profile_default)
                         .into(binding.ivProfileEdit)
+                    
+                    // 웹 URL을 로드하는 데 성공했음을 로그로 기록 및 원본 이미지 URL 저장
+                    originalImageUrl = imageSource
+                    android.util.Log.d(TAG, "웹 URL 이미지 로드 성공, 원본 URL 저장: $originalImageUrl")
+                } else if (isLocalUri) {
+                    // 로컬 URI로 이미지 로드
+                    try {
+                        val uri = Uri.parse(imageSource)
+                        android.util.Log.d(TAG, "로컬 URI로 이미지 로드: $uri")
+                        
+                        Glide.with(requireContext())
+                            .load(uri)
+                            .centerCrop()
+                            .skipMemoryCache(true)
+                            .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
+                            .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis().toString()))
+                            .placeholder(R.drawable.img_profile_default)
+                            .error(R.drawable.img_profile_default)
+                            .into(binding.ivProfileEdit)
+                        
+                        android.util.Log.d(TAG, "로컬 URI 이미지 로드 성공")
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "로컬 URI 로드 실패, 기본 이미지 사용", e)
+                        // 기본 이미지도 Glide를 사용하여 원형으로 표시
+                        Glide.with(requireContext())
+                            .load(R.drawable.img_profile_default)
+                            .circleCrop()
+                            .into(binding.ivProfileEdit)
+                    }
                 } else {
-                    // URL로 이미지 로드
-                    android.util.Log.d(TAG, "URL로 이미지 즉시 로드: $imageSource")
+                    // 일반 문자열 URL로 시도
+                    android.util.Log.d(TAG, "일반 URL로 이미지 로드 시도: $imageSource")
                     
                     Glide.with(requireContext())
                         .load(imageSource)
@@ -167,9 +200,15 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                         .error(R.drawable.img_profile_default)
                         .into(binding.ivProfileEdit)
                 }
+                
                 android.util.Log.d(TAG, "선택된 이미지 소스로 바텀시트 이미지 설정 완료")
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "바텀시트에서 이미지 로드 중 오류", e)
+                // 기본 이미지도 Glide를 사용하여 원형으로 표시
+                Glide.with(requireContext())
+                    .load(R.drawable.img_profile_default)
+                    .circleCrop()
+                    .into(binding.ivProfileEdit)
             }
         } else {
             android.util.Log.d(TAG, "선택된 이미지 소스가 없어 서버 정보를 로드합니다")
@@ -224,11 +263,19 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                     }
                 } else {
                     android.util.Log.d(TAG, "서버에서 이미지 URL이 없어 기본 이미지 사용")
-                    binding.ivProfileEdit.setImageResource(R.drawable.img_profile_default)
+                    // 기본 이미지도 Glide를 사용하여 원형으로 표시
+                    Glide.with(requireContext())
+                        .load(R.drawable.img_profile_default)
+                        .circleCrop()
+                        .into(binding.ivProfileEdit)
                 }
             } ?: run {
                 android.util.Log.d(TAG, "서버에서 사용자 정보가 null이어서 기본 이미지 사용")
-                binding.ivProfileEdit.setImageResource(R.drawable.img_profile_default)
+                // 기본 이미지도 Glide를 사용하여 원형으로 표시
+                Glide.with(requireContext())
+                    .load(R.drawable.img_profile_default)
+                    .circleCrop()
+                    .into(binding.ivProfileEdit)
             }
         }
     }
@@ -278,11 +325,11 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
     private fun resetProfileImage() {
         // 기본 프로필 이미지로 변경
         Glide.with(requireContext())
-            .load(R.drawable.img_profile_default)
-            .centerCrop()
-            .skipMemoryCache(true) // 메모리 캐시 사용 안 함
-            .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis()))
-            .into(binding.ivProfileEdit)
+        .load(R.drawable.img_profile_default)
+        .circleCrop()  // 원형으로 잘라냄
+        .skipMemoryCache(true) // 메모리 캐시 사용 안 함
+        .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis()))
+        .into(binding.ivProfileEdit)
             
         selectedImageUri = null
         isImageChanged = true
@@ -318,7 +365,8 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                 isImageChanged = false
                 
                 // 프로필 이미지 갱신 이벤트 전달
-                (parentFragment as? ProfileImageUpdateListener)?.onProfileImageUpdated()
+                imageUpdateListener?.onProfileImageUpdated()
+                android.util.Log.d(TAG, "이미지 업데이트 이벤트 전달 완료")
                 
                 dismiss()
             } else {
@@ -403,7 +451,8 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                     isImageChanged = false
                     
                     // 프로필 이미지 갱신 이벤트 전달
-                    (parentFragment as? ProfileImageUpdateListener)?.onProfileImageUpdated()
+                    imageUpdateListener?.onProfileImageUpdated()
+                    android.util.Log.d(TAG, "이미지 업데이트 이벤트 전달 완료")
                     
                     // 성공 시 바텀시트 닫기
                     dismiss()
@@ -463,6 +512,14 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
     // 프로필 이미지 업데이트 리스너 인터페이스
     interface ProfileImageUpdateListener {
         fun onProfileImageUpdated()
+    }
+    
+    // 리스너 설정 메서드 추가
+    private var imageUpdateListener: ProfileImageUpdateListener? = null
+    
+    fun setProfileImageUpdateListener(listener: ProfileImageUpdateListener) {
+        this.imageUpdateListener = listener
+        android.util.Log.d(TAG, "프로필 이미지 업데이트 리스너 설정됨")
     }
 
     companion object {
