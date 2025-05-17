@@ -1,9 +1,13 @@
 package com.example.maite.notification
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.maite.ApiClient
+import com.example.maite.api.UserApiService
 import com.example.maite.data.model.MeetingProposal
 import com.example.maite.data.model.ProposalType
 import com.example.maite.data.repository.ProposalRepository
@@ -13,8 +17,11 @@ import kotlinx.coroutines.launch
 
 class NotificationViewModel(
     private val repository: NotificationRepository,
-    private val proposalRepository: ProposalRepository
+    private val proposalRepository: ProposalRepository,
+    private val context: Context
 ) : ViewModel() {
+    
+    private val userApiService = ApiClient.getClient(context).create(UserApiService::class.java)
     
     private val _notifications = MutableLiveData<List<NotificationItem>>()
     val notifications: LiveData<List<NotificationItem>> = _notifications
@@ -25,6 +32,9 @@ class NotificationViewModel(
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
     
+    // 사용자 프로필 이미지 URL 캐시
+    private val profileImageCache = mutableMapOf<String, String?>()
+    
     fun loadNotifications() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -32,7 +42,6 @@ class NotificationViewModel(
             
             try {
                 val allNotifications = mutableListOf<NotificationItem>()
-                var notificationId = 1
                 
                 // 회의방 초대 알림 조회
                 val roomInvitesResult = repository.getRoomInviteNotifications()
@@ -44,6 +53,12 @@ class NotificationViewModel(
                             // 2. 없으면 email에서 @ 앞부분 사용
                             val hostName = invite.hostName ?: invite.hostEmail?.substringBefore("@") ?: "알 수 없음"
                             
+                            // 호스트 이메일이 있는 경우에만 프로필 이미지 URL 조회 시도
+                            var profileImageUrl: String? = null
+                            if (!invite.hostEmail.isNullOrEmpty()) {
+                                profileImageUrl = getUserProfileImageUrl(invite.hostEmail)
+                            }
+                            
                             allNotifications.add(
                                 NotificationItem(
                                     id = invite.roomId,  
@@ -51,6 +66,8 @@ class NotificationViewModel(
                                     senderName = invite.name,  // 회의방 이름
                                     message = "${hostName}의 회의방 초대를 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageUrl = profileImageUrl,
+                                    senderEmail = invite.hostEmail,
                                     roomId = invite.roomId
                                 )
                             )
@@ -63,6 +80,15 @@ class NotificationViewModel(
                 meetingNotificationsResult.onSuccess { meetingNotifications ->
                     meetingNotifications.forEach { notification ->
                         if (notification.meetingId != null && notification.title != null && notification.proposerName != null) {
+                            // 제안자(proposer)의 이름으로 프로필 이미지 URL 조회
+                            val proposerName = notification.proposerName
+                            var profileImageUrl: String? = null
+                            
+                            // 제안자 이름이 있는 경우에만 프로필 이미지 URL 조회 시도
+                            if (!proposerName.isNullOrEmpty()) {
+                                profileImageUrl = getProfileImageUrlByName(proposerName)
+                            }
+                            
                             allNotifications.add(
                                 NotificationItem(
                                     id = notification.meetingId,  
@@ -70,6 +96,8 @@ class NotificationViewModel(
                                     senderName = notification.proposerName,  
                                     message = "${notification.proposerName}의 회의 제안을 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageUrl = profileImageUrl,
+                                    senderEmail = null, // 제안자의 이메일 정보가 없음
                                     meetingId = notification.meetingId,
                                     meetingDetails = MeetingDetails(
                                         title = notification.title,
@@ -77,6 +105,34 @@ class NotificationViewModel(
                                         time = notification.meetingTime ?: "",
                                         location = notification.address ?: ""
                                     )
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                // 친구 요청 알림 조회
+                val friendRequestResult = repository.getFriendRequestNotifications()
+                friendRequestResult.onSuccess { friendRequests ->
+                    friendRequests.forEach { request ->
+                        if (request.requestId != null && request.name != null) {
+                            // 프로필 이미지 URL 사용(서버에서 받은 값) 또는 이메일로 조회
+                            var profileImageUrl = request.profileImageUrl
+                            if (profileImageUrl.isNullOrEmpty() && !request.email.isNullOrEmpty()) {
+                                profileImageUrl = getUserProfileImageUrl(request.email)
+                            }
+                            
+                            allNotifications.add(
+                                NotificationItem(
+                                    id = request.requestId,
+                                    type = NotificationType.FRIEND_REQUEST,
+                                    senderName = request.name,
+                                    message = "${request.name}님이 친구 요청을 보냈어요.",
+                                    profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageUrl = profileImageUrl,
+                                    senderEmail = request.email,
+                                    friendRequestId = request.requestId,
+                                    userId = request.userId
                                 )
                             )
                         }
@@ -223,6 +279,125 @@ class NotificationViewModel(
                     _isLoading.value = false
                 }
             }
+        }
+    }
+    
+    // 친구 요청 수락 처리
+    fun acceptFriendRequest(notificationId: Int) {
+        viewModelScope.launch {
+            val notification = _notifications.value?.find { it.id == notificationId }
+            if (notification != null && notification.type == NotificationType.FRIEND_REQUEST && 
+                notification.friendRequestId != null) {
+                _isLoading.value = true
+                
+                try {
+                    // 친구 요청 수락 API 호출
+                    val response = userApiService.acceptFriendRequest(
+                        notification.friendRequestId
+                    )
+                    
+                    if (response.isSuccessful) {
+                        // 성공시 알림 목록에서 제거
+                        _notifications.value = _notifications.value?.filterNot { it.id == notificationId }
+                    } else {
+                        _error.value = "친구 요청 수락에 실패했습니다: ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    _error.value = "친구 요청 수락 중 오류가 발생했습니다"
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+    
+    // 친구 요청 거절 처리
+    fun declineFriendRequest(notificationId: Int) {
+        viewModelScope.launch {
+            val notification = _notifications.value?.find { it.id == notificationId }
+            if (notification != null && notification.type == NotificationType.FRIEND_REQUEST && 
+                notification.friendRequestId != null) {
+                _isLoading.value = true
+                
+                try {
+                    // 친구 요청 거절 API 호출
+                    val response = userApiService.rejectFriendRequest(
+                        notification.friendRequestId
+                    )
+                    
+                    if (response.isSuccessful) {
+                        // 성공시 알림 목록에서 제거
+                        _notifications.value = _notifications.value?.filterNot { it.id == notificationId }
+                    } else {
+                        _error.value = "친구 요청 거절에 실패했습니다: ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    _error.value = "친구 요청 거절 중 오류가 발생했습니다"
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+    
+    // 이메일로 사용자의 프로필 이미지 URL 조회
+    private suspend fun getUserProfileImageUrl(email: String?): String? {
+        if (email.isNullOrEmpty()) return null
+        
+        // 캐시에 있는지 확인
+        if (profileImageCache.containsKey(email)) {
+            return profileImageCache[email]
+        }
+        
+        return try {
+            // 사용자 검색 API 호출
+            val response = userApiService.searchUsers(email)
+            if (response.isSuccessful) {
+                val users = response.body()?.result ?: emptyList()
+                // 이메일이 정확히 일치하는 사용자 찾기
+                val user = users.find { it.email == email }
+                // 프로필 이미지 URL 가져오기
+                val profileImageUrl = user?.profileImageUrl
+                // 캐시에 저장
+                profileImageCache[email] = profileImageUrl
+                profileImageUrl
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("NotificationViewModel", "프로필 이미지 URL 조회 중 오류", e)
+            null
+        }
+    }
+    
+    // 이름으로 사용자의 프로필 이미지 URL 조회
+    private suspend fun getProfileImageUrlByName(name: String?): String? {
+        if (name.isNullOrEmpty()) return null
+        
+        // 캐시에 있는지 확인
+        val cacheKey = "name:$name"
+        if (profileImageCache.containsKey(cacheKey)) {
+            return profileImageCache[cacheKey]
+        }
+        
+        return try {
+            // 사용자 검색 API 호출
+            val response = userApiService.searchUsers(name)
+            if (response.isSuccessful) {
+                val users = response.body()?.result ?: emptyList()
+                // 이름이 정확히 일치하는 사용자 찾기
+                val user = users.find { it.name == name }
+                // 프로필 이미지 URL 가져오기
+                val profileImageUrl = user?.profileImageUrl
+                // 캐시에 저장
+                profileImageCache[cacheKey] = profileImageUrl
+                profileImageUrl
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("NotificationViewModel", "프로필 이미지 URL 조회 중 오류", e)
+            null
         }
     }
 }

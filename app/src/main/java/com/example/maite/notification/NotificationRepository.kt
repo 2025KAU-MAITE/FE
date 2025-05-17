@@ -40,4 +40,21 @@ class NotificationRepository(
             Result.failure(e)
         }
     }
+    
+    suspend fun getFriendRequestNotifications(): Result<List<FriendRequestNotification>> {
+        return try {
+            val response = api.getFriendRequestNotifications()
+            if (response.isSuccessful) {
+                val notifications = response.body() ?: emptyList()
+                Log.d(TAG, "친구 요청 알림 조회 성공: ${notifications.size}개")
+                Result.success(notifications)
+            } else {
+                Log.e(TAG, "친구 요청 알림 조회 실패: ${response.code()}")
+                Result.failure(Exception("Failed to get friend request notifications: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "친구 요청 알림 조회 중 오류", e)
+            Result.failure(e)
+        }
+    }
 }

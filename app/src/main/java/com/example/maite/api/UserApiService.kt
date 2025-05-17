@@ -24,6 +24,14 @@ interface UserApiService {
     @POST("users/friend-requests")
     suspend fun sendFriendRequests(@Query("userIds") userIds: List<String>): Response<Boolean>
     
+    // 친구 요청 수락 API
+    @POST("api/mates/requests/{requestId}/accept")
+    suspend fun acceptFriendRequest(@Path("requestId") requestId: Int): Response<ApiResponse<Any?>>
+    
+    // 친구 요청 거절 API
+    @POST("api/mates/requests/{requestId}/reject")
+    suspend fun rejectFriendRequest(@Path("requestId") requestId: Int): Response<ApiResponse<Any?>>
+    
     // 프로필 이미지 업로드 API
     @Multipart
     @POST("api/profile/image")
