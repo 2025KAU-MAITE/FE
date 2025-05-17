@@ -5,6 +5,7 @@ import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
 import com.example.maite.model.InviteUserRequest
+import com.example.maite.model.ServerMateItem
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -23,7 +24,7 @@ interface MaiteApiService {
     suspend fun getMyRooms(): Response<List<RoomItem>>
 
     @GET("api/mates")
-    suspend fun getMates(): Response<ApiResponse<List<MateItem>>>
+    suspend fun getMates(): Response<ApiResponse<List<ServerMateItem>>>
 
     @POST("rooms")
     suspend fun createRoom(

@@ -73,4 +73,18 @@ class MainActivity : AppCompatActivity() {
     fun navigateToListTab() {
         binding.bottomNavigation.selectedItemId = R.id.navigation_list
     }
+
+    /**
+     * 프로필 프래그먼트를 새로 고치는 메서드
+     * 친구 수가 변경되었을 때 사용
+     */
+    fun refreshProfileFragment() {
+        // 현재 프로필 화면이 표시되고 있는지 확인
+        if (binding.bottomNavigation.selectedItemId == R.id.navigation_profile) {
+            // 프로필 프래그먼트를 다시 로드
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, ProfileFragment())
+                .commit()
+        }
+    }
 }

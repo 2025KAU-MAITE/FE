@@ -12,6 +12,7 @@ import com.example.maite.model.TimetableEntry
 import com.example.maite.model.UserInfo
 import com.example.maite.repository.TimetableRepository
 import com.example.maite.repository.UserRepository
+import com.example.maite.repository.MateRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     private val timetableRepository = TimetableRepository(application)
     private val userRepository = UserRepository(application)
+    private val mateRepository = MateRepository(application)
     private val preferencesUtil = PreferencesUtil(application)
 
     // 현재 사용자 ID 저장
@@ -308,13 +310,22 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         currentUserId = userId
         viewModelScope.launch {
             try {
+                // 사용자 정보 조회
                 val userInfo = userRepository.getUserInfo(userId)
+                
                 if (userInfo != null) {
-                    _userInfo.value = userInfo
+                    // 실제 친구 수 조회
+                    val mateCount = mateRepository.getMateCount()
+                    Log.d(TAG, "실제 친구 수: $mateCount")
+                    
+                    // 실제 친구 수를 포함한 새 UserInfo 객체 생성
+                    val updatedUserInfo = userInfo.copy(mateCount = mateCount)
+                    _userInfo.value = updatedUserInfo
                 } else {
                     _timetableEvent.emit(TimetableEvent.Error("사용자 정보를 찾을 수 없습니다"))
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "사용자 정보 로드 중 오류", e)
                 _timetableEvent.emit(TimetableEvent.Error("사용자 정보를 로드하는 중 오류가 발생했습니다: ${e.message}"))
             }
         }
