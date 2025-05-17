@@ -15,7 +15,7 @@ plugins {
 
 android {
     namespace = "com.example.maite"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.maite"
@@ -71,6 +71,12 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.0")
+    
+    // 현재 버전 사용을 위해 명시적으로 추가
+    implementation("androidx.core:core:1.12.0")
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.activity:activity:1.8.0")
+    implementation("androidx.activity:activity-ktx:1.8.0")
     
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation(libs.androidx.core.ktx)
@@ -130,7 +136,10 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // Support 라이브러리 강제 제거
-        force("androidx.core:core:1.15.0")
+        force("androidx.core:core:1.12.0")
+        force("androidx.core:core-ktx:1.12.0") // core-ktx 버전 강제 지정
+        force("androidx.activity:activity:1.8.0") // activity 버전 강제 지정
+        force("androidx.activity:activity-ktx:1.8.0") // activity-ktx 버전 강제 지정
 
         // 충돌하는 클래스 명시적으로 제외
         exclude(group = "com.android.support", module = "support-compat")

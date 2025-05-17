@@ -97,4 +97,78 @@ class PreferencesUtil(context: Context) {
     fun clearLastJoinedRoomId() {
         prefs.edit().remove(KEY_LAST_JOINED_ROOM_ID).apply()
     }
+    
+    /**
+     * 문자열 값 저장
+     */
+    fun setString(key: String, value: String) {
+        prefs.edit().putString(key, value).apply()
+    }
+    
+    /**
+     * 문자열 값 가져오기
+     * @param defaultValue 기본값 (없으면 null 반환)
+     */
+    fun getString(key: String, defaultValue: String? = null): String? {
+        return prefs.getString(key, defaultValue)
+    }
+    
+    /**
+     * 특정 키의 문자열 값 삭제
+     */
+    fun removeString(key: String) {
+        prefs.edit().remove(key).apply()
+    }
+    
+    /**
+     * 프로필 이미지 URL 저장
+     */
+    fun saveProfileImageUrl(url: String) {
+        setString("user_profile_image_url", url)
+    }
+    
+    /**
+     * 프로필 이미지 URL 가져오기
+     */
+    fun getProfileImageUrl(): String? {
+        return getString("user_profile_image_url")
+    }
+    
+    /**
+     * 프로필 이미지 URI 저장
+     */
+    fun saveProfileImageUri(uri: String) {
+        setString("user_profile_image_uri", uri)
+    }
+    
+    /**
+     * 프로필 이미지 URI 가져오기
+     */
+    fun getProfileImageUri(): String? {
+        return getString("user_profile_image_uri")
+    }
+    
+    /**
+     * 임시 프로필 이미지 URI 저장
+     */
+    fun saveTempProfileImageUri(uri: String) {
+        setString("user_profile_image_uri_temp", uri)
+    }
+    
+    /**
+     * 임시 프로필 이미지 URI 가져오기
+     */
+    fun getTempProfileImageUri(): String? {
+        return getString("user_profile_image_uri_temp")
+    }
+    
+    /**
+     * 프로필 이미지 관련 모든 데이터 초기화
+     */
+    fun clearAllProfileImageData() {
+        removeString("user_profile_image_url")
+        removeString("user_profile_image_uri")
+        removeString("user_profile_image_uri_temp")
+        removeString("active_bottomsheet_image")
+    }
 }

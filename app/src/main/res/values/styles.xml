@@ -62,4 +62,18 @@
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
     </style>
+
+    <!-- BottomSheetDialog 테마 -->    
+    <style name="AppBottomSheetDialogTheme" parent="Theme.MaterialComponents.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/AppModalStyle</item>
+        <item name="colorPrimary">#4285F4</item>
+        <item name="colorAccent">#4285F4</item>
+    </style>
+    
+    <style name="AppModalStyle" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@drawable/bg_bottomsheet_rounded</item>
+        <item name="android:elevation">16dp</item>
+        <item name="behavior_peekHeight">600dp</item>
+        <item name="behavior_hideable">true</item>
+    </style>
 </resources>

@@ -10,5 +10,6 @@ data class UserInfoResponse(
 data class UserInfoResult(
     val userId: Long,
     val email: String,
-    val name: String
+    val name: String,
+    val profileImageUrl: String? = null
 )
