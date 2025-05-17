@@ -35,7 +35,19 @@ class NotificationAdapter(
     override fun onBindViewHolder(holder: NotificationViewHolder, position: Int) {
         val notification = notifications[position]
         
-        holder.imgProfile.setImageResource(notification.profileImageRes)
+        // 프로필 이미지 URL이 있는 경우 Glide를 사용하여 이미지 로드
+        if (!notification.profileImageUrl.isNullOrEmpty()) {
+            com.bumptech.glide.Glide.with(holder.itemView.context)
+                .load(notification.profileImageUrl)
+                .placeholder(R.drawable.ic_launcher_foreground) // 로딩 중 표시할 이미지
+                .error(notification.profileImageRes) // 오류 발생 시 표시할 이미지
+                .circleCrop() // 원형으로 이미지 표시
+                .into(holder.imgProfile)
+        } else {
+            // 프로필 이미지 URL이 없는 경우 기본 이미지 사용
+            holder.imgProfile.setImageResource(notification.profileImageRes)
+        }
+        
         holder.tvSenderName.text = notification.senderName
         holder.tvMessage.text = notification.message
         

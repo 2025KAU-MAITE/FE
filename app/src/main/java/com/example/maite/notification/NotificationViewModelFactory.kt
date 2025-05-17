@@ -26,7 +26,7 @@ class NotificationViewModelFactory(private val context: Context) : ViewModelProv
             val proposalRepository = ProposalRepository(proposalApi)
             
             @Suppress("UNCHECKED_CAST")
-            return NotificationViewModel(notificationRepository, proposalRepository) as T
+            return NotificationViewModel(notificationRepository, proposalRepository, context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
