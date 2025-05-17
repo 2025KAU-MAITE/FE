@@ -329,26 +329,26 @@ class ListDetailFragment : Fragment() {
         val tableLayout = binding.root.findViewById<TableLayout>(R.id.timetableLayout)
         tableLayout.removeAllViews()
 
-        val minTime: Int
-        val maxTime: Int
+        val displayMinTime: Int
+        val displayMaxTime: Int
 
-        // classes 리스트에 있는 TimetableItem들의 timeSlot을 기반으로 minTime, maxTime 계산
-        // 해당 시간에 className이 "비는 시간" 관련 문자열을 포함하는 경우만 고려
         val relevantClasses = classes.filter { it.className.contains("비는 시간") }
 
         if (relevantClasses.isNotEmpty()) {
-            // 첫 번째 비는 시간 -1 (최소 0시), 마지막 비는 시간 +1 (최대 23시)
-            minTime = relevantClasses.minOfOrNull { it.timeSlot }?.let { (it - 1).coerceAtLeast(0) } ?: 9
-            maxTime = relevantClasses.maxOfOrNull { it.timeSlot }?.let { (it + 1).coerceAtMost(23) } ?: 17
+            displayMinTime = relevantClasses.minOfOrNull { it.timeSlot }?.let { (it - 1).coerceAtLeast(0) } ?: 0
+            displayMaxTime = relevantClasses.maxOfOrNull { it.timeSlot }?.let { (it + 1).coerceAtMost(23) } ?: 23
         } else {
-            minTime = 9
-            maxTime = 17
-            Log.w("ListDetailFragment", "표시할 비는 시간 데이터가 없어 기본 시간 범위($minTime ~ $maxTime) 사용")
+            displayMinTime = 0
+            displayMaxTime = 23
+            Log.w("ListDetailFragment", "표시할 비는 시간 데이터가 없어 기본 시간 범위($displayMinTime ~ $displayMaxTime) 사용")
         }
-        Log.d("ListDetailFragment", "시간표 생성 범위: $minTime 시 ~ $maxTime 시 (총 ${maxTime - minTime +1} 시간)")
+        Log.d("ListDetailFragment", "시간표 생성 범위: $displayMinTime 시 ~ $displayMaxTime 시")
 
+        val timeColumnWidth = calculateTextWidth("00:00") + 24
+        val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
 
-        val timeColumnWidth = calculateTextWidth("00:00") + 24 // 시간 셀 너비 (패딩 고려)
+        val ABSOLUTE_DAY_START_HOUR = 0
+        val ABSOLUTE_DAY_END_HOUR = 23
 
         val headerRow = TableRow(context)
         val headerParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT)
@@ -357,80 +357,119 @@ class ListDetailFragment : Fragment() {
             text = ""
             layoutParams = TableRow.LayoutParams(timeColumnWidth, TableRow.LayoutParams.WRAP_CONTENT)
             setBackgroundColor(Color.WHITE)
-            setPadding(8, 12, 8, 12) // 패딩 조정
+            setPadding(8, 12, 8, 12)
         }
         headerRow.addView(timeHeaderCell)
-
         for (i in 1 until weekDays.size) {
             val dayHeaderCell = TextView(context).apply {
                 text = weekDays[i]
                 gravity = Gravity.CENTER
                 textSize = 12f
                 setBackgroundColor(Color.WHITE)
-                setPadding(4, 12, 4, 12) // 패딩 조정
+                setPadding(4, 12, 4, 12)
                 layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f)
             }
             headerRow.addView(dayHeaderCell)
         }
         tableLayout.addView(headerRow)
 
-        val timeRanges = findConsecutiveTimeRanges(minTime, maxTime)
-        val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
+        val timeRanges = findConsecutiveTimeRanges(displayMinTime, displayMaxTime)
 
         for (range in timeRanges) {
-            val row = TableRow(context)
-            val rowParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT)
-            row.layoutParams = rowParams
+            val isAbsoluteEdgeStart = range.first == ABSOLUTE_DAY_START_HOUR
+            val isAbsoluteEdgeEnd = range.second == ABSOLUTE_DAY_END_HOUR
 
-            val timeRangeText = if (range.first == range.second) {
-                timeSlots.getOrNull(range.first) ?: ""
-            } else {
-                // 시작 시간과 종료 시간 +1 시로 표시 (예: 09 ~ 11은 09:00, 10:00 두 시간을 의미)
-                val startTimeStr = timeSlots.getOrNull(range.first) ?: ""
-                val endTimeStr = timeSlots.getOrNull(range.second + 1) ?: timeSlots.getOrNull(range.second) // 마지막 시간 처리
-                "$startTimeStr\n~\n$endTimeStr"
-            }
+            if (isAbsoluteEdgeStart || isAbsoluteEdgeEnd) {
+                val row = TableRow(context)
+                val rowParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT)
+                row.layoutParams = rowParams
 
-            val timeCell = TextView(context).apply {
-                text = timeRangeText
-                gravity = Gravity.CENTER
-                textSize = 10f
-                setBackgroundColor(Color.WHITE)
-                setPadding(8, 8, 8, 8) // 패딩 조정
-                layoutParams = TableRow.LayoutParams(timeColumnWidth, TableRow.LayoutParams.MATCH_PARENT) // 높이 MATCH_PARENT
-                minLines = if (range.first != range.second) 2 else 1 // 여러 줄 표시 가능하도록
-            }
-            row.addView(timeCell)
+                // 표준 셀 2개 높이로 고정
+                val actualRowHeight = 2 * cellHeight
 
-            val rowMinHeight = cellHeight * (if (range.second - range.first + 1 > 1 && range.first != range.second) 2 else 1)
+                // --- 수정된 시간 셀 텍스트 생성 (세로 말줄임표 '⋮' 사용) ---
+                val timeRangeText: String
+                if (isAbsoluteEdgeStart) { // 상단 블록
+                    val endTimeToDisplay = timeSlots.getOrNull(range.second + 1) ?: timeSlots.getOrNull(range.second)
+                    timeRangeText = "⋮\n$endTimeToDisplay" // 세로 말줄임표 사용
+                } else { // 하단 블록 (isAbsoluteEdgeEnd가 true여야 함)
+                    val startTimeToDisplay = timeSlots.getOrNull(range.first) ?: ""
+                    timeRangeText = "$startTimeToDisplay\n⋮" // 세로 말줄임표 사용
+                }
 
-
-            for (day in 1 until weekDays.size) {
-                val containerView = LinearLayout(context).apply {
-                    layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.MATCH_PARENT, 1f)
+                val timeCell = TextView(context).apply {
+                    text = timeRangeText
                     gravity = Gravity.CENTER
-                    setBackgroundResource(R.drawable.timetable_cell_border)
-                    orientation = LinearLayout.VERTICAL
-                    minimumHeight = rowMinHeight // 행의 최소 높이 설정
+                    textSize = 10f
+                    setBackgroundColor(Color.WHITE)
+                    setPadding(8, 8, 8, 8)
+                    minLines = 2 // 2줄 텍스트를 위해
+                    layoutParams = TableRow.LayoutParams(timeColumnWidth, actualRowHeight)
                 }
+                row.addView(timeCell)
 
-                // 이 범위의 첫 번째 시간대를 기준으로 클래스 찾기 (색상 결정용)
-                // findConsecutiveTimeRanges에서 동일 패턴으로 묶었으므로 첫 시간대만 확인해도 됨
-                val classItemForColor = classes.find { it.timeSlot == range.first && it.dayOfWeek == day && it.className.contains("비는 시간") }
-
-                if (classItemForColor != null) {
-                    containerView.setBackgroundColor(classItemForColor.color)
-                    // 전체 범위에 대한 클래스 이름 결합 (예: 여러 종류의 "비는 시간"이 겹칠 경우)
-                    val classNamesInRange = classes.filter { it.dayOfWeek == day && it.timeSlot >= range.first && it.timeSlot <= range.second }
-                        .map { it.className }.distinct().joinToString(", ")
-                    containerView.setOnLongClickListener {
-                        Toast.makeText(context, classNamesInRange, Toast.LENGTH_SHORT).show()
-                        true
+                for (day in 1 until weekDays.size) {
+                    val containerView = LinearLayout(context).apply {
+                        layoutParams = TableRow.LayoutParams(0, actualRowHeight, 1f)
+                        gravity = Gravity.CENTER
+                        setBackgroundResource(R.drawable.timetable_cell_border)
+                        orientation = LinearLayout.VERTICAL
                     }
+
+                    val classItemForColor = classes.find { it.timeSlot == range.first && it.dayOfWeek == day && it.className.contains("비는 시간") }
+                    if (classItemForColor != null) {
+                        containerView.setBackgroundColor(classItemForColor.color)
+                        val classNamesInRange = classes.filter { it.dayOfWeek == day && it.timeSlot >= range.first && it.timeSlot <= range.second }
+                            .map { it.className }.distinct().joinToString(", ")
+                        containerView.setOnLongClickListener {
+                            Toast.makeText(context, classNamesInRange, Toast.LENGTH_SHORT).show()
+                            true
+                        }
+                    }
+                    row.addView(containerView)
                 }
-                row.addView(containerView)
+                tableLayout.addView(row)
+
+            } else {
+                // --- 확장: 이 중간 범위에 대해 여러 개의 단일 시간 행 생성 ---
+                for (hourInMiddleRange in range.first..range.second) {
+                    val singleHourRow = TableRow(context)
+                    val rowParams = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT)
+                    singleHourRow.layoutParams = rowParams
+
+                    val timeCellText = timeSlots.getOrNull(hourInMiddleRange) ?: ""
+                    val timeCell = TextView(context).apply {
+                        text = timeCellText
+                        gravity = Gravity.CENTER
+                        textSize = 10f
+                        setBackgroundColor(Color.WHITE)
+                        setPadding(8, 8, 8, 8)
+                        layoutParams = TableRow.LayoutParams(timeColumnWidth, cellHeight)
+                    }
+                    singleHourRow.addView(timeCell)
+
+                    for (day in 1 until weekDays.size) {
+                        val containerView = LinearLayout(context).apply {
+                            layoutParams = TableRow.LayoutParams(0, cellHeight, 1f)
+                            gravity = Gravity.CENTER
+                            setBackgroundResource(R.drawable.timetable_cell_border)
+                            orientation = LinearLayout.VERTICAL
+                        }
+
+                        val classItemForColor = classes.find { it.timeSlot == hourInMiddleRange && it.dayOfWeek == day && it.className.contains("비는 시간") }
+                        if (classItemForColor != null) {
+                            containerView.setBackgroundColor(classItemForColor.color)
+                            val classNameForSlot = classItemForColor.className
+                            containerView.setOnLongClickListener {
+                                Toast.makeText(context, classNameForSlot, Toast.LENGTH_SHORT).show()
+                                true
+                            }
+                        }
+                        singleHourRow.addView(containerView)
+                    }
+                    tableLayout.addView(singleHourRow)
+                }
             }
-            tableLayout.addView(row)
         }
     }
 
