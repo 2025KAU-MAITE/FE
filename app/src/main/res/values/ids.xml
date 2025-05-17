@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NotificationFragment에서 동적으로 생성된 뷰를 저장하기 위한 태그 ID -->
+    <item name="section_friend_requests" type="id" />
+</resources>

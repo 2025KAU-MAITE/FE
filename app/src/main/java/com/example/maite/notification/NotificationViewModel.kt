@@ -111,6 +111,34 @@ class NotificationViewModel(
                     }
                 }
                 
+                // 친구 요청 알림 조회
+                val friendRequestResult = repository.getFriendRequestNotifications()
+                friendRequestResult.onSuccess { friendRequests ->
+                    friendRequests.forEach { request ->
+                        if (request.requestId != null && request.name != null) {
+                            // 프로필 이미지 URL 사용(서버에서 받은 값) 또는 이메일로 조회
+                            var profileImageUrl = request.profileImageUrl
+                            if (profileImageUrl.isNullOrEmpty() && !request.email.isNullOrEmpty()) {
+                                profileImageUrl = getUserProfileImageUrl(request.email)
+                            }
+                            
+                            allNotifications.add(
+                                NotificationItem(
+                                    id = request.requestId,
+                                    type = NotificationType.FRIEND_REQUEST,
+                                    senderName = request.name,
+                                    message = "${request.name}님이 친구 요청을 보냈어요.",
+                                    profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageUrl = profileImageUrl,
+                                    senderEmail = request.email,
+                                    friendRequestId = request.requestId,
+                                    userId = request.userId
+                                )
+                            )
+                        }
+                    }
+                }
+                
                 _notifications.value = allNotifications
             } catch (e: Exception) {
                 _error.value = "알림을 불러오는데 실패했습니다."
@@ -247,6 +275,64 @@ class NotificationViewModel(
                     }
                 } catch (e: Exception) {
                     _error.value = "회의 제안 거절 중 오류가 발생했습니다"
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+    
+    // 친구 요청 수락 처리
+    fun acceptFriendRequest(notificationId: Int) {
+        viewModelScope.launch {
+            val notification = _notifications.value?.find { it.id == notificationId }
+            if (notification != null && notification.type == NotificationType.FRIEND_REQUEST && 
+                notification.friendRequestId != null) {
+                _isLoading.value = true
+                
+                try {
+                    // 친구 요청 수락 API 호출
+                    val response = userApiService.acceptFriendRequest(
+                        notification.friendRequestId
+                    )
+                    
+                    if (response.isSuccessful) {
+                        // 성공시 알림 목록에서 제거
+                        _notifications.value = _notifications.value?.filterNot { it.id == notificationId }
+                    } else {
+                        _error.value = "친구 요청 수락에 실패했습니다: ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    _error.value = "친구 요청 수락 중 오류가 발생했습니다"
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+    
+    // 친구 요청 거절 처리
+    fun declineFriendRequest(notificationId: Int) {
+        viewModelScope.launch {
+            val notification = _notifications.value?.find { it.id == notificationId }
+            if (notification != null && notification.type == NotificationType.FRIEND_REQUEST && 
+                notification.friendRequestId != null) {
+                _isLoading.value = true
+                
+                try {
+                    // 친구 요청 거절 API 호출
+                    val response = userApiService.rejectFriendRequest(
+                        notification.friendRequestId
+                    )
+                    
+                    if (response.isSuccessful) {
+                        // 성공시 알림 목록에서 제거
+                        _notifications.value = _notifications.value?.filterNot { it.id == notificationId }
+                    } else {
+                        _error.value = "친구 요청 거절에 실패했습니다: ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    _error.value = "친구 요청 거절 중 오류가 발생했습니다"
                 } finally {
                     _isLoading.value = false
                 }

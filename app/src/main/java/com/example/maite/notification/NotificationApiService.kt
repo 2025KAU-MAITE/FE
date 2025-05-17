@@ -12,6 +12,10 @@ interface NotificationApiService {
     // 회의 제안 알림 조회
     @GET("/notifications/meetings")
     suspend fun getMeetingNotifications(): Response<List<MeetingNotification>>
+    
+    // 친구 요청 알림 조회
+    @GET("/api/mates/requests")
+    suspend fun getFriendRequestNotifications(): Response<List<FriendRequestNotification>>
 }
 
 // API 응답 모델
@@ -30,4 +34,14 @@ data class MeetingNotification(
     val meetingDate: String?,
     val meetingTime: String?,
     val address: String?
+)
+
+// 친구 요청 알림 모델
+data class FriendRequestNotification(
+    val requestId: Int?,
+    val userId: Int?,
+    val name: String?,
+    val email: String?,
+    val profileImageUrl: String?,
+    val createdAt: String?
 )

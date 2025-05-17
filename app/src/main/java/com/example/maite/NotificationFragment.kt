@@ -6,9 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
+import android.widget.TextView
+import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.maite.adapter.NotificationAdapter
 import com.example.maite.databinding.FragmentNotificationBinding
 import com.example.maite.model.NotificationItem
@@ -27,6 +30,10 @@ class NotificationFragment : Fragment() {
     
     private lateinit var invitesAdapter: NotificationAdapter
     private lateinit var proposalsAdapter: NotificationAdapter
+    
+    // 동적으로 생성된 친구 요청 섹션 뷰 참조를 위한 확장 속성
+    private val FragmentNotificationBinding.sectionFriendRequests: View?
+        get() = root.getTag(R.id.section_friend_requests) as? View
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -136,6 +143,7 @@ class NotificationFragment : Fragment() {
             // 알림 타입별로 분류
             val invites = notifications.filter { it.type == NotificationType.ROOM_INVITE }
             val proposals = notifications.filter { it.type == NotificationType.MEETING_INVITE }
+            val friendRequests = notifications.filter { it.type == NotificationType.FRIEND_REQUEST }
             
             // 받은 초대 섹션
             if (invites.isNotEmpty()) {
@@ -159,6 +167,59 @@ class NotificationFragment : Fragment() {
                 )
             } else {
                 binding.sectionProposals.visibility = View.GONE
+            }
+            
+            // 친구 요청 섹션 - 새로 추가
+            if (friendRequests.isNotEmpty()) {
+                // ScrollView 내부 LinearLayout 찾기 (binding.llNotifications 대신 다른 방법 사용)
+                val scrollView = binding.notificationPanel.findViewById<LinearLayout>(R.id.ll_notifications)
+                
+                // 친구 요청 섹션이 없는 경우 동적으로 생성
+                if (binding.sectionFriendRequests == null) {
+                    // 섹션 템플릿 복사
+                    val sectionInvitesOriginal = binding.sectionInvites
+                    val sectionFriendRequests = layoutInflater.inflate(
+                        R.layout.layout_notification_section,
+                        scrollView, // binding.llNotifications 대신 직접 찾은 LinearLayout 사용
+                        false
+                    )
+                    
+                    // 섹션 제목 설정
+                    val tvSectionTitle = sectionFriendRequests.findViewById<TextView>(R.id.tv_section_title)
+                    tvSectionTitle.text = "친구 요청"
+                    
+                    // RecyclerView 참조 가져오기
+                    val rvFriendRequests = sectionFriendRequests.findViewById<RecyclerView>(R.id.rv_notifications)
+                    
+                    // RecyclerView 설정
+                    rvFriendRequests.layoutManager = LinearLayoutManager(requireContext())
+                    rvFriendRequests.adapter = NotificationAdapter(
+                        friendRequests,
+                        onAcceptClick = { notification -> handleAccept(notification) },
+                        onDeclineClick = { notification -> handleDecline(notification) }
+                    )
+                    
+                    // 레이아웃에 추가 (원하는 위치에 배치 - 예: 제안 섹션의 상단)
+                    val indexToInsert = scrollView.indexOfChild(binding.sectionProposals) + 1
+                    scrollView.addView(sectionFriendRequests, indexToInsert)
+                    
+                    // 생성된 레이아웃 객체 저장 (허용된 메터로 리소스 ID 사용)
+                    binding.root.setTag(R.id.section_friend_requests, sectionFriendRequests)
+                } else {
+                    // 이미 존재하는 경우 화면에 보이게 설정
+                    binding.sectionFriendRequests?.visibility = View.VISIBLE
+                    
+                    // RecyclerView 업데이트
+                    val rvFriendRequests = binding.sectionFriendRequests?.findViewById<RecyclerView>(R.id.rv_notifications)
+                    rvFriendRequests?.adapter = NotificationAdapter(
+                        friendRequests,
+                        onAcceptClick = { notification -> handleAccept(notification) },
+                        onDeclineClick = { notification -> handleDecline(notification) }
+                    )
+                }
+            } else {
+                // 친구 요청이 없는 경우 섹션 숨기기
+                binding.sectionFriendRequests?.visibility = View.GONE
             }
             
             // 알림이 없을 때 메시지
@@ -190,6 +251,10 @@ class NotificationFragment : Fragment() {
                 viewModel.acceptMeetingProposal(notification.id)
                 Toast.makeText(requireContext(), "회의 제안을 수락했습니다.", Toast.LENGTH_SHORT).show()
             }
+            NotificationType.FRIEND_REQUEST -> {
+                viewModel.acceptFriendRequest(notification.id)
+                Toast.makeText(requireContext(), "${notification.senderName}님과 친구가 되었습니다.", Toast.LENGTH_SHORT).show()
+            }
             else -> {}
         }
     }
@@ -203,6 +268,10 @@ class NotificationFragment : Fragment() {
             NotificationType.MEETING_INVITE -> {
                 viewModel.declineMeetingProposal(notification.id)
                 Toast.makeText(requireContext(), "회의 제안을 거절했습니다.", Toast.LENGTH_SHORT).show()
+            }
+            NotificationType.FRIEND_REQUEST -> {
+                viewModel.declineFriendRequest(notification.id)
+                Toast.makeText(requireContext(), "${notification.senderName}님의 친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
