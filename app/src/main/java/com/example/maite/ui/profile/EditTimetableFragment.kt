@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
@@ -41,6 +42,12 @@ class EditTimetableFragment : Fragment() {
     // 요일 선택 옵션
     private val dayOptions = arrayOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
 
+    // 현재 선택된 요일 인덱스 (0: 월요일)
+    private var selectedDayIndex = 0
+
+    // 변경사항 추적 플래그
+    private var hasChanges = false
+
     // 현재 선택된 시작/종료 시간 (시간:분)
     private var selectedStartHour = 9
     private var selectedStartMinute = 0
@@ -71,6 +78,13 @@ class EditTimetableFragment : Fragment() {
         viewModel.timetable.value?.let {
             temporaryEntries.addAll(it)
         }
+        
+        // 초기 상태에서는 변경사항 없음으로 설정
+        hasChanges = false
+        // 저장 버튼 비활성화 및 색상 변경
+        binding.btnSave.isEnabled = false
+        binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.light_gray))
+        binding.btnSave.alpha = 0.7f
 
         setupUI()
         setupTimeSelectionObservers()
@@ -81,29 +95,12 @@ class EditTimetableFragment : Fragment() {
     }
 
     private fun setupUI() {
-        // 요일 선택 드롭다운 설정
-        val dayAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
-            dayOptions
-        )
-        binding.spinnerDay.adapter = dayAdapter
+        // 요일 선택 버튼 설정
+        binding.btnDaySelect.text = dayOptions[selectedDayIndex]
 
-        // 요일 선택 리스너
-        binding.spinnerDay.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                // 선택된 요일은 1부터 시작하지만, LocalDate의 DayOfWeek는 월요일이 1
-                val dayIndex = position + 1
-
-                // TimeSelectionViewModel에 날짜 설정 (오늘 날짜에서 요일만 변경)
-                val today = LocalDate.now()
-                val selectedDate = today.with(java.time.DayOfWeek.of(dayIndex))
-                timeSelectionViewModel.updateSelectedDate(selectedDate)
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                // 아무것도 하지 않음 (기본 선택 유지)
-            }
+        // 요일 선택 버튼 클릭 리스너
+        binding.btnDaySelect.setOnClickListener {
+            showDaySelectionDialog()
         }
 
         // 시작 시간 선택 버튼 - 바텀 시트 사용
@@ -122,19 +119,6 @@ class EditTimetableFragment : Fragment() {
         // 일정 추가 버튼
         binding.btnAddEntry.setOnClickListener {
             addTimetableEntry()
-        }
-
-        // 취소 버튼 (선택한 항목 삭제)
-        binding.btnCancelEntry.setOnClickListener {
-            if (selectedEntry != null) {
-                // 선택된 항목이 있으면 임시 목록에서 제거
-                temporaryEntries.remove(selectedEntry)
-                selectedEntry = null
-                updateTimetablePreview()
-                Toast.makeText(requireContext(), "선택한 일정이 취소되었습니다.", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "취소할 일정을 시간표에서 선택해주세요.", Toast.LENGTH_SHORT).show()
-            }
         }
 
         // 저장 버튼
@@ -263,8 +247,7 @@ class EditTimetableFragment : Fragment() {
             parentFragmentManager.popBackStack()
         }
 
-        // 초기 요일 선택 (월요일)
-        binding.spinnerDay.setSelection(0)
+        // 초기 요일 선택은 생성자에서 이미 설정됨 (selectedDayIndex = 0)
     }
 
     // TimeSelectionViewModel 관찰
@@ -323,7 +306,7 @@ class EditTimetableFragment : Fragment() {
         }
 
         // 선택한 요일 인덱스 (1: 월, 2: 화, ..., 7:일)
-        val dayIndex = binding.spinnerDay.selectedItemPosition + 1
+        val dayIndex = selectedDayIndex + 1
 
         // TimetableEntry 생성 (수정된 버전 - 분 정보 포함)
         val entry = TimetableEntry(
@@ -355,6 +338,7 @@ class EditTimetableFragment : Fragment() {
             temporaryEntries.add(entry)
             clearInputFields()
             updateTimetablePreview()
+            setChangesFlag(true) // 변경사항 있음 표시
             Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -586,11 +570,11 @@ class EditTimetableFragment : Fragment() {
                             })
                         }
 
-                        // 선택 가능하도록 설정
+                        // 선택 및 취소 가능하도록 설정
                         setOnClickListener {
                             // 이전에 선택된 항목이 있으면 강조 해제
                             selectedEntry?.let { prevEntry ->
-                                // 모든 셀을 찾아서 강조 해제 (findCell 사용 안 함)
+                                // 모든 셀을 찾아서 강조 해제
                                 val childCount = tableLayout.childCount
                                 for (i in 0 until childCount) {
                                     val tableRow = tableLayout.getChildAt(i) as? TableRow
@@ -611,6 +595,17 @@ class EditTimetableFragment : Fragment() {
                             selectedEntry = entry
                             alpha = 1.0f
                             Toast.makeText(context, "${entry.title} 선택됨", Toast.LENGTH_SHORT).show()
+                        }
+                        
+                        // 더블 클릭 리스너 추가 (취소 기능)
+                        setOnLongClickListener {
+                            // 선택된 항목을 임시 목록에서 제거
+                            temporaryEntries.remove(entry)
+                            selectedEntry = null
+                            updateTimetablePreview()
+                            setChangesFlag(true) // 변경사항 있음 표시
+                            Toast.makeText(context, "${entry.title} 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                            true
                         }
                     } else {
                         // 빈 셀
@@ -641,6 +636,7 @@ class EditTimetableFragment : Fragment() {
                 // 시간표 업데이트
                 clearInputFields()
                 updateTimetablePreview()
+                setChangesFlag(true) // 변경사항 있음 표시
                 Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("취소", null)
@@ -655,10 +651,48 @@ class EditTimetableFragment : Fragment() {
                 temporaryEntries.clear()
                 selectedEntry = null
                 updateTimetablePreview()
+                setChangesFlag(true) // 변경사항 있음 표시
                 Toast.makeText(requireContext(), "시간표가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("취소", null)
             .show()
+    }
+    
+    // 요일 선택 다이얼로그 표시
+    private fun showDaySelectionDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("요일 선택")
+            .setSingleChoiceItems(dayOptions, selectedDayIndex) { dialog, which ->
+                selectedDayIndex = which
+                binding.btnDaySelect.text = dayOptions[selectedDayIndex]
+                
+                // TimeSelectionViewModel에 날짜 설정 (오늘 날짜에서 요일만 변경)
+                val dayIndex = selectedDayIndex + 1
+                val today = LocalDate.now()
+                val selectedDate = today.with(java.time.DayOfWeek.of(dayIndex))
+                timeSelectionViewModel.updateSelectedDate(selectedDate)
+                
+                dialog.dismiss()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+    
+    // 변경사항 플래그 설정 및 저장 버튼 상태 변경
+    private fun setChangesFlag(hasChanges: Boolean) {
+        this.hasChanges = hasChanges
+        binding.btnSave.isEnabled = hasChanges
+        
+        // 버튼 색상 변경: 비활성화 시 회색, 활성화 시 메인컨러
+        if (hasChanges) {
+            // 활성화 상태: 메인 컨러 유지
+            binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
+            binding.btnSave.alpha = 1.0f
+        } else {
+            // 비활성화 상태: 회색으로 변경
+            binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.light_gray))
+            binding.btnSave.alpha = 0.7f
+        }
     }
 
     private fun clearInputFields() {

@@ -124,13 +124,17 @@
                             android:textColor="#333333"
                             android:textStyle="bold" />
 
-                        <Spinner
-                            android:id="@+id/spinner_day"
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_day_select"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
                             android:layout_marginTop="4dp"
-                            android:background="@android:drawable/btn_dropdown"
-                            android:spinnerMode="dropdown" />
+                            android:text="월요일"
+                            android:textColor="@color/mainColor"
+                            android:textSize="12sp"
+                            app:cornerRadius="4dp"
+                            app:strokeColor="@color/mainColor" />
                     </LinearLayout>
 
                     <!-- 시간 선택 -->
@@ -193,7 +197,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- 버튼 그룹 1 (초기화, 취소, 추가) -->
+        <!-- 버튼 그룹 1 (초기화, 추가) -->
         <LinearLayout
             android:id="@+id/btn_layout_1"
             android:layout_width="match_parent"
@@ -217,18 +221,6 @@
                 android:textSize="13sp"
                 android:textColor="#FF5252"
                 app:strokeColor="#FF5252" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_cancel_entry"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_margin="4dp"
-                android:layout_weight="1"
-                android:text="취소"
-                android:textSize="13sp"
-                android:textColor="#666666"
-                app:strokeColor="#666666" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_add_entry"
