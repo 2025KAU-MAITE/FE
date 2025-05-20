@@ -1,5 +1,6 @@
 package com.example.maite
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -425,6 +426,21 @@ class ListDetailFragment : Fragment() {
                             Toast.makeText(context, classNamesInRange, Toast.LENGTH_SHORT).show()
                             true
                         }
+                        containerView.setOnClickListener {
+                            binding.timetableLayout.performClick()
+                        }
+
+                        // 세로 테두리를 위한 View 추가
+                        val verticalLine = View(context)
+                        val lineParams = LinearLayout.LayoutParams(
+                            1.dpToPx(context), // 1dp 너비의 선
+                            LinearLayout.LayoutParams.MATCH_PARENT
+                        )
+                        lineParams.gravity = Gravity.END // 오른쪽에 배치
+                        verticalLine.layoutParams = lineParams
+                        verticalLine.setBackgroundColor(Color.parseColor("#BBBBBB")) // 테두리 색상
+                        verticalLine.alpha = 0.5f  // 테두리 투명도 조절
+                        containerView.addView(verticalLine)
                     }
                     row.addView(containerView)
                 }
@@ -464,6 +480,21 @@ class ListDetailFragment : Fragment() {
                                 Toast.makeText(context, classNameForSlot, Toast.LENGTH_SHORT).show()
                                 true
                             }
+                            containerView.setOnClickListener {
+                                binding.timetableLayout.performClick()
+                            }
+
+                            // 세로 테두리를 위한 View 추가
+                            val verticalLine = View(context)
+                            val lineParams = LinearLayout.LayoutParams(
+                                1.dpToPx(context), // 1dp 너비의 선
+                                LinearLayout.LayoutParams.MATCH_PARENT
+                            )
+                            lineParams.gravity = Gravity.END // 오른쪽에 배치
+                            verticalLine.layoutParams = lineParams
+                            verticalLine.setBackgroundColor(Color.parseColor("#BBBBBB")) // 테두리 색상
+                            verticalLine.alpha = 0.5f  // 테두리 투명도 조절
+                            containerView.addView(verticalLine)
                         }
                         singleHourRow.addView(containerView)
                     }
@@ -471,6 +502,11 @@ class ListDetailFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun Int.dpToPx(context: Context?): Int {
+        if (context == null) return this
+        return (this * context.resources.displayMetrics.density).toInt()
     }
 
 
