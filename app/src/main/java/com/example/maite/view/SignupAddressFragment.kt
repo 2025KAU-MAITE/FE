@@ -36,6 +36,27 @@ class SignupAddressFragment : Fragment() {
         
         setupWebView()
         setupListeners()
+        setupBackPressHandling()
+    }
+    
+    private fun setupBackPressHandling() {
+        // 시스템 뒤로가기 버튼 처리
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                Log.d(TAG, "시스템 뒤로가기 버튼 처리")
+                if (binding.webViewContainer.visibility == View.VISIBLE) {
+                    // WebView가 표시된 상태라면 WebView만 닫기
+                    hideAddressWebView()
+                } else if (requireActivity() is LoginActivity) {
+                    // 그렇지 않다면 이전 화면으로 이동
+                    val loginActivity = requireActivity() as LoginActivity
+                    loginActivity.popBackStackOrShowLoginUI()
+                } else {
+                    // 다른 케이스 처리
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
+            }
+        })
     }
     
     @SuppressLint("SetJavaScriptEnabled")
@@ -133,7 +154,17 @@ class SignupAddressFragment : Fragment() {
     private fun setupListeners() {
         // 뒤로가기 버튼
         binding.btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            Log.d(TAG, "뒤로가기 버튼 클릭")
+            if (binding.webViewContainer.visibility == View.VISIBLE) {
+                // WebView가 표시된 상태라면 WebView만 닫기
+                hideAddressWebView()
+            } else if (requireActivity() is LoginActivity) {
+                // 로그인 화면으로 돌아가기 위해 LoginActivity의 메서드 호출
+                val loginActivity = requireActivity() as LoginActivity
+                loginActivity.popBackStackOrShowLoginUI()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
         
         // 주소 입력 필드 클릭 시 주소 검색 WebView 표시
@@ -215,10 +246,15 @@ class SignupAddressFragment : Fragment() {
         
         // 다음 화면으로 이동 (프로필 이미지 설정 화면)
         val signupProfilePictureFragment = SignupProfilePictureFragment()
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, signupProfilePictureFragment)
-            .addToBackStack(null)
-            .commit()
+        
+        // LoginActivity의 FragmentContainer를 사용
+        if (requireActivity() is LoginActivity) {
+            val loginActivity = requireActivity() as LoginActivity
+            loginActivity.navigateToProfileFragment(signupProfilePictureFragment)
+        } else {
+            Log.e(TAG, "Activity가 LoginActivity가 아닙니다!")
+            Toast.makeText(requireContext(), "오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+        }
     }
     
     // WebView와 안드로이드 간 통신을 위한 인터페이스

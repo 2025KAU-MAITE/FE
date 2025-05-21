@@ -27,6 +27,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["naverMapsClientId"] = properties.getProperty("naver.maps.clientId", "")
+        
+        // 빌드 타입에 따라 구글 API 키 설정
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${properties.getProperty("google.client.id", "")}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${properties.getProperty("google.client.secret", "")}\"")
+        resValue("string", "google_web_client_id", properties.getProperty("google.client.id", ""))
+        resValue("string", "google_web_client_secret", properties.getProperty("google.client.secret", ""))
     }
 
     buildTypes {
@@ -49,6 +55,7 @@ android {
     buildFeatures {
         viewBinding = true
         dataBinding = true
+        buildConfig = true
     }
 
     // Add this to prevent duplicate class issues
@@ -128,9 +135,11 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
     
-    // ✅ Google 로그인 관련 라이브러리
+    // ✅ Google 로그인 관련 라이브러리 (GIS - Google Identity Services)
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation("com.google.android.gms:play-services-base:18.2.0")
+    // One Tap Sign-In 및 Google Identity Services
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
 }
 
 configurations.all {

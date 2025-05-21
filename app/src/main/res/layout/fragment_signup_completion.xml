@@ -36,14 +36,5 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- 하단 인디케이터 라인 -->
-    <View
-        android:id="@+id/indicator"
-        android:layout_width="48dp"
-        android:layout_height="4dp"
-        android:layout_marginBottom="8dp"
-        android:background="#5B79F6"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

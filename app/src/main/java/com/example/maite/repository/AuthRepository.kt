@@ -244,50 +244,118 @@ class AuthRepository(private val context: Context) {
      * Google 로그인 처리 (서버 API 연동)
      * 서버에서 HTTP 200이면 로그인 성공, 500이면 미등록 사용자
      */
-    suspend fun googleLogin(idToken: String): LoginResponse {
+    suspend fun googleLogin(idToken: String, accessToken: String): LoginResponse {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Google 로그인 API 호출: idToken 길이=${idToken.length}")
+                // 로그 보안을 위해 토큰의 일부만 출력
+                Log.d(TAG, "Google 로그인 API 호출: idToken 길이=${idToken.length}, accessToken 길이=${accessToken.length}")
+                Log.d(TAG, "ID 토큰 프리뷰: ${idToken.take(20)}...")
+                Log.d(TAG, "액세스 토큰 프리뷰: ${accessToken.take(20)}...")
                 
                 // POST 요청에 필요한 데이터 생성
                 val request = GoogleLoginRequest(
-                    idToken = idToken
+                    idToken = idToken,
+                    accessToken = accessToken
                 )
                 
+                // 요청 데이터 로깅
+                Log.d(TAG, "Google 로그인 요청 객체: idToken=${idToken.take(15)}..., accessToken=${accessToken.take(15)}...")
+                
                 // 실제 API 호출
-                val response = authApi.googleLogin(request)
+                Log.d(TAG, "Google 로그인 API 요청: URL=/auth/login-google")
                 
-                Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
-                
-                // 응답이 성공인 경우만 accessToken 로그 출력
-                if (response.isSuccess) {
-                    Log.d(TAG, "로그인 결과: accessToken=${response.result.accessToken.take(10)}...")
+                // API 호출 및 응답 처리
+                val response = try {
+                    val apiResponse = authApi.googleLogin(request)
+                    // 성공 응답 상세 로깅
+                    Log.d(TAG, "Google 로그인 API 성공 응답: HTTP 200")
+                    Log.d(TAG, "응답 데이터: isSuccess=${apiResponse.isSuccess}, code=${apiResponse.code}, message=${apiResponse.message}")
+                    apiResponse
+                } catch (e: retrofit2.HttpException) {
+                    Log.e(TAG, "Google 로그인 API HTTP 에러: ${e.code()}")
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "에러 응답: $errorBody")
+                    
+                    // 서버 에러이지만 응답 내용이 "미등록 사용자"인 경우 회원가입 처리로 유도
+                    if (e.code() == 500 || e.code() == 403) {
+                        val needSignup = errorBody?.contains("not registered") == true || 
+                                         errorBody?.contains("미등록") == true ||
+                                         errorBody?.contains("signup") == true ||
+                                         errorBody?.contains("가입") == true
+                                      
+                        if (needSignup) {
+                            return@withContext LoginResponse(
+                                isSuccess = false,
+                                code = "NEED_SIGNUP",
+                                message = "Google 계정으로 가입이 필요합니다",
+                                result = LoginResult(
+                                    accessToken = "",
+                                    message = "미등록 Google 사용자입니다. 회원가입이 필요합니다."
+                                )
+                            )
+                        }
+                    }
+                    throw e  // 상위 catch 블록에서 처리하도록 다시 throw
                 }
                 
                 // GoogleLoginResponse를 LoginResponse로 변환
-                // 서버 응답에 따라 처리 (200: 성공, 500: 미등록 사용자)
+                // 서버 응답에 따라 처리
                 LoginResponse(
                     isSuccess = response.isSuccess,
                     code = response.code,
                     message = response.message,
                     result = LoginResult(
-                        accessToken = if (response.isSuccess) response.result.accessToken else "",
+                        accessToken = response.result.accessToken ?: "",
                         message = response.result.message
                     )
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Google 로그인 API 오류: ${e.message}", e)
                 
-                // 서버에서 HTTP 500을 반환하면 미등록 사용자로 처리
-                // 이 경우 retrofit은 예외를 발생시킬 수 있음
-                // 미등록 사용자로 처리하기 위해 isSuccess = false 설정
+                // 예외 유형 및 응답 코드에 따라 다르게 처리
+                if (e is retrofit2.HttpException) {
+                    val errorCode = e.code()
+                    val errorBody = e.response()?.errorBody()?.string() ?: ""
+                    Log.e(TAG, "HTTP 에러: $errorCode, 에러 본문: $errorBody")
+                    
+                    // 에러 본문에서 필요한 정보 추출 시도
+                    val isUserExist = errorBody.contains("already exist") || 
+                                      errorBody.contains("이미 존재") || 
+                                      errorBody.contains("registered")
+                                      
+                    if (isUserExist) {
+                        // 이미 가입된 계정이라면 로그인 시도로 처리
+                        return@withContext LoginResponse(
+                            isSuccess = true,  // 기존 계정이 있으므로 성공으로 처리
+                            code = "USER_EXISTS",
+                            message = "이미 가입된 Google 계정입니다. 로그인을 진행합니다.",
+                            result = LoginResult(
+                                accessToken = "", // 토큰은 없지만 로그인 처리 시도
+                                message = "기존 계정으로 로그인을 시도하세요."
+                            )
+                        )
+                    } else {
+                        // 그 외 HTTP 에러는 회원가입 필요로 처리
+                        return@withContext LoginResponse(
+                            isSuccess = false,
+                            code = "NEED_SIGNUP",
+                            message = "Google 계정으로 가입이 필요합니다",
+                            result = LoginResult(
+                                accessToken = "",
+                                message = "미등록 Google 사용자입니다. 회원가입이 필요합니다."
+                            )
+                        )
+                    }
+                }
+                
+                // 기타 예외는 일반 오류로 처리
                 LoginResponse(
-                    isSuccess = false,  // 회원가입이 필요한 상태
-                    code = "NEED_SIGNUP",
-                    message = "Google 계정으로 가입이 필요합니다",
+                    isSuccess = false,
+                    code = "ERROR",
+                    message = "로그인 처리 중 오류가 발생했습니다: ${e.message}",
                     result = LoginResult(
                         accessToken = "",
-                        message = "미등록 Google 사용자입니다. 회원가입이 필요합니다."
+                        message = "오류가 발생했습니다. 다시 시도해주세요."
                     )
                 )
             }
@@ -325,28 +393,105 @@ class AuthRepository(private val context: Context) {
     ): SocialSignupResponse {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "소셜 로그인 회원가입 API 호출: 이메일=$email, 이름=$name, 제공자=$provider")
+                Log.d(TAG, "소셜 로그인 회원가입 API 호출: 이메일=$email, 이름=$name, 제공자=$provider, 전화번호=$phoneNumber, 주소=$address")
                 
-                // POST 요청에 필요한 데이터 생성
-                val request = SocialSignupRequest(
+                // 요청 URL을 로그로 출력
+                val requestUrl = "auth/complete-social-signup?email=$email&name=$name&provider=$provider&phonenumber=$phoneNumber&address=$address"
+                Log.d(TAG, "요청 URL: $requestUrl")
+                
+                // 토큰들을 가져옴
+                val idToken = com.example.maite.model.SignupDataHolder.idToken
+                val accessToken = com.example.maite.model.SignupDataHolder.accessToken
+                
+                // 토큰이 없으면 로그 출력
+                if (idToken.isEmpty()) {
+                    Log.e(TAG, "ID 토큰이 비어 있습니다. 소셜 로그인 과정에서 토큰이 저장되지 않았을 수 있습니다.")
+                }
+                
+                if (accessToken.isEmpty()) {
+                    Log.e(TAG, "Access 토큰이 비어 있습니다. 소셜 로그인 과정에서 액세스 토큰이 저장되지 않았을 수 있습니다.")
+                }
+                
+                val authHeader = if (idToken.isNotEmpty()) "Bearer $idToken" else null
+                
+                // API 문서에 따라 쿼리 파라미터 사용
+                // SocialSignupRequest 객체 사용 안함 (쿼리 파라미터로 전달)
+                
+                // 요청 내용 로깅 - 쿼리 파라미터
+                Log.d(TAG, "요청 쿼리 파라미터: email=$email, name=$name, provider=$provider, phonenumber=$phoneNumber, address=$address")
+                
+                // idToken과 인증 헤더는 사용하지 않음 (API 문서에 따라 쿼리 파라미터만 필요)
+                
+                // 실제 API 호출 - 쿼리 파라미터로 전달 (API 문서에 따름)
+                val response = authApi.completeSocialSignup(
                     email = email,
                     name = name,
                     provider = provider,
-                    phonenumber = phoneNumber, // API 요구사항에 따라 phonenumber 사용
+                    phonenumber = phoneNumber,
                     address = address
                 )
-                
-                // 실제 API 호출
-                val response = authApi.completeSocialSignup(request)
                 
                 Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")
                 Log.d(TAG, "회원가입 결과: userId=${response.result.userId}, email=${response.result.email}, registered=${response.result.registered}")
                 
                 response
             } catch (e: Exception) {
-                Log.e(TAG, "소셜 로그인 회원가입 API 오류: ${e.message}", e)
+                // 상세한 오류 처리
+                when (e) {
+                    is retrofit2.HttpException -> {
+                        val errorCode = e.code()
+                        val errorBody = e.response()?.errorBody()?.string()
+                        Log.e(TAG, "소셜 로그인 회원가입 API HTTP 오류: 코드=$errorCode, 본문=$errorBody", e)
+                        
+                        // 오류 메시지 추출 시도
+                        var errorMessage = "서버 연결 오류: HTTP $errorCode"
+                        try {
+                            // JSON 파싱 시도
+                            if (!errorBody.isNullOrEmpty()) {
+                                val jsonObject = org.json.JSONObject(errorBody)
+                                if (jsonObject.has("message")) {
+                                    errorMessage = jsonObject.getString("message")
+                                    Log.d(TAG, "서버 오류 메시지: $errorMessage")
+                                }
+                            }
+                        } catch (jsonEx: Exception) {
+                            Log.e(TAG, "JSON 파싱 오류", jsonEx)
+                        }
+                        
+                        // 특정 에러 코드에 따른 처리
+                        when (errorCode) {
+                            400 -> {
+                                // 이미 존재하는 이메일 등의 케이스
+                                Log.e(TAG, "잘못된 요청 (400 Bad Request): $errorMessage")
+                            }
+                            403 -> {
+                                Log.e(TAG, "권한 오류 (403 Forbidden): API 호출 권한이 없습니다.")
+                            }
+                        }
+                        
+                        // 적절한 오류 응답 반환
+                        return@withContext SocialSignupResponse(
+                            isSuccess = false,
+                            code = "ERROR_$errorCode",
+                            message = errorMessage,
+                            result = SocialSignupResult(
+                                userId = 0,
+                                email = email,
+                                name = name,
+                                registeredAt = "",
+                                message = errorMessage,
+                                registered = false,
+                                accessToken = null,
+                                idToken = null
+                            )
+                        )
+                    }
+                    else -> {
+                        Log.e(TAG, "소셜 로그인 회원가입 API 오류: ${e.message}", e)
+                    }
+                }
                 
-                // API 호출 실패 시 오류 응답 생성
+                // 기타 예외 처리를 위한 기본 오류 응답 생성
                 SocialSignupResponse(
                     isSuccess = false,
                     code = "ERROR",
@@ -358,8 +503,8 @@ class AuthRepository(private val context: Context) {
                         registeredAt = "",
                         message = "소셜 로그인 회원가입 처리 중 오류가 발생했습니다",
                         registered = false,
-                        accessToken = "",
-                        idToken = ""
+                        accessToken = null,
+                        idToken = null
                     )
                 )
             }

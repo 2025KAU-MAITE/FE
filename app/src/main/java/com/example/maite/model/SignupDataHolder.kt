@@ -14,12 +14,28 @@ object SignupDataHolder {
     var address: String = ""
     var profileImageUrl: String = ""
     
+    // 소셜 로그인 관련 정보
+    var provider: String = "" // "GOOGLE"
+    var idToken: String = "" // 소셜 로그인에서 받은 ID 토큰
+    var accessToken: String = "" // 소셜 로그인에서 받은 액세스 토큰
+    
     /**
      * 이메일 및 비밀번호 저장
      */
     fun saveAccountInfo(email: String, password: String) {
         this.email = email
         this.password = password
+    }
+    
+    /**
+     * 소셜 로그인 정보 저장
+     */
+    fun saveSocialLoginInfo(email: String, provider: String, idToken: String, accessToken: String = "") {
+        this.email = email
+        this.provider = provider
+        this.idToken = idToken
+        this.accessToken = accessToken
+        this.password = "" // 소셜 로그인은 비밀번호가 필요 없음
     }
     
     /**
@@ -32,5 +48,8 @@ object SignupDataHolder {
         phoneNumber = ""
         address = ""
         profileImageUrl = ""
+        provider = ""
+        idToken = ""
+        accessToken = ""
     }
 }

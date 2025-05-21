@@ -49,12 +49,35 @@ class SignupProfilePictureFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         setupListeners()
+        setupBackPressHandling()
+    }
+    
+    private fun setupBackPressHandling() {
+        // 시스템 뒤로가기 버튼 처리
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                Log.d(TAG, "시스템 뒤로가기 버튼 처리")
+                if (requireActivity() is LoginActivity) {
+                    val loginActivity = requireActivity() as LoginActivity
+                    loginActivity.popBackStackOrShowLoginUI()
+                } else {
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
+            }
+        })
     }
     
     private fun setupListeners() {
         // Back button click listener
         binding.btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            Log.d(TAG, "뒤로가기 버튼 클릭")
+            // 로그인 화면으로 돌아가기 위해 LoginActivity의 메서드 호출
+            if (requireActivity() is LoginActivity) {
+                val loginActivity = requireActivity() as LoginActivity
+                loginActivity.popBackStackOrShowLoginUI()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
         
         // Profile picture click listener
@@ -116,10 +139,15 @@ class SignupProfilePictureFragment : Fragment() {
     private fun navigateToNextScreen() {
         // Navigate to the signup completion screen
         val signupCompletionFragment = SignupCompletionFragment()
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, signupCompletionFragment)
-            .addToBackStack(null)
-            .commit()
+        
+        // LoginActivity의 FragmentContainer를 사용
+        if (requireActivity() is LoginActivity) {
+            val loginActivity = requireActivity() as LoginActivity
+            loginActivity.navigateToProfileFragment(signupCompletionFragment)
+        } else {
+            Log.e(TAG, "Activity가 LoginActivity가 아닙니다!")
+            Toast.makeText(requireContext(), "오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+        }
     }
     
     override fun onDestroyView() {

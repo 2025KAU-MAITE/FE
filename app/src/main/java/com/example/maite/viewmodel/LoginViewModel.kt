@@ -69,12 +69,17 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Google 로그인
-    fun googleLogin(idToken: String) {
+    fun googleLogin(idToken: String, name: String = "", accessToken: String = "") {
         _loading.value = true
         viewModelScope.launch {
             try {
-                // 서버에 Google ID 토큰 검증 요청
-                val response = authRepository.googleLogin(idToken)
+                // 소셜 계정 이름 로깅
+                if (name.isNotEmpty()) {
+                    Log.d(TAG, "Google 로그인 - 이름 정보: $name")
+                }
+                
+                // 서버에 Google ID 토큰 검증 요청 (accessToken 추가)
+                val response = authRepository.googleLogin(idToken, accessToken)
                 
                 // 서버 응답에 따른 처리:
                 // HTTP 200 (isSuccess = true): 로그인 성공
@@ -85,7 +90,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 _loginResult.value = response
                 
                 var email: String? = null
-                var name: String? = null
+                var userName: String? = name.ifEmpty { null }  // 구글에서 받은 이름이 있으면 사용
                 
                 if (isRegistered) {
                     // 로그인 성공 케이스 (HTTP 200)
@@ -99,7 +104,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         val userInfo = authRepository.getUserInfo(response.result.accessToken)
                         if (userInfo.isSuccess) {
                             email = userInfo.result.email
-                            name = userInfo.result.name
+                            userName = userInfo.result.name
                             
                             preferencesUtil.saveUserInfo(
                                 userInfo.result.userId,
@@ -122,11 +127,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     message = response.message,
                     result = GoogleLoginResult(
                         accessToken = response.result.accessToken,
-                        idToken = idToken,  // 원본 idToken 저장
-                        message = response.result.message,
-                        isRegistered = isRegistered,  // 서버 응답 코드에 따라 설정
-                        email = email,  // 사용자 정보에서 추출한 이메일
-                        name = name     // 사용자 정보에서 추출한 이름
+                        message = response.result.message
                     )
                 )
                 
@@ -169,8 +170,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 
                 if (response.isSuccess) {
                     // 액세스 토큰과 사용자 정보 저장
-                    Log.d(TAG, "소셜 회원가입 성공: accessToken=${response.result.accessToken.take(10)}...")
-                    preferencesUtil.saveAccessToken(response.result.accessToken)
+                    response.result.accessToken?.let { token ->
+                        Log.d(TAG, "소셜 회원가입 성공: accessToken=${token.take(10)}...")
+                        preferencesUtil.saveAccessToken(token)
+                    } ?: Log.d(TAG, "소셜 회원가입 성공: accessToken=null")
+                    
                     preferencesUtil.saveUserInfo(
                         response.result.userId,
                         response.result.name,
@@ -178,6 +182,13 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 } else {
                     Log.e(TAG, "소셜 회원가입 실패: ${response.message}")
+                    
+                    // 이미 존재하는 이메일인 경우 특별 오류 메시지 설정
+                    if (response.message.contains("이미 존재하는 이메일")) {
+                        _errorMessage.value = "이미 가입된 이메일입니다. 일반 로그인을 시도해보세요."
+                    } else {
+                        _errorMessage.value = "소셜 회원가입 실패: ${response.message}"
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "소셜 회원가입 처리 중 오류 발생", e)
@@ -192,12 +203,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
      * Check if a user is registered with Google ID token
      * 서버에서 HTTP 200이면 로그인 성공, 500이면 미등록 사용자
      */
-    fun checkGoogleRegistration(idToken: String) {
+    fun checkGoogleRegistration(idToken: String, accessToken: String = "") {
         _loading.value = true
         viewModelScope.launch {
             try {
-                // 서버에 Google ID 토큰으로 사용자 조회 요청
-                val response = authRepository.googleLogin(idToken)
+                // 서버에 Google ID 토큰으로 사용자 조회 요청 (accessToken 추가)
+                val response = authRepository.googleLogin(idToken, accessToken)
                 
                 // 서버 응답에 따라 처리
                 // HTTP 200 (isSuccess = true): 로그인 성공, 등록된 사용자
@@ -237,11 +248,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     message = response.message,
                     result = GoogleLoginResult(
                         accessToken = response.result.accessToken,
-                        idToken = idToken,
-                        message = response.result.message,
-                        isRegistered = isRegistered,
-                        email = email,
-                        name = name
+                        message = response.result.message
                     )
                 )
                 

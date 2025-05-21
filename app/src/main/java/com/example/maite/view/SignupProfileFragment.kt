@@ -42,12 +42,82 @@ class SignupProfileFragment : Fragment() {
         setupListeners()
         // Initially hide authentication UI elements
         hideAuthenticationViews()
+        setupBackPressHandling()
+        
+        // 소셜 로그인에서 이름 데이터 있는 경우 필드 비활성화 및 자동 입력
+        handleNameFieldForSocialLogin()
+    }
+    
+    private fun handleNameFieldForSocialLogin() {
+        // SignupDataHolder에서 소셜 로그인 정보 확인
+        val provider = SignupDataHolder.provider
+        val name = SignupDataHolder.name
+        
+        if (provider.isNotEmpty()) {
+            // 소셜 로그인인 경우 프로바이더에 따라 다른 메시지 표시
+            val providerName = when(provider) {
+                "GOOGLE" -> "Google"
+                "KAKAO" -> "Kakao"
+                "NAVER" -> "Naver"
+                else -> provider
+            }
+            
+            if (name.isNotEmpty()) {
+                // 소셜 로그인이고 이름 정보가 있으면 자동으로 채우고 비활성화
+                Log.d(TAG, "소셜 로그인($provider)에서 가져온 이름으로 자동 입력 및 필드 비활성화: $name")
+                binding.etName.setText(name)
+                
+                // 이름 필드를 비활성화하되, 시각적으로 정상적인 필드처럼 보이게 하기
+                binding.etName.isFocusable = false
+                binding.etName.isFocusableInTouchMode = false
+                binding.etName.isLongClickable = false  // 컨텍스트 메뉴 방지
+                
+                // 클릭 시 안내 메시지 표시 (선택사항)
+                binding.etName.setOnClickListener {
+                    Toast.makeText(requireContext(), "$providerName 계정 정보는 수정할 수 없습니다", Toast.LENGTH_SHORT).show()
+                }
+                
+                // 전화번호 필드로 포커스 이동
+                binding.etPhoneNumber.requestFocus()
+                
+                Log.d(TAG, "$providerName 계정에서 가져온 이름으로 자동 설정 완료")
+                
+                // 전화번호 필드로 포커스 이동
+                binding.etPhoneNumber.requestFocus()
+            } else {
+                // 소셜 로그인이지만 이름이 없는 경우 안내 메시지 추가
+                Log.d(TAG, "소셜 로그인($provider)이지만 이름 정보가 없습니다")
+                binding.etName.hint = "$providerName 계정에서 이름을 가져오지 못했습니다. 직접 입력해주세요."
+            }
+        }
+    }
+    
+    private fun setupBackPressHandling() {
+        // 시스템 뒤로가기 버튼 처리
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                Log.d(TAG, "시스템 뒤로가기 버튼 처리")
+                if (requireActivity() is LoginActivity) {
+                    val loginActivity = requireActivity() as LoginActivity
+                    loginActivity.popBackStackOrShowLoginUI()
+                } else {
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
+            }
+        })
     }
     
     private fun setupListeners() {
         // Back button click listener
         binding.btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            Log.d(TAG, "뒤로가기 버튼 클릭")
+            // 로그인 화면으로 돌아가기 위해 LoginActivity의 메서드 호출
+            if (requireActivity() is LoginActivity) {
+                val loginActivity = requireActivity() as LoginActivity
+                loginActivity.popBackStackOrShowLoginUI()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
         
         // Send authentication number button
@@ -212,8 +282,11 @@ class SignupProfileFragment : Fragment() {
             return
         }
         
-        // 이름 검증
-        if (name.isEmpty()) {
+        // 소셜 로그인인 경우와 일반 로그인인 경우를 구분
+        val isSocialLogin = SignupDataHolder.provider.isNotEmpty()
+        
+        // 이름 검증 - 소셜 로그인인 경우 이미 자동으로 입력되었고 비활성화되었으므로 검증 불필요
+        if (!isSocialLogin && name.isEmpty()) {
             binding.etName.error = "이름을 입력해주세요"
             return
         }
@@ -352,7 +425,11 @@ class SignupProfileFragment : Fragment() {
     private fun validateInputs(): Boolean {
         val name = binding.etName.text.toString().trim()
         
-        if (name.isEmpty()) {
+        // 소셜 로그인인 경우와 일반 로그인인 경우를 구분
+        val isSocialLogin = SignupDataHolder.provider.isNotEmpty()
+        
+        // 이름 확인 - 소셜 로그인인 경우 이미 채워지고 비활성화되었을 것이므로 별도 체크 필요 없음
+        if (!isSocialLogin && name.isEmpty()) {
             binding.etName.error = "이름을 입력해주세요"
             return false
         }
@@ -378,10 +455,15 @@ class SignupProfileFragment : Fragment() {
         
         // Navigate to address input screen
         val signupAddressFragment = SignupAddressFragment()
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, signupAddressFragment)
-            .addToBackStack(null)
-            .commit()
+        
+        // LoginActivity의 FragmentContainer를 사용
+        if (requireActivity() is LoginActivity) {
+            val loginActivity = requireActivity() as LoginActivity
+            loginActivity.navigateToProfileFragment(signupAddressFragment)
+        } else {
+            Log.e(TAG, "Activity가 LoginActivity가 아닙니다!")
+            Toast.makeText(requireContext(), "오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+        }
     }
     
     override fun onDestroyView() {
