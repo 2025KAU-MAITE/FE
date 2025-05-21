@@ -272,7 +272,7 @@ class HomeFragment : Fragment() {
         timetableLayout.removeAllViews()
 
         // 동적 시간 범위 계산 - 24시까지 표시 가능하도록 수정
-        var minHour = 9  // 기본 최소 시간 (9시)
+        var minHour = 8  // 기본 최소 시간 (9시)
         var maxHour = 24 // 기본 최대 시간 (24시까지 확장 - 21시 이후 잘림 해결)
 
         // 일정이 있는 경우 시간 범위 조정
