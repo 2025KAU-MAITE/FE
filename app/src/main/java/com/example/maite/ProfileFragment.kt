@@ -451,16 +451,16 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
         }
     }
 
-    // 30분 단위로 시간표를 표시하도록 수정
+    // 개선된 시간표 UI 생성 - 30분 단위 정확한 표시를 위한 수정
     private fun createTimetable(entries: List<TimetableEntry>) {
         Log.d("ProfileFragment", "createTimetable called with ${entries.size} entries")
         
         val tableLayout = binding.timetableLayout
         tableLayout.removeAllViews()
 
-        // 동적 시간 범위 계산
+        // 동적 시간 범위 계산 - 24시까지 표시 가능하도록 수정
         var minHour = 9 // 기본 최소 시간 (9시)
-        var maxHour = 24
+        var maxHour = 24 // 기본 최대 시간을 24시로 설정 (21시 이후 잘림 문제 해결)
 
         // 일정이 있는 경우에만 범위 조정
         if (entries.isNotEmpty()) {
@@ -482,9 +482,9 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
             }
         }
 
-        // 시간 범위가 넘어가면 제한 (0-23 범위 내로)
+        // 시간 범위가 넘어가면 제한 (0-24 범위 내로)
         minHour = minHour.coerceIn(0, 23)
-        maxHour = maxHour.coerceIn(minHour + 1, 23)
+        maxHour = maxHour.coerceIn(minHour + 1, 24) // 최대 24시까지 허용
 
         // 시간 열 너비 계산
         val timeColWidth = calculateTextWidth("00")
@@ -504,105 +504,128 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
         }
         tableLayout.addView(headerRow)
 
-        val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height) / 2 // 높이를 절반으로 조정
+        // 1시간 단위 셀 높이 설정 (30분 단위 정확한 위치는 내부적으로 계산)
+        val hourCellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
 
-        for (timeSlot in (minHour * 2)..(maxHour * 2)) {
-            val hour = timeSlot / 2
-            val minute = (timeSlot % 2) * 30
-            val currentTimeInMinutes = hour * 60 + minute
-
+        // 시간 행 추가 (1시간 단위로 UI 표시)
+        for (hour in minHour until maxHour) {
             val row = TableRow(context)
 
-            // 시간 표시 열 - 정시(00분)에만 시간 표시
-            val timeText = if (minute == 0) hour.toString() else ""
-            val timeCell = createTextView(timeText, timeColWidth, cellHeight)
+            // 시간 셀
+            val timeCell = createTextView(hour.toString(), timeColWidth, hourCellHeight)
             timeCell.setBackgroundColor(Color.parseColor("#F5F5F5"))
             timeCell.textSize = 10f
             timeCell.setTextColor(Color.parseColor("#555555"))
             row.addView(timeCell)
 
-            // 요일별 셀 추가
+            // 요일별 셀 추가 (1시간 단위)
             for (day in 1 until weekDays.size) {
-                // 해당 요일, 시간의 일정 찾기 (30분 단위 고려)
-                val matched = entries.find { e ->
-                    val startTimeInMinutes = e.startHour * 60 + e.startMinute
-                    val endTimeInMinutes = e.endHour * 60 + e.endMinute
-
-                    e.dayOfWeek == day &&
-                            currentTimeInMinutes >= startTimeInMinutes &&
-                            currentTimeInMinutes < endTimeInMinutes
+                // 해당 시간에 해당하는 일정 찾기
+                val entriesInThisHour = entries.filter { e ->
+                    // 일정 시작 및 종료 시간 (분 단위)
+                    val startTime = e.startHour * 60 + e.startMinute
+                    val endTime = e.endHour * 60 + e.endMinute
+                    
+                    // 현재 시간 범위 (분 단위)
+                    val hourStart = hour * 60
+                    val hourEnd = (hour + 1) * 60
+                    
+                    // 해당 요일에 일정이 현재 시간 범위와 겹치는지 확인
+                    e.dayOfWeek == day && 
+                            !(endTime <= hourStart || startTime >= hourEnd)
                 }
 
-                // 셀 컨테이너 생성 - 홈 프라그먼트와 동일한 방식으로 변경
-                val cell = LinearLayout(context).apply {
-                    layoutParams = TableRow.LayoutParams(0, cellHeight, 1f)
-                    gravity = Gravity.CENTER
-                    orientation = LinearLayout.VERTICAL
-
-                    if (matched != null) {
-                        // 일정 시작 시간과 종료 시간 (분 단위)
-                        val startTimeInMinutes = matched.startHour * 60 + matched.startMinute
-                        val endTimeInMinutes = matched.endHour * 60 + matched.endMinute
-
-                        // 시작 시간의 다음 셀 (30분 후)
-                        val isTitleCell = (
-                                currentTimeInMinutes == startTimeInMinutes + 30
-                        )
-
-                        // 종료 시간의 이전 셀 (30분 전)
-                        val isLocationCell = (
-                                currentTimeInMinutes == endTimeInMinutes - 30
-                        )
-
-                        // 최소 길이 확인 (적어도 1시간 이상이어야 제목/장소 표시)
-                        val isLongEnough = (endTimeInMinutes - startTimeInMinutes) >= 60
-                        // 일정이 있는 경우
-                        setBackgroundColor(Color.parseColor(matched.colorHex))
+                if (entriesInThisHour.isEmpty()) {
+                    // 빈 셀 추가
+                    val emptyCell = LinearLayout(context).apply {
+                        layoutParams = TableRow.LayoutParams(0, hourCellHeight, 1f)
+                        setBackgroundResource(R.drawable.timetable_cell_border)
+                    }
+                    row.addView(emptyCell)
+                } else {
+                    // 현재 시간대의 일정 찾기 (여러 개 일정이 겹치는 경우 첫 번째 사용)
+                    val entry = entriesInThisHour[0]
+                    
+                    // 현재 시간대에서 일정의 시작과 끝 위치 계산
+                    val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
+                    val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
+                    
+                    // 현재 시간대의 시작과 끝
+                    val hourStartMinutes = hour * 60
+                    val hourEndMinutes = (hour + 1) * 60
+                    
+                    // 일정의 상대적 위치 확인
+                    val isStartHour = startTimeInMinutes >= hourStartMinutes && startTimeInMinutes < hourEndMinutes
+                    val isEndHour = endTimeInMinutes > hourStartMinutes && endTimeInMinutes <= hourEndMinutes
+                    
+                    // 셀 생성 - 30분 단위 정확한 표시를 위한 개선
+                    val cell = LinearLayout(context).apply {
+                        // 30분 단위 정확한 위치를 위한 파라미터 계산
+                        val startMinutes = entry.startHour * 60 + entry.startMinute
+                        val endMinutes = entry.endHour * 60 + entry.endMinute
+                        val hourStartMinutes = hour * 60
+                        val hourEndMinutes = (hour + 1) * 60
+                        
+                        // 현재 시간대 내에서의 상대적 시작 위치 (0~1 사이 비율)
+                        val startRatio = if (startMinutes <= hourStartMinutes) 0f
+                                         else (startMinutes - hourStartMinutes) / 60f
+                        
+                        // 현재 시간대 내에서의 상대적 끝 위치 (0~1 사이 비율)
+                        val endRatio = if (endMinutes >= hourEndMinutes) 1f
+                                       else (endMinutes - hourStartMinutes) / 60f
+                        
+                        // 시작 위치에 따른 상단 마진 계산
+                        val topMargin = (hourCellHeight * startRatio).toInt()
+                        
+                        // 시간 비율에 따른 높이 계산
+                        val heightRatio = endRatio - startRatio
+                        val cellContentHeight = (hourCellHeight * heightRatio).toInt()
+                        
+                        // 레이아웃 파라미터 설정 (상대적 위치로)
+                        layoutParams = TableRow.LayoutParams(0, cellContentHeight, 1f).apply {
+                            this.topMargin = topMargin
+                        }
+                        
+                        gravity = Gravity.CENTER
+                        orientation = LinearLayout.VERTICAL
+                        
+                        // 배경색 설정
+                        setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
-
-                        // 일정 시작 시간인 경우에만 제목 표시
-                        val isStartTime = (
-                                currentTimeInMinutes == matched.startHour * 60 + matched.startMinute
-                                )
-
-                        if (isLongEnough && isTitleCell) {
+                        
+                        // 텍스트 표시 - 시작 시간에만 제목 표시, 끝 시간에 장소 표시
+                        if (isStartHour) {
+                            // 시작 시간을 포함하는 정확한 시간 표시
                             addView(TextView(context).apply {
-                                text = matched.title
-                                textSize = 11f
+                                // 정확한 시간 표시 (30분 단위 포함)
+                                val timeText = String.format("%02d:%02d", entry.startHour, entry.startMinute)
+                                text = "${entry.title} $timeText"
+                                textSize = 10f
                                 gravity = Gravity.CENTER
                                 setTextColor(Color.WHITE)
                                 ellipsize = android.text.TextUtils.TruncateAt.END
                                 maxLines = 1
                                 setPadding(2, 2, 2, 2)
                             })
-                        } else if (isLongEnough && isLocationCell && !matched.location.isNullOrEmpty()) {
+                        } else if (isEndHour && !entry.location.isNullOrEmpty() && 
+                                   (endMinutes - startMinutes) >= 60) {
+                            // 종료 시간에는 장소 표시 (일정이 1시간 이상인 경우만)
                             addView(TextView(context).apply {
-                                text = "장소:${matched.location}"
-                                textSize = 7f
+                                // 정확한 종료 시간도 표시
+                                val endTimeText = String.format("%02d:%02d", entry.endHour, entry.endMinute)
+                                text = "장소:${entry.location} (~$endTimeText)"
+                                textSize = 8f
                                 gravity = Gravity.CENTER
                                 setTextColor(Color.WHITE)
                                 ellipsize = android.text.TextUtils.TruncateAt.END
                                 maxLines = 1
                                 setPadding(2, 0, 2, 0)
                             })
-                        } else if (!isLongEnough && currentTimeInMinutes == startTimeInMinutes) {
-                            addView(TextView(context).apply {
-                                text = matched.title
-                                textSize = 11f
-                                gravity = Gravity.CENTER
-                                setTextColor(Color.WHITE)
-                                ellipsize = android.text.TextUtils.TruncateAt.END
-                                maxLines = 1
-                                setPadding(2, 2, 2, 2)
-                            })
                         }
-                    } else {
-                        // 빈 셀 - 홈 프라그먼트와 같이 테두리 설정
-                        setBackgroundResource(R.drawable.timetable_cell_border)
                     }
+                    
+                    row.addView(cell)
                 }
-
-                row.addView(cell)
             }
 
             tableLayout.addView(row)
