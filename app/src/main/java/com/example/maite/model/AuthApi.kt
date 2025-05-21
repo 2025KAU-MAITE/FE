@@ -55,13 +55,19 @@ interface AuthApi {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    // ✅ Google 로그인 API (POST /auth/google)
-    @POST("auth/google")
+    // ✅ Google 로그인 API (POST /auth/login-google)
+    @POST("auth/login-google")
     suspend fun googleLogin(@Body request: GoogleLoginRequest): GoogleLoginResponse
 
     // ✅ 소셜 로그인 회원가입 API (POST /auth/complete-social-signup)
     @POST("auth/complete-social-signup")
-    suspend fun completeSocialSignup(@Body request: SocialSignupRequest): SocialSignupResponse
+    suspend fun completeSocialSignup(
+        @Query("email") email: String,
+        @Query("name") name: String,
+        @Query("provider") provider: String,
+        @Query("phonenumber") phonenumber: String,
+        @Query("address") address: String
+    ): SocialSignupResponse
 
     @GET("auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserInfoResponse

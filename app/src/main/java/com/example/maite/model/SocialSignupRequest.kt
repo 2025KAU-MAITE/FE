@@ -8,7 +8,8 @@ data class SocialSignupRequest(
     val name: String,
     val provider: String, // 제공자(GOOGLE)
     val phonenumber: String, // API 요구사항에 따라 phonenumber로 명명
-    val address: String
+    val address: String,
+    val idToken: String? = null // idToken을 요청 바디에 포함할 수 있도록 추가
 )
 
 /**
@@ -31,6 +32,6 @@ data class SocialSignupResult(
     val registeredAt: String,
     val message: String,
     val registered: Boolean,
-    val accessToken: String,
-    val idToken: String
+    val accessToken: String? = null,
+    val idToken: String? = null
 )

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Google Cloud Platform에서 발급받은 클라이언트 ID -->
-    <string name="google_web_client_id">543275154539-5i03snops2b3vav5tg5k8g7f6179b8vg.apps.googleusercontent.com</string>
+    <!-- Google Cloud Platform에서 발급받은 클라이언트 ID와 시크릿은 local.properties에서 관리됩니다. -->
+    <!-- BuildConfig에서 가져와 사용하세요 -->
+    <string name="google_web_client_id">PLACEHOLDER_CLIENT_ID</string>
+    <string name="google_web_client_secret">PLACEHOLDER_CLIENT_SECRET</string>
 </resources>

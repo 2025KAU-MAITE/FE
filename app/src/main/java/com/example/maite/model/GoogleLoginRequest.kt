@@ -1,9 +1,19 @@
 package com.example.maite.model
 
+import com.google.gson.annotations.SerializedName
+
+/**
+ * Google 로그인 API 요청 데이터 모델
+ * 서버 API와 정확히 일치하는 필드명 사용 필수
+ */
 data class GoogleLoginRequest(
-    val idToken: String
+    @SerializedName("idToken") val idToken: String,
+    @SerializedName("accessToken") val accessToken: String
 )
 
+/**
+ * Google 로그인 API 응답 데이터 모델
+ */
 data class GoogleLoginResponse(
     val isSuccess: Boolean,
     val code: String,
@@ -11,11 +21,10 @@ data class GoogleLoginResponse(
     val result: GoogleLoginResult
 )
 
+/**
+ * Google 로그인 결과 데이터 모델
+ */
 data class GoogleLoginResult(
-    val accessToken: String,
-    val idToken: String,
-    val message: String,
-    val isRegistered: Boolean, // 이미 회원가입이 되어있는지 여부
-    val email: String? = null,  // 이메일
-    val name: String? = null    // 사용자 이름
+    val accessToken: String?,
+    val message: String
 )
