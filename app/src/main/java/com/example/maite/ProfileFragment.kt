@@ -81,7 +81,9 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
         viewModel.userInfo.observe(viewLifecycleOwner) { userInfo: UserInfo? ->
             userInfo?.let {
                 binding.tvName.text = it.name
-                binding.tvMateCount.text = "${it.mateCount}명의 Mate가 있습니다"
+                // 친구 수 표시 (인스타그램 스타일)
+                // LinearLayout 내의 첫 번째 TextView에 수치 설정
+                ((binding.tvMateCount as LinearLayout).getChildAt(0) as TextView).text = it.mateCount.toString()
 
                 // 프로필 이미지 로드 - 로컬 캐시 우선 사용
                 Log.d("ProfileFragment", "프로필 이미지 URL: ${it.profileImageUrl}")
@@ -126,6 +128,14 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
         // 프로필 이미지 클릭 이벤트 추가
         binding.ivProfile.setOnClickListener {
             showProfileEditBottomSheet()
+        }
+
+        // 친구 수 클릭 이벤트 추가 (친구 목록 프래그먼트로 이동)
+        binding.tvMateCount.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.main_frm, MateListFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         // 상단 설정 버튼 클릭 이벤트 (추가 기능)

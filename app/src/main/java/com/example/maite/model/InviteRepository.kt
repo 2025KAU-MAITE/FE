@@ -1,6 +1,7 @@
 package com.example.maite.model
 
 import com.example.maite.MaiteApiService
+import com.example.maite.model.ServerMateItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -16,8 +17,8 @@ class InviteRepository(private val apiService: MaiteApiService) {
                 val mateResponse = response.body()
                 if (mateResponse != null && mateResponse.isSuccess) {
                     // API 응답 데이터를 InviteListItem으로 변환
-                    val inviteList = mateResponse.result.map { mate ->
-                        mate.toInviteListItem()
+                    val inviteList = mateResponse.result.map { serverMate: ServerMateItem ->
+                        serverMate.toInviteListItem()
                     }
                     Result.success(inviteList)
                 } else {

@@ -42,4 +42,8 @@ interface UserApiService {
     // 프로필 이미지 초기화 API
     @POST("api/profile/image-to-basic")
     suspend fun resetProfileImage(): Response<ApiResponse<Any?>>
+    
+    // 친구 삭제 API
+    @retrofit2.http.DELETE("api/mates/{userId}")
+    suspend fun deleteMate(@Path("userId") userId: Long): Response<ApiResponse<Any?>>
 }

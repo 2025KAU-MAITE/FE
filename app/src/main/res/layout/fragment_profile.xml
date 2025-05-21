@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
+<layout xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -35,8 +36,8 @@
         <!-- 프로필 이미지 (원형 적용) -->
         <ImageView
             android:id="@+id/iv_profile"
-            android:layout_width="55dp"
-            android:layout_height="55dp"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
             android:layout_marginStart="16dp"
             android:layout_marginTop="24dp"
             android:src="@drawable/img_profile_default"
@@ -46,31 +47,68 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_profile_title" />
 
-        <!-- 이름 텍스트 -->
-        <TextView
-            android:id="@+id/tv_name"
-            android:layout_width="wrap_content"
+        <!-- 사용자 정보 컨테이너 (인스타그램 스타일) -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/user_info_container"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:text="김정훈"
-            android:textStyle="bold"
-            android:textSize="18sp"
-            android:textColor="#333333"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintBottom_toBottomOf="@id/iv_profile"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/iv_profile"
-            app:layout_constraintTop_toTopOf="@id/iv_profile" />
+            app:layout_constraintTop_toTopOf="@id/iv_profile">
 
-        <!-- 메이트 수 텍스트 -->
-        <TextView
-            android:id="@+id/tv_mate_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="4dp"
-            android:text="100명의 Mate가 있습니다"
-            android:textSize="14sp"
-            android:textColor="#666666"
-            app:layout_constraintStart_toEndOf="@id/iv_profile"
-            app:layout_constraintTop_toBottomOf="@id/tv_name" />
+            <!-- 사용자 이름 -->
+
+            <!-- Mate 수 (인스타그램 스타일) - 화면 오른쪽에 세로 배치 -->
+
+            <TextView
+                android:id="@+id/tv_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="hanjinseo"
+                android:textColor="#333333"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/tv_mate_count"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.551" />
+
+            <LinearLayout
+                android:id="@+id/tv_mate_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="4dp"
+                app:layout_constraintBottom_toBottomOf="@id/iv_profile"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="3"
+                    android:textColor="#333333"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="Mate"
+                    android:textColor="#333333"
+                    android:textSize="16sp" />
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <!-- 타임테이블 헤더 -->
         <TextView
