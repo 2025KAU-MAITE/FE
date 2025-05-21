@@ -60,6 +60,11 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
         // 임시 테스트 용 사용자 ID 지정 (프로필 이미지 업로드 테스트용)
         val testUserId = 1L
 
+        // 설정 버튼 클릭 이벤트 설정
+        binding.ivSettings.setOnClickListener {
+            navigateToSettings()
+        }
+
         if (userId != null && userId != 0L) {
             // 서버에서 시간표 불러오기
             Log.d("ProfileFragment", "Loading timetable for userId: $userId")
@@ -140,7 +145,7 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
 
         // 상단 설정 버튼 클릭 이벤트 (추가 기능)
         binding.ivSettings.setOnClickListener {
-            // TODO: 설정 화면으로 이동 또는 설정 메뉴 표시
+            navigateToSettings()
         }
     }
     
@@ -265,6 +270,17 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
         val bottomSheet = ProfileEditBottomSheet.newInstance(imageSource)
         bottomSheet.setProfileImageUpdateListener(this) // 리스너 설정 추가
         bottomSheet.show(childFragmentManager, ProfileEditBottomSheet.TAG)
+    }
+    
+    // 설정 화면으로 이동
+    private fun navigateToSettings() {
+        val fragmentManager = requireActivity().supportFragmentManager
+        val settingsFragment = com.example.maite.ui.settings.SettingsFragment()
+        
+        fragmentManager.beginTransaction()
+            .replace(R.id.main_frm, settingsFragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     // 프로필 이미지 업데이트 콜백
