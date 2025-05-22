@@ -7,6 +7,7 @@ import com.example.maite.model.SmsAuthVerifyRequest
 import com.example.maite.model.GoogleLoginRequest
 import com.example.maite.model.GoogleLoginResponse
 import com.example.maite.UserInfoResponse
+import com.example.maite.model.ApiResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -72,4 +73,7 @@ interface AuthApi {
     @GET("auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserInfoResponse
 
+    // ✅ 로그아웃 API (POST /auth/logout)
+    @POST("auth/logout")
+    suspend fun logout(): ApiResponse<String>
 }
