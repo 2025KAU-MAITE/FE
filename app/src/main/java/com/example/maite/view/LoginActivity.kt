@@ -580,14 +580,13 @@ class LoginActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    // Login failed
-                    val errorMessage = loginResult.message ?: "로그인 실패"
-                    Toast.makeText(this@LoginActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                    // Login failed - Changed to display a consistent message regardless of server response
+                    Toast.makeText(this@LoginActivity, "아이디 비밀번호가 일치하지 않습니다", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 // Exception occurred
                 Log.e(TAG, "로그인 중 오류 발생", e)
-                Toast.makeText(this@LoginActivity, "로그인 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@LoginActivity, "아이디와 비밀번호가 일치하지 않습니다", Toast.LENGTH_SHORT).show()
             } finally {
                 // Hide loading indicator
                 setLoading(false)
