@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -34,14 +35,29 @@ class SettingsFragment : Fragment() {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
         
-        // 주소 입력 필드
-        view.findViewById<View>(R.id.et_address).setOnClickListener {
-            showNotImplementedToast("주소 변경")
+        // 앱 버전 표시
+        val tvAppVersion = view.findViewById<TextView>(R.id.tv_app_version)
+        tvAppVersion.setText(getAppVersion())
+        
+        // 고객센터 클릭 이벤트
+        view.findViewById<View>(R.id.layout_customer_service).setOnClickListener {
+            showNotImplementedToast("고객센터")
         }
         
         // 로그아웃 버튼
         view.findViewById<View>(R.id.btn_logout).setOnClickListener {
             logout()
+        }
+    }
+    
+    // 앱 버전 가져오기
+    private fun getAppVersion(): String {
+        try {
+            val packageInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
+            return packageInfo.versionName ?: "unknown"
+        } catch (e: Exception) {
+            Log.e("SettingsFragment", "앱 버전 가져오기 실패: ${e.message}")
+            return "unknown"
         }
     }
     
