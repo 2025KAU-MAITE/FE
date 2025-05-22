@@ -39,7 +39,30 @@ class SettingsFragment : Fragment() {
             logout()
         }
         
-        // 여기에 새로운 설정 항목 이벤트 처리를 추가할 수 있습니다
+        // 요금제 관리 버튼
+        view.findViewById<View>(R.id.btn_manage_plan).setOnClickListener {
+            openPlanManagement()
+        }
+    }
+    
+    private fun openPlanManagement() {
+        try {
+            // SubscriptionFragment로 이동
+            val subscriptionFragment = com.example.maite.ui.subscription.SubscriptionFragment.newInstance()
+            requireActivity().supportFragmentManager.beginTransaction()
+                .setCustomAnimations(
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_left,
+                    R.anim.slide_in_left,
+                    R.anim.slide_out_right
+                )
+                .replace(R.id.main_frm, subscriptionFragment)
+                .addToBackStack(null)
+                .commit()
+        } catch (e: Exception) {
+            Log.e("SettingsFragment", "요금제 관리 화면 이동 중 오류: ${e.message}", e)
+            Toast.makeText(requireContext(), "요금제 관리 화면을 표시할 수 없습니다.", Toast.LENGTH_SHORT).show()
+        }
     }
     
     private fun showNotImplementedToast(feature: String) {
