@@ -171,4 +171,26 @@ class PreferencesUtil(context: Context) {
         removeString("user_profile_image_uri_temp")
         removeString("active_bottomsheet_image")
     }
+    
+    /**
+     * 정수 값 저장
+     */
+    fun setInt(key: String, value: Int) {
+        prefs.edit().putInt(key, value).apply()
+    }
+    
+    /**
+     * 정수 값 가져오기
+     * @param defaultValue 기본값
+     */
+    fun getInt(key: String, defaultValue: Int = 0): Int {
+        return prefs.getInt(key, defaultValue)
+    }
+    
+    /**
+     * SharedPreferences 인스턴스 반환 (고급 사용자용)
+     */
+    fun getSharedPreferences(): SharedPreferences {
+        return prefs
+    }
 }

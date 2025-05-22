@@ -567,8 +567,8 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                             
                             gravity = Gravity.CENTER
                             orientation = LinearLayout.VERTICAL
+                            // 순수한 색상만 사용 - 테두리 제거
                             setBackgroundColor(Color.parseColor(entry.colorHex))
-                            alpha = 0.85f
                             
                             // 텍스트 표시 - 시간 정보 제거
                             if (isStartHour) {

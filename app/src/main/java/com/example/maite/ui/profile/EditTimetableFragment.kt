@@ -27,6 +27,7 @@ import java.time.LocalDate
 import kotlin.math.ceil
 import com.example.maite.PreferencesUtil
 import com.example.maite.ui.profile.LoadingDialog
+import com.example.maite.util.TimetableColorManager
 
 class EditTimetableFragment : Fragment() {
 
@@ -37,6 +38,9 @@ class EditTimetableFragment : Fragment() {
 
     // 독립적인 EditTimeSelectionViewModel 사용
     private val timeSelectionViewModel: EditTimeSelectionViewModel by activityViewModels()
+    
+    // 색상 관리자
+    private lateinit var colorManager: TimetableColorManager
 
 
     // 요일 선택 옵션
@@ -73,6 +77,9 @@ class EditTimetableFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // 색상 관리자 초기화
+        colorManager = TimetableColorManager(requireContext())
 
         // 기존 시간표 항목들을 임시 리스트에 복사
         viewModel.timetable.value?.let {
@@ -309,16 +316,19 @@ class EditTimetableFragment : Fragment() {
         val dayIndex = selectedDayIndex + 1
 
         // TimetableEntry 생성 (수정된 버전 - 분 정보 포함)
-        val entry = TimetableEntry(
+        val entryWithoutColor = TimetableEntry(
             title = title,
             dayOfWeek = dayIndex,
             startHour = selectedStartHour,
             startMinute = selectedStartMinute,
             endHour = selectedEndHour,
             endMinute = selectedEndMinute,
-            colorHex = defaultColor,
+            colorHex = defaultColor, // 임시 기본값
             location = location
         )
+        
+        // 색상 관리자를 사용하여 색상 배정
+        val entry = colorManager.assignColor(entryWithoutColor)
 
         // 임시 시간표에 충돌 검사 후 추가 (수정된 충돌 검사 로직 - 분 단위)
         val conflictingEntry = temporaryEntries.find { existing ->
@@ -556,9 +566,8 @@ class EditTimetableFragment : Fragment() {
                         gravity = Gravity.CENTER
                         orientation = LinearLayout.VERTICAL  // 수직 방향으로 설정
 
-                        // 배경색 설정
+                        // 순수한 색상만 사용 - 테두리 제거
                         setBackgroundColor(Color.parseColor(entry.colorHex))
-                        alpha = 0.85f
 
                         // 텍스트 표시 - 시작 시간에만 제목 표시, 끝 시간에 장소 표시 (시간 제거)
                         if (isStartHour) {
@@ -685,6 +694,10 @@ class EditTimetableFragment : Fragment() {
             .setPositiveButton("초기화") { _, _ ->
                 temporaryEntries.clear()
                 selectedEntry = null
+                
+                // 색상 매핑도 초기화
+                colorManager.clearColorMappings()
+                
                 updateTimetablePreview()
                 setChangesFlag(true) // 변경사항 있음 표시
                 Toast.makeText(requireContext(), "시간표가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
