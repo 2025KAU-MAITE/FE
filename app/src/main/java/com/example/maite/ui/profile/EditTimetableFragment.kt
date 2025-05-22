@@ -432,7 +432,7 @@ class EditTimetableFragment : Fragment() {
             for (i in 1..7) {
                 setColumnStretchable(i, true)
             }
-            setBackgroundColor(Color.parseColor("#F5F5F5"))
+            setBackgroundColor(Color.WHITE)
         }
 
         // 요일 배열
@@ -445,7 +445,7 @@ class EditTimetableFragment : Fragment() {
         val emptyCell = TextView(requireContext()).apply {
             text = ""
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#F5F5F5"))
+            setBackgroundColor(Color.WHITE)
             layoutParams = TableRow.LayoutParams().apply {
                 width = 40
                 height = TableRow.LayoutParams.WRAP_CONTENT
@@ -459,7 +459,7 @@ class EditTimetableFragment : Fragment() {
                 text = weekDays[i]
                 textSize = 12f
                 gravity = Gravity.CENTER
-                setBackgroundColor(Color.parseColor("#F5F5F5"))
+                setBackgroundColor(Color.WHITE)
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 0
                     height = TableRow.LayoutParams.WRAP_CONTENT
@@ -483,7 +483,7 @@ class EditTimetableFragment : Fragment() {
                 text = hour.toString()
                 textSize = 10f
                 gravity = Gravity.CENTER
-                setBackgroundColor(Color.parseColor("#F5F5F5"))
+                setBackgroundColor(Color.WHITE)
                 layoutParams = TableRow.LayoutParams().apply {
                     width = 40
                     height = cellHeight
@@ -560,13 +560,11 @@ class EditTimetableFragment : Fragment() {
                         setBackgroundColor(Color.parseColor(entry.colorHex))
                         alpha = 0.85f
 
-                        // 텍스트 표시 - 시작 시간에만 제목 표시, 끝 시간에 장소 표시
+                        // 텍스트 표시 - 시작 시간에만 제목 표시, 끝 시간에 장소 표시 (시간 제거)
                         if (isStartHour) {
-                            // 시작 시간에는 제목과 정확한 시간 표시
+                            // 제목만 표시 (시간 제거)
                             addView(TextView(requireContext()).apply {
-                                // 정확한 시간 표시 (30분 단위 포함)
-                                val timeText = String.format("%02d:%02d", entry.startHour, entry.startMinute)
-                                text = "${entry.title} $timeText"
+                                text = entry.title
                                 textSize = 11f
                                 gravity = Gravity.CENTER
                                 setTextColor(Color.WHITE)
@@ -576,11 +574,9 @@ class EditTimetableFragment : Fragment() {
                             })
                         } else if (isEndHour && !entry.location.isNullOrEmpty() && 
                                    (endTimeInMinutes - startTimeInMinutes) >= 60) {
-                            // 종료 시간에는 장소와 정확한 종료 시간 표시 (일정이 1시간 이상인 경우만)
+                            // 종료 시간에는 장소만 표시 (괄호와 시간 제거)
                             addView(TextView(requireContext()).apply {
-                                // 정확한 종료 시간도 표시
-                                val endTimeText = String.format("%02d:%02d", entry.endHour, entry.endMinute)
-                                text = "장소:${entry.location} (~$endTimeText)"
+                                text = "장소:${entry.location}"
                                 textSize = 9f
                                 gravity = Gravity.CENTER
                                 setTextColor(Color.WHITE)
@@ -634,6 +630,28 @@ class EditTimetableFragment : Fragment() {
             }
 
             tableLayout.addView(row)
+        }
+        
+        // 시간표 높이를 동적으로 조정 (안전한 버전)
+        try {
+            val cellHeight = resources.getDimensionPixelSize(R.dimen.timetable_cell_height)
+            val minHeight = cellHeight * 8 // 최소 8시간 표시
+            val dynamicHeight = (maxHour - minHour) * cellHeight + 100 // 헤더 공간 추가
+            val finalHeight = maxOf(minHeight, dynamicHeight)
+            
+            if (finalHeight > 0) {
+                tableLayout.layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    finalHeight
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("EditTimetableFragment", "동적 높이 조정 중 오류 발생", e)
+            // 기본 높이 사용
+            tableLayout.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
         }
 
         timetableLayout.addView(tableLayout)
