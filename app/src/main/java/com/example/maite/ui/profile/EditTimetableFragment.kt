@@ -478,9 +478,9 @@ class EditTimetableFragment : Fragment() {
         for (hour in minHour until maxHour) {
             val row = TableRow(requireContext())
 
-            // 시간 셀
+            // 시간 셀 - 24시 처리
             val timeCell = TextView(requireContext()).apply {
-                text = hour.toString()
+                text = if (hour == 24) "24" else hour.toString() // 24시를 명시적으로 표시
                 textSize = 10f
                 gravity = Gravity.CENTER
                 setBackgroundColor(Color.WHITE)
