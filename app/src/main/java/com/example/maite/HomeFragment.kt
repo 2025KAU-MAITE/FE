@@ -65,12 +65,9 @@ class HomeFragment : Fragment() {
         
         // 사용자 ID를 가져와서 시간표 로드
         val userId = preferencesUtil.getUserId()
-        Log.d("HomeFragment", "User ID from preferences: $userId")
         
         if (userId != null) {
-            Log.d("HomeFragment", "강제 시간표 로드 시작: userId=$userId")
-            
-            // 강제로 서버에서 시간표 다시 로드 (코루틴 스코프 내에서 호출)
+            // 서버에서 시간표 로드
             lifecycleScope.launch {
                 profileViewModel.loadTimetableFromServer(userId)
             }
@@ -78,14 +75,12 @@ class HomeFragment : Fragment() {
             // 5초 후에도 시간표가 비어있으면 다시 로드 시도
             Handler(Looper.getMainLooper()).postDelayed({
                 if (viewModel.timetableEntries.value?.isEmpty() == true) {
-                    Log.d("HomeFragment", "시간표가 여전히 비어있어 다시 로드 시도")
                     lifecycleScope.launch {
                         profileViewModel.loadTimetableFromServer(userId)
                     }
                 }
             }, 5000)
         } else {
-            Log.e("HomeFragment", "User ID not found")
             
             // 사용자 ID가 없는 경우 로그인 필요 안내
             Snackbar.make(
@@ -97,7 +92,6 @@ class HomeFragment : Fragment() {
         
         // 시간표 관찰 및 표시
         viewModel.timetableEntries.observe(viewLifecycleOwner) { entries ->
-            Log.d("HomeFragment", "시간표 데이터 관찰됨: ${entries.size}개 항목")
             renderTimetable(entries)
         }
 
@@ -213,7 +207,7 @@ class HomeFragment : Fragment() {
                     // 이벤트 처리후 초기화
                     viewModel.clearRoomJoinEvent()
                 } catch (e: Exception) {
-                    Log.e("HomeFragment", "Error clearing room join event", e)
+                    // 이벤트 초기화 실패 시 무시
                 }
             }
         }
@@ -221,7 +215,6 @@ class HomeFragment : Fragment() {
         // 회의방으로 이동 이벤트 관찰
         viewModel.navigateToRoomId.observe(viewLifecycleOwner) { roomId ->
             if (roomId != null) {
-                Log.d("HomeFragment", "회의방으로 이동: roomId=$roomId")
                 // 바텀 네비게이션에서 List 탭으로 이동
                 val mainActivity = activity as? MainActivity
                 mainActivity?.navigateToListTab()
@@ -245,8 +238,6 @@ class HomeFragment : Fragment() {
         // 오류 메시지 관찰
         viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
             errorMessage?.let {
-                Log.d("HomeFragment", "오류 메시지 표시: $it")
-                
                 // JSON 파싱 오류인 경우 좀 더 사용자 친화적인 메시지로 변경
                 val displayMessage = if (it.contains("malformed") || it.contains("JsonReader") || it.contains("parsing")) {
                     "서버와의 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
@@ -267,7 +258,6 @@ class HomeFragment : Fragment() {
     // 시간표 렌더링 메서드 - 안전한 버전으로 수정
     private fun renderTimetable(entries: List<TimetableEntry>) {
         try {
-            Log.d("HomeFragment", "Rendering timetable with ${entries.size} entries")
             
             val timetableLayout = binding.flTimetable
             timetableLayout.removeAllViews()
@@ -460,11 +450,10 @@ class HomeFragment : Fragment() {
                     setMargins(16, 16, 16, 24)
                 }
             } catch (e: Exception) {
-                Log.e("HomeFragment", "마진 설정 중 오류", e)
+                // 마진 설정 실패 시 무시
             }
             
         } catch (e: Exception) {
-            Log.e("HomeFragment", "시간표 렌더링 중 오류 발생", e)
             
             // 에러 발생 시 기본 메시지 표시
             val errorTextView = TextView(requireContext()).apply {
