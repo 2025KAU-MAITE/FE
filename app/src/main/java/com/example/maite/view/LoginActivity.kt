@@ -581,7 +581,7 @@ class LoginActivity : AppCompatActivity() {
                     finish()
                 } else {
                     // Login failed - Changed to display a consistent message regardless of server response
-                    Toast.makeText(this@LoginActivity, "아이디 비밀번호가 일치하지 않습니다", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@LoginActivity, "아이디와 비밀번호가 일치하지 않습니다", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 // Exception occurred
