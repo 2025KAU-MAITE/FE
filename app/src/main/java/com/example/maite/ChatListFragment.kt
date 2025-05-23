@@ -10,7 +10,6 @@ import android.widget.Toast
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.maite.databinding.FragmentChatListBinding
 import com.example.maite.model.ChatListRepository
 import com.example.maite.view.ChatListAdapter
@@ -50,9 +49,9 @@ class ChatListFragment : Fragment() {
     }
 
     private fun setupUI() {
-        // 어댑터 초기화
+        // 어댑터 초기화 - ChatListItem 객체를 통째로 전달
         chatAdapter = ChatListAdapter { chatItem ->
-            val chatRoomFragment = ChatRoomFragment.newInstance(chatItem.id)
+            val chatRoomFragment = ChatRoomFragment.newInstance(chatItem) // ChatListItem 전체 전달
             parentFragmentManager.beginTransaction()
                 .replace(R.id.main_frm, chatRoomFragment, ChatRoomFragment.TAG)
                 .addToBackStack(null)
@@ -85,11 +84,6 @@ class ChatListFragment : Fragment() {
         binding.groupToggle.setOnClickListener {
             viewModel.loadChatList(false)
         }
-
-        // 새로고침 기능 (SwipeRefreshLayout이 있다면)
-        // binding.swipeRefreshLayout?.setOnRefreshListener {
-        //     viewModel.refreshChatList()
-        // }
     }
 
     private fun observeViewModel() {
@@ -100,8 +94,7 @@ class ChatListFragment : Fragment() {
 
         // 로딩 상태 관찰
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            // binding.progressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
-            // binding.swipeRefreshLayout?.isRefreshing = isLoading
+            // 로딩 표시 처리
         }
 
         // 에러 메시지 관찰
