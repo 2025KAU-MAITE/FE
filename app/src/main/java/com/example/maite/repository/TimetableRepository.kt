@@ -9,12 +9,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
 import java.util.concurrent.TimeUnit
+import com.example.maite.util.TimetableColorManager
 
 class TimetableRepository(private val context: Context) {
 
     private val TAG = "TimetableRepository"
     private val timetableApi = ApiClient.getClient(context).create(TimetableApi::class.java)
     private val preferencesUtil = PreferencesUtil(context)
+    private val colorManager = TimetableColorManager(context)
     
     // 마지막으로 성공적으로 가져온 시간표 ID를 캐싱
     private var lastSuccessfulTimetableId: Long? = null
@@ -263,22 +265,30 @@ class TimetableRepository(private val context: Context) {
                 var successCount = 0
                 var failCount = 0
                 
-                // 각 이벤트를 서버에 저장
+                // 각 이벤트를 서버에 저장 (색상 배정 적용)
                 entries.forEachIndexed { index, entry ->
+                    // 색상이 설정되어 있지 않은 경우 색상 배정
+                    val entryWithColor = if (entry.colorHex.isEmpty() || entry.colorHex == "#4C7EED") {
+                        colorManager.assignColor(entry)
+                    } else {
+                        entry
+                    }
+                    
                     val eventRequest = CreateEventRequest(
-                        title = entry.title,
-                        day = getDayString(entry.dayOfWeek),
-                        color = entry.colorHex,
-                        startTime = String.format("%02d:%02d", entry.startHour, entry.startMinute),
-                        endTime = String.format("%02d:%02d", entry.endHour, entry.endMinute),
-                        place = entry.location
+                        title = entryWithColor.title,
+                        day = getDayString(entryWithColor.dayOfWeek),
+                        color = entryWithColor.colorHex,
+                        startTime = String.format("%02d:%02d", entryWithColor.startHour, entryWithColor.startMinute),
+                        endTime = String.format("%02d:%02d", entryWithColor.endHour, entryWithColor.endMinute),
+                        place = entryWithColor.location
                     )
                     
                     Log.d(TAG, "이벤트 저장 요청 [${index+1}/${entries.size}]: " +
-                            "title=${entry.title}, " +
-                            "day=${getDayString(entry.dayOfWeek)}, " +
-                            "time=${entry.startHour}:${entry.startMinute}-${entry.endHour}:${entry.endMinute}, " +
-                            "place=${entry.location ?: "없음"}")
+                            "title=${entryWithColor.title}, " +
+                            "day=${getDayString(entryWithColor.dayOfWeek)}, " +
+                            "time=${entryWithColor.startHour}:${entryWithColor.startMinute}-${entryWithColor.endHour}:${entryWithColor.endMinute}, " +
+                            "color=${entryWithColor.colorHex}, " +
+                            "place=${entryWithColor.location ?: "없음"}")
                     
                     try {
                         // 최대 3번 재시도
