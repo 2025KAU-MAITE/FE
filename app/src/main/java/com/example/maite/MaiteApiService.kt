@@ -1,6 +1,7 @@
 package com.example.maite
 
 import com.example.maite.model.ApiResponse
+import com.example.maite.model.ChatListApiResponse
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
@@ -44,4 +45,7 @@ interface MaiteApiService {
 
     @GET("/api/timetables/users/{userEmail}")
     suspend fun getTimetableByEmail(@Path("userEmail") userEmail: String): Response<RoomTimetableResponse>
+
+    @GET("api/chats/rooms")
+    suspend fun getChatRooms(): Response<ChatListApiResponse>
 }

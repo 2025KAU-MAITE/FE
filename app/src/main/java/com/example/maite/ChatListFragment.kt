@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.maite.databinding.FragmentChatListBinding
 import com.example.maite.model.ChatListRepository
 import com.example.maite.view.ChatListAdapter
@@ -39,8 +40,8 @@ class ChatListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // ViewModel 초기화
-        val repository = ChatListRepository()
+        // ViewModel 초기화 - Context 전달
+        val repository = ChatListRepository(requireContext())
         val factory = ChatListViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[ChatListViewModel::class.java]
 
@@ -84,6 +85,11 @@ class ChatListFragment : Fragment() {
         binding.groupToggle.setOnClickListener {
             viewModel.loadChatList(false)
         }
+
+        // 새로고침 기능 (SwipeRefreshLayout이 있다면)
+        // binding.swipeRefreshLayout?.setOnRefreshListener {
+        //     viewModel.refreshChatList()
+        // }
     }
 
     private fun observeViewModel() {
@@ -94,7 +100,8 @@ class ChatListFragment : Fragment() {
 
         // 로딩 상태 관찰
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            // 로딩 표시 처리 (필요한 경우 ProgressBar 추가)
+            // binding.progressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
+            // binding.swipeRefreshLayout?.isRefreshing = isLoading
         }
 
         // 에러 메시지 관찰
