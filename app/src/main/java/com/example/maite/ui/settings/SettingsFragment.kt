@@ -6,10 +6,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.maite.ApiClient
+import com.example.maite.PreferencesUtil
 import com.example.maite.R
 import com.example.maite.UserManager
 import com.example.maite.model.AuthApi
@@ -17,6 +19,8 @@ import com.example.maite.view.LoginActivity
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
+    
+    private lateinit var preferencesUtil: PreferencesUtil
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -28,6 +32,12 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // PreferencesUtil 초기화
+        preferencesUtil = PreferencesUtil(requireContext())
+        
+        // 현재 요금제 정보 표시
+        setupCurrentPlanInfo()
         
         // 뒤로가기 버튼
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
@@ -43,6 +53,16 @@ class SettingsFragment : Fragment() {
         view.findViewById<View>(R.id.btn_manage_plan).setOnClickListener {
             openPlanManagement()
         }
+    }
+    
+    private fun setupCurrentPlanInfo() {
+        // SharedPreferences에서 현재 요금제 정보 가져오기
+        val currentPlan = preferencesUtil.getCurrentPlan()
+        
+        // TextView에 요금제 정보 설정
+        view?.findViewById<TextView>(R.id.tv_current_plan)?.text = "현재 요금제: $currentPlan"
+        
+        Log.d("SettingsFragment", "현재 요금제 정보 설정: $currentPlan")
     }
     
     private fun openPlanManagement() {

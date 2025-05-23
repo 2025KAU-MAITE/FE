@@ -62,10 +62,18 @@ class UserRepository(private val context: Context) {
                         Log.d(TAG, "캐시된 프로필 이미지 URL: $profileImageUrl")
                     }
                     
+                    // 요금제 정보 처리
+                    val subscribed = response.result.subscribed
+                    Log.d(TAG, "요금제 정보: subscribed=$subscribed")
+                    
+                    // 요금제 정보를 로컬에 저장
+                    preferencesUtil.setUserPremiumStatus(subscribed)
+                    
                     UserInfo(
                         name = response.result.name,
                         mateCount = 100, // TODO: 실제 API에서 mate count 받아오기
-                        profileImageUrl = profileImageUrl
+                        profileImageUrl = profileImageUrl,
+                        subscribed = subscribed
                     )
                 } else {
                     Log.e(TAG, "사용자 정보 조회 실패: ${response.message}")
