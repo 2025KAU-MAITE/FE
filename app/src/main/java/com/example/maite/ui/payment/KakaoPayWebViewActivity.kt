@@ -128,11 +128,10 @@ class KakaoPayWebViewActivity : AppCompatActivity() {
                     super.onReceivedError(view, errorCode, description, failingUrl)
                     Log.e(TAG, "WebView 에러 발생: errorCode=$errorCode, description=$description, failingUrl=$failingUrl")
                     
-                    // 카카오톡 앱 호출 실패 시 (에뮬레이터 등)
+                    // 카카오톡 앱 호출 실패 시 (에뮬레이터 등) - 에러 로그만 남기고 계속 진행
                     if (failingUrl?.startsWith("intent://") == true && errorCode == ERROR_UNKNOWN_URL_SCHEME) {
-                        Log.w(TAG, "카카오톡 앱이 설치되지 않았거나 에뮬레이터 환경입니다. 웹 결제로 진행합니다.")
-                        // 웹 버전으로 리다이렉트하거나 사용자에게 안내
-                        handleKakaoTalkAppNotAvailable()
+                        Log.w(TAG, "카카오톡 앱이 설치되지 않았거나 에뮬레이터 환경입니다. 웹 결제로 계속 진행합니다.")
+                        // 취소하지 않고 계속 진행
                     }
                 }
                 
@@ -182,11 +181,10 @@ class KakaoPayWebViewActivity : AppCompatActivity() {
     private fun handleUrlRedirect(url: String): Boolean {
         Log.d(TAG, "URL 리디렉션 처리: $url")
         
-        // 카카오톡 앱 호출 URL인 경우 특별 처리
+        // 카카오톡 앱 호출 URL인 경우 로그만 남기고 계속 진행
         if (url.startsWith("intent://") && url.contains("kakaotalk")) {
-            Log.w(TAG, "카카오톡 앱 호출 URL 감지: $url")
-            handleKakaoTalkAppNotAvailable()
-            return true
+            Log.w(TAG, "카카오톡 앱 호출 URL 감지 - 무시하고 계속 진행: $url")
+            return false  // 처리하지 않고 웹뷰에서 계속 진행
         }
         
         when {
@@ -233,29 +231,6 @@ class KakaoPayWebViewActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "pg_token 추출 실패: ${e.message}", e)
             ""
-        }
-    }
-    
-    /**
-     * 카카오톡 앱을 사용할 수 없을 때 처리
-     */
-    private fun handleKakaoTalkAppNotAvailable() {
-        Log.w(TAG, "카카오톡 앱 사용 불가 - 에뮬레이터 또는 앱 미설치")
-        
-        // 사용자에게 안내 메시지 표시
-        runOnUiThread {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("안내")
-                .setMessage("에뮬레이터에서는 카카오톡 앱 결제를 지원하지 않습니다.\n\n실제 기기에서 테스트해주세요.\n\n(개발용: 결제 성공으로 처리하시겠습니까?)")
-                .setPositiveButton("성공 처리") { _, _ ->
-                    // 개발/테스트용으로 임시 성공 처리
-                    finishWithSuccess("test_pg_token_for_emulator")
-                }
-                .setNegativeButton("취소") { _, _ ->
-                    finishWithCancel()
-                }
-                .setCancelable(false)
-                .show()
         }
     }
     
