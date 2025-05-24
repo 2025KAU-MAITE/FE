@@ -16,6 +16,7 @@ import com.example.maite.viewmodel.ChatRoomViewModel
 import com.example.maite.viewmodel.ChatRoomViewModelFactory
 import com.bumptech.glide.Glide
 import com.example.maite.R
+import com.example.maite.PreferencesUtil
 
 class ChatRoomFragment : Fragment() {
 
@@ -38,8 +39,11 @@ class ChatRoomFragment : Fragment() {
     private lateinit var viewModel: ChatRoomViewModel
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var chatItem: ChatListItem
+    private lateinit var preferencesUtil: PreferencesUtil
 
-    private val currentUserId = "current_user_id" // 실제로는 로그인 유저 ID 사용
+    // 실제 로그인 유저 ID로 변경
+    private val currentUserId: String
+        get() = preferencesUtil.getUserId()?.toString() ?: "-1"
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,6 +51,10 @@ class ChatRoomFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentChatRoomBinding.inflate(inflater, container, false)
+
+        // PreferencesUtil 초기화
+        preferencesUtil = PreferencesUtil(requireContext())
+
         return binding.root
     }
 
@@ -89,7 +97,7 @@ class ChatRoomFragment : Fragment() {
     }
 
     private fun setupUI() {
-        // 메시지 어댑터 설정
+        // 메시지 어댑터 설정 (currentUserId는 이제 실제 로그인한 사용자 ID)
         messageAdapter = MessageAdapter(currentUserId)
 
         binding.messageRv.apply {
