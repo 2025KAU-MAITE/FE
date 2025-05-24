@@ -8,9 +8,12 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.example.maite.PreferencesUtil
 import com.example.maite.R
 
 class SubscriptionFragment : Fragment() {
+
+    private lateinit var preferencesUtil: PreferencesUtil
 
     companion object {
         fun newInstance(): SubscriptionFragment {
@@ -29,12 +32,14 @@ class SubscriptionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        preferencesUtil = PreferencesUtil(requireContext())
+        
         // 뒤로가기 버튼
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
         
-        // 현재 요금제 정보 설정 (예시)
+        // 현재 요금제 정보 설정
         setupCurrentPlanInfo()
         
         // 요금제 버튼 클릭 이벤트 설정
@@ -42,39 +47,78 @@ class SubscriptionFragment : Fragment() {
     }
     
     private fun setupCurrentPlanInfo() {
-        // 현재는 예시 데이터로 표시
-        val currentPlanName = view?.findViewById<TextView>(R.id.tv_current_plan_name)
-        val currentPlanDesc = view?.findViewById<TextView>(R.id.tv_current_plan_desc)
-        val currentPlanExpiry = view?.findViewById<TextView>(R.id.tv_current_plan_expiry)
+        val isPremium = preferencesUtil.getUserPremiumStatus()
         
-        // 사용자의 현재 요금제 정보를 서버에서 가져와 표시
-        // 예: API 호출로 현재 요금제 정보를 가져와 할당
-        currentPlanName?.text = "무료 요금제" // 예시 데이터
-        currentPlanDesc?.text = "기본 기능만 이용 가능"
-        currentPlanExpiry?.text = "만료일: 무제한"
+        // 버튼 상태 업데이트
+        updateButtonStates(isPremium)
+    }
+    
+    private fun updateButtonStates(isPremium: Boolean) {
+        val btnFree = view?.findViewById<Button>(R.id.btn_select_free)
+        val btnPremium = view?.findViewById<Button>(R.id.btn_select_premium)
+        val mainColor = context?.getColor(R.color.mainColor) ?: 0
+        val grayColor = context?.getColor(R.color.gray) ?: 0
+        
+        if (isPremium) {
+            // 프리미엄 사용자
+            btnFree?.text = "다운그레이드"
+            btnFree?.backgroundTintList = android.content.res.ColorStateList.valueOf(grayColor)
+            btnPremium?.text = "현재 이용중"
+            btnPremium?.backgroundTintList = android.content.res.ColorStateList.valueOf(mainColor)
+            btnPremium?.isEnabled = false
+        } else {
+            // 무료 사용자
+            btnFree?.text = "현재 이용중"
+            btnFree?.backgroundTintList = android.content.res.ColorStateList.valueOf(mainColor)
+            btnFree?.isEnabled = false
+            btnPremium?.text = "업그레이드"
+            btnPremium?.backgroundTintList = android.content.res.ColorStateList.valueOf(mainColor)
+            btnPremium?.isEnabled = true
+        }
     }
     
     private fun setupPlanButtons() {
+        val isPremium = preferencesUtil.getUserPremiumStatus()
+        
         // 무료 요금제 버튼
         view?.findViewById<Button>(R.id.btn_select_free)?.setOnClickListener {
-            // 이미 무료 요금제 사용 중이므로 처리 없음
-            Toast.makeText(context, "이미 무료 요금제를 이용 중입니다.", Toast.LENGTH_SHORT).show()
-        }
-        
-        // 베이직 요금제 버튼
-        view?.findViewById<Button>(R.id.btn_select_basic)?.setOnClickListener {
-            processPurchase("베이직")
+            if (isPremium) {
+                // 다운그레이드 처리
+                showDowngradeDialog()
+            } else {
+                Toast.makeText(context, "이미 무료 요금제를 이용 중입니다.", Toast.LENGTH_SHORT).show()
+            }
         }
         
         // 프리미엄 요금제 버튼
         view?.findViewById<Button>(R.id.btn_select_premium)?.setOnClickListener {
-            processPurchase("프리미엄")
+            if (isPremium) {
+                Toast.makeText(context, "이미 프리미엄 요금제를 이용 중입니다.", Toast.LENGTH_SHORT).show()
+            } else {
+                // 업그레이드 처리
+                showUpgradeDialog()
+            }
         }
     }
     
-    private fun processPurchase(planName: String) {
-        // 결제 처리 로직
-        // 실제 앱에서는 결제 SDK를 연동하여 처리
-        Toast.makeText(context, "$planName 요금제 결제가 준비 중입니다.", Toast.LENGTH_SHORT).show()
+    private fun showUpgradeDialog() {
+        // 실제로는 결제 시스템 연동 필요
+        // 여기서는 시뮬레이션으로 처리
+        Toast.makeText(context, "프리미엄 요금제 결제 기능은 준비 중입니다.", Toast.LENGTH_LONG).show()
+        
+        // 테스트용: 프리미엄으로 변경
+        // preferencesUtil.setUserPremiumStatus(true)
+        // setupCurrentPlanInfo()
+        // Toast.makeText(context, "프리미엄 요금제로 업그레이드되었습니다!", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun showDowngradeDialog() {
+        // 실제로는 구독 취소 API 호출 필요
+        Toast.makeText(context, "구독 취소 기능은 준비 중입니다.", Toast.LENGTH_LONG).show()
+        
+        // 테스트용: 무료로 변경
+        // preferencesUtil.setUserPremiumStatus(false)
+        // setupCurrentPlanInfo()
+        // Toast.makeText(context, "무료 요금제로 변경되었습니다.", Toast.LENGTH_SHORT).show()
     }
 }
