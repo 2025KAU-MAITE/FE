@@ -253,6 +253,13 @@ class HomeFragment : Fragment() {
                     .show()
             }
         }
+
+        binding.ivChat.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_right, 0)
+                .add(R.id.main_frm, ChatListFragment())
+                .commit()
+        }
     }
 
     // 시간표 렌더링 메서드 - 안전한 버전으로 수정
