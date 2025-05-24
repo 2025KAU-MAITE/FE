@@ -140,6 +140,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-base:18.2.0")
     // One Tap Sign-In 및 Google Identity Services
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
+
+    implementation("com.github.NaikSoftware:StompProtocolAndroid:1.6.6")
+    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
+    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
 }
 
 configurations.all {

@@ -39,6 +39,7 @@ import java.io.OutputStreamWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.maite.model.SignupDataHolder
+import com.example.maite.network.WebSocketManager
 
 class LoginActivity : AppCompatActivity() {
     // 필요한 상수
@@ -462,6 +463,11 @@ class LoginActivity : AppCompatActivity() {
                         
                         // 사용자 이메일 저장
                         preferencesUtil.setString(KEY_USER_EMAIL, email)
+
+                        val webSocketManager = WebSocketManager.getInstance()
+                        if (!webSocketManager.isConnected()) {
+                            webSocketManager.connect()
+                        }
                         
                         // 메인 화면으로 이동
                         val intent = Intent(this@LoginActivity, MainActivity::class.java)
@@ -580,6 +586,11 @@ class LoginActivity : AppCompatActivity() {
                     
                     // Save user email (use requested email for standard login)
                     preferencesUtil.setString(KEY_USER_EMAIL, email)
+
+                    val webSocketManager = WebSocketManager.getInstance()
+                    if (!webSocketManager.isConnected()) {
+                        webSocketManager.connect()
+                    }
                     
                     // Navigate to main activity
                     val intent = Intent(this@LoginActivity, MainActivity::class.java)
