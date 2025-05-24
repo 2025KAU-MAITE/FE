@@ -42,6 +42,14 @@
             android:exported="true">
         </activity>
 
+        <!-- 카카오페이 결제 WebView 액티비티 -->
+        <activity
+            android:name=".ui.payment.KakaoPayWebViewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MAITE"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+
         <uses-library android:name="org.apache.http.legacy" android:required="false"/>
 
     </application>
