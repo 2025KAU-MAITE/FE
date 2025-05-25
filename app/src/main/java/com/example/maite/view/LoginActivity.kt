@@ -456,6 +456,9 @@ class LoginActivity : AppCompatActivity() {
                         // 토큰 저장
                         preferencesUtil.saveAccessToken(response.result.accessToken)
                         Log.d(TAG, "액세스 토큰 저장 완료 (길이: ${response.result.accessToken.length})")
+
+                        //userId 저장 (5월 24일 추가)
+                        preferencesUtil.saveUserId(response.result.userId)
                         
                         // 사용자 이메일 저장
                         preferencesUtil.setString(KEY_USER_EMAIL, email)
@@ -571,6 +574,9 @@ class LoginActivity : AppCompatActivity() {
                     
                     // Save access token
                     preferencesUtil.saveAccessToken(loginResult.result.accessToken)
+
+                    //userId 저장 (5월24일 추가)
+                    preferencesUtil.saveUserId(loginResult.result.userId)
                     
                     // Save user email (use requested email for standard login)
                     preferencesUtil.setString(KEY_USER_EMAIL, email)

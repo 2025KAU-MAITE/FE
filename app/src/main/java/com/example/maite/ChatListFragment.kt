@@ -39,8 +39,8 @@ class ChatListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // ViewModel 초기화
-        val repository = ChatListRepository()
+        // ViewModel 초기화 - Context 전달
+        val repository = ChatListRepository(requireContext())
         val factory = ChatListViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[ChatListViewModel::class.java]
 
@@ -49,9 +49,9 @@ class ChatListFragment : Fragment() {
     }
 
     private fun setupUI() {
-        // 어댑터 초기화
+        // 어댑터 초기화 - ChatListItem 객체를 통째로 전달
         chatAdapter = ChatListAdapter { chatItem ->
-            val chatRoomFragment = ChatRoomFragment.newInstance(chatItem.id)
+            val chatRoomFragment = ChatRoomFragment.newInstance(chatItem) // ChatListItem 전체 전달
             parentFragmentManager.beginTransaction()
                 .replace(R.id.main_frm, chatRoomFragment, ChatRoomFragment.TAG)
                 .addToBackStack(null)
@@ -94,7 +94,7 @@ class ChatListFragment : Fragment() {
 
         // 로딩 상태 관찰
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            // 로딩 표시 처리 (필요한 경우 ProgressBar 추가)
+            // 로딩 표시 처리
         }
 
         // 에러 메시지 관찰

@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import android.util.Log
 import kotlinx.coroutines.delay  // delay 함수를 사용하기 위한 import 추가
 import com.example.maite.PreferencesUtil  // 추가된 import
+import com.example.maite.util.TimetableColorManager
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -28,6 +29,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val userRepository = UserRepository(application)
     private val mateRepository = MateRepository(application)
     private val preferencesUtil = PreferencesUtil(application)
+    private val colorManager = TimetableColorManager(application)
 
     // 현재 사용자 ID 저장
     private var currentUserId: Long? = null
@@ -137,6 +139,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
         // 공유 데이터 홀더 업데이트
         TimetableDataHolder.updateTimetable(emptyList())
+        
+        // 색상 매핑도 초기화
+        colorManager.clearColorMappings()
         
         Log.d(TAG, "시간표 초기화 완료")
 

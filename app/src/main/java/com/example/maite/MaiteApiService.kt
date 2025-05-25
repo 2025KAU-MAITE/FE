@@ -1,10 +1,12 @@
 package com.example.maite
 
 import com.example.maite.model.ApiResponse
+import com.example.maite.model.ChatListApiResponse
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
 import com.example.maite.model.InviteUserRequest
+import com.example.maite.model.MessageApiResponse
 import com.example.maite.model.ServerMateItem
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
@@ -44,4 +46,13 @@ interface MaiteApiService {
 
     @GET("/api/timetables/users/{userEmail}")
     suspend fun getTimetableByEmail(@Path("userEmail") userEmail: String): Response<RoomTimetableResponse>
+
+    @GET("api/chats/rooms")
+    suspend fun getChatRooms(): Response<ChatListApiResponse>
+
+    @GET("api/chats/{roomId}/messages")
+    suspend fun getChatMessages(
+        @Path("roomId") roomId: Long,
+        @Query("lastMessageId") lastMessageId: Long? = null
+    ): Response<MessageApiResponse>
 }

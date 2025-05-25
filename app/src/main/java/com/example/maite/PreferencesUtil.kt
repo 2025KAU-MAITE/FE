@@ -187,6 +187,28 @@ class PreferencesUtil(context: Context) {
     }
     
     /**
+     * 정수 값 저장
+     */
+    fun setInt(key: String, value: Int) {
+        prefs.edit().putInt(key, value).apply()
+    }
+    
+    /**
+     * 정수 값 가져오기
+     * @param defaultValue 기본값
+     */
+    fun getInt(key: String, defaultValue: Int = 0): Int {
+        return prefs.getInt(key, defaultValue)
+    }
+    
+    /**
+     * SharedPreferences 인스턴스 반환 (고급 사용자용)
+     */
+    fun getSharedPreferences(): SharedPreferences {
+        return prefs
+    }
+    
+    /**
      * 사용자 요금제 정보 저장
      */
     fun setUserPremiumStatus(isPremium: Boolean) {

@@ -4,8 +4,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.example.maite.model.ChatListItem
 import com.example.maite.model.ChatListRepository
+import kotlinx.coroutines.launch
 
 class ChatListViewModel(private val repository: ChatListRepository) : ViewModel() {
 
@@ -35,18 +37,21 @@ class ChatListViewModel(private val repository: ChatListRepository) : ViewModel(
         _isLoading.value = true
         _isPersonalTab.value = isPersonal
 
-        try {
-            val chatList = if (isPersonal) {
-                repository.getPersonalChats()
-            } else {
-                repository.getGroupChats()
+        viewModelScope.launch {
+            try {
+                val chatList = if (isPersonal) {
+                    repository.getPersonalChats()
+                } else {
+                    repository.getGroupChats()
+                }
+                _chatItems.value = chatList
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "채팅 목록을 불러오는 데 실패했습니다: ${e.message}"
+                _chatItems.value = emptyList()
+            } finally {
+                _isLoading.value = false
             }
-            _chatItems.value = chatList
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "채팅 목록을 불러오는 데 실패했습니다: ${e.message}"
-        } finally {
-            _isLoading.value = false
         }
     }
 
@@ -58,14 +63,23 @@ class ChatListViewModel(private val repository: ChatListRepository) : ViewModel(
         }
 
         _isLoading.value = true
-        try {
-            val results = repository.searchChats(query, _isPersonalTab.value ?: true)
-            _chatItems.value = results
-        } catch (e: Exception) {
-            _errorMessage.value = "검색 중 오류가 발생했습니다: ${e.message}"
-        } finally {
-            _isLoading.value = false
+        viewModelScope.launch {
+            try {
+                val results = repository.searchChats(query, _isPersonalTab.value ?: true)
+                _chatItems.value = results
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "검색 중 오류가 발생했습니다: ${e.message}"
+                _chatItems.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
         }
+    }
+
+    // 채팅 목록 새로고침
+    fun refreshChatList() {
+        loadChatList(_isPersonalTab.value ?: true)
     }
 
     // 에러 메시지 초기화
@@ -74,7 +88,7 @@ class ChatListViewModel(private val repository: ChatListRepository) : ViewModel(
     }
 }
 
-// ViewModel Factory
+// ViewModel Factory - Context 추가
 class ChatListViewModelFactory(private val repository: ChatListRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatListViewModel::class.java)) {

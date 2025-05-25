@@ -57,9 +57,9 @@ class EditTimePickerBottomSheet : BottomSheetDialogFragment() {
 
         // --- NumberPicker 설정 ---
         binding.hourPicker.minValue = 8
-        binding.hourPicker.maxValue = 23
+        binding.hourPicker.maxValue = 24
         binding.hourPicker.setFormatter { String.format("%02d", it) }
-        binding.hourPicker.value = initialHour.coerceIn(8, 23)
+        binding.hourPicker.value = initialHour.coerceIn(8, 24)
 
         // 30분 단위 설정 (0, 30)
         binding.minutePicker.minValue = 0
@@ -67,6 +67,24 @@ class EditTimePickerBottomSheet : BottomSheetDialogFragment() {
         val minuteValues = Array(2) { if (it == 0) "00" else "30" } // 00, 30
         binding.minutePicker.displayedValues = minuteValues
         binding.minutePicker.value = if (initialMinute >= 30) 1 else 0
+        
+        // 24시 선택 시 분 단위 제한
+        binding.hourPicker.setOnValueChangedListener { _, _, newHour ->
+            if (newHour == 24) {
+                // 24시일 때는 00분만 허용
+                binding.minutePicker.value = 0
+                binding.minutePicker.isEnabled = false
+            } else {
+                // 다른 시간일 때는 분 선택 허용
+                binding.minutePicker.isEnabled = true
+            }
+        }
+        
+        // 초기 상태에서 24시인 경우 분 선택 비활성화
+        if (initialHour == 24) {
+            binding.minutePicker.value = 0
+            binding.minutePicker.isEnabled = false
+        }
 
         // --- 완료 버튼 항상 활성화 ---
         binding.doneBtn.isEnabled = true
@@ -77,7 +95,7 @@ class EditTimePickerBottomSheet : BottomSheetDialogFragment() {
         // --- 완료 버튼 클릭 리스너 ---
         binding.doneBtn.setOnClickListener {
             val selectedHour = binding.hourPicker.value
-            val selectedMinute = binding.minutePicker.value * 30 // 0 또는 30
+            val selectedMinute = if (selectedHour == 24) 0 else binding.minutePicker.value * 30 // 24시는 항상 00분
 
             // 종료 시간이 시작 시간보다 이전이면 경고 표시 (선택은 가능)
             if (targetTimeView == "time2") {
