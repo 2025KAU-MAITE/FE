@@ -78,18 +78,13 @@ class SearchViewModel(private val userRepository: UserRepository) : ViewModel() 
         }
     }
     
-    fun sendFriendRequests(selectedUsers: List<User>) {
-        if (selectedUsers.isEmpty()) {
-            _errorMessage.value = "선택된 사용자가 없습니다"
-            return
-        }
-        
+    fun sendFriendRequest(user: User) {
         viewModelScope.launch {
             _isLoading.value = true
             
             try {
                 // 실제 API 호출로 친구 요청 보내기
-                val result = userRepository.sendFriendRequests(selectedUsers.map { it.id })
+                val result = userRepository.sendFriendRequest(user.id.toLong())
                 if (result) {
                     _friendRequestSent.value = true
                 } else {

@@ -21,8 +21,8 @@ interface UserApiService {
     @POST("api/mates")
     suspend fun addFriend(@Body request: AddFriendRequest): Response<UserSearchResponse>
     
-    @POST("users/friend-requests")
-    suspend fun sendFriendRequests(@Query("userIds") userIds: List<String>): Response<Boolean>
+    @POST("api/mates/requests")
+    suspend fun sendFriendRequest(@Body request: AddFriendRequest): Response<ApiResponse<Any?>>
     
     // 친구 요청 수락 API
     @POST("api/mates/requests/{requestId}/accept")

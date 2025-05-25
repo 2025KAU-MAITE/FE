@@ -126,9 +126,8 @@ class SearchFragment : Fragment() {
         btnSend.setOnClickListener {
             val selectedUser = searchAdapter.getSelectedUser()
             if (selectedUser != null) {
-                // Create a friend request with only the selected user's ID
-                val request = AddFriendRequest(userId = selectedUser.id.toLong())
-                searchViewModel.addFriend(request)
+                // 선택된 사용자에게 친구 요청 전송
+                searchViewModel.sendFriendRequest(selectedUser)
             } else {
                 Toast.makeText(context, "친구 추가할 사용자를 선택해주세요", Toast.LENGTH_SHORT).show()
             }

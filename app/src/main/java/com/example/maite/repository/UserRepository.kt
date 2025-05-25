@@ -151,7 +151,7 @@ class UserRepository(private val context: Context) {
     }
 
     // 친구 요청 전송
-    suspend fun sendFriendRequests(userIds: List<String>): Boolean {
+    suspend fun sendFriendRequest(userId: Long): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 val token = preferencesUtil.getAccessToken()
@@ -160,10 +160,11 @@ class UserRepository(private val context: Context) {
                     return@withContext false
                 }
                 
-                Log.d(TAG, "친구 요청 API 호출: userIds=$userIds")
-                val response = userApiService.sendFriendRequests(userIds)
+                Log.d(TAG, "친구 요청 API 호출: userId=$userId")
+                val request = AddFriendRequest(userId = userId)
+                val response = userApiService.sendFriendRequest(request)
                 
-                if (response.isSuccessful && response.body() == true) {
+                if (response.isSuccessful) {
                     Log.d(TAG, "친구 요청 전송 성공")
                     true
                 } else {
