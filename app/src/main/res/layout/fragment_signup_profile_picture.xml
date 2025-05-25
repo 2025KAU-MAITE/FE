@@ -43,7 +43,7 @@
         android:layout_marginTop="80dp"
         android:scaleType="centerCrop"
         android:src="@drawable/img_profile_default"
-        app:layout_constraintBottom_toTopOf="@+id/btnAdd"
+        app:layout_constraintBottom_toTopOf="@+id/btnContinue"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvTitle"

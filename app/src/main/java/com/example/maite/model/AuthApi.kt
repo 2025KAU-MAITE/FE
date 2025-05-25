@@ -8,11 +8,15 @@ import com.example.maite.model.GoogleLoginRequest
 import com.example.maite.model.GoogleLoginResponse
 import com.example.maite.UserInfoResponse
 import com.example.maite.model.ApiResponse
+import okhttp3.MultipartBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 import retrofit2.http.Header
+import retrofit2.http.Multipart
+import retrofit2.http.Part
 
 interface AuthApi {
 
@@ -76,4 +80,9 @@ interface AuthApi {
     // ✅ 로그아웃 API (POST /auth/logout)
     @POST("auth/logout")
     suspend fun logout(): ApiResponse<String>
+
+    // ✅ 회원가입 프로필 이미지 업로드 API (POST /auth/signup/upload-image)
+    @Multipart
+    @POST("auth/signup/upload-image")
+    suspend fun uploadSignupProfileImage(@Part file: MultipartBody.Part): Response<ApiResponse<String>>
 }

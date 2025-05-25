@@ -376,4 +376,142 @@ class UserRepository(private val context: Context) {
             null
         }
     }
+
+    // 프로필 이미지 업로드 기능 (URL 반환 버전)
+    suspend fun uploadProfileImageWithUrl(userId: Long, imageUri: Uri, fileName: String): Pair<Boolean, String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = preferencesUtil.getAccessToken()
+                if (token == null) {
+                    Log.e(TAG, "토큰이 없습니다")
+                    return@withContext Pair(false, null)
+                }
+
+                // Uri 파일로 변환
+                val file = uriToFile(imageUri, fileName)
+                if (file == null) {
+                    Log.e(TAG, "Uri를 파일로 변환하는데 실패했습니다")
+                    return@withContext Pair(false, null)
+                }
+
+                // MultipartBody.Part 생성
+                val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", file.name, requestBody)
+
+                // API 호출
+                Log.d(TAG, "프로필 이미지 업로드 API 호출: userId=$userId, fileName=${file.name}")
+                val response = userApiService.uploadProfileImage(filePart)
+
+                // 임시 파일 삭제
+                file.delete()
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    Log.d(TAG, "프로필 이미지 업로드 응답: $responseBody")
+                    
+                    if (responseBody?.isSuccess == true) {
+                        Log.d(TAG, "프로필 이미지 업로드 성공")
+                        
+                        // 응답의 result 필드에서 이미지 URL 추출
+                        var imageUrl: String? = null
+                        try {
+                            // 1. 직접 toString() 시도
+                            val resultString = responseBody.result?.toString()
+                            if (!resultString.isNullOrEmpty() && !resultString.equals("null", ignoreCase = true)) {
+                                imageUrl = resultString
+                                Log.d(TAG, "result를 문자열로 변환 성공: $imageUrl")
+                            } 
+                            // 2. result가 Map이라고 가정하고 시도
+                            else if (responseBody.result is Map<*, *>) {
+                                val resultMap = responseBody.result as Map<*, *>
+                                val urlFromMap = resultMap["url"] ?: resultMap["imageUrl"] ?: resultMap["profile_url"]
+                                if (urlFromMap != null) {
+                                    imageUrl = urlFromMap.toString()
+                                    Log.d(TAG, "result가 Map이고 URL 키가 존재함: $imageUrl")
+                                }
+                            }
+                            
+                            return@withContext Pair(true, imageUrl)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "이미지 URL 추출 중 오류: ${e.message}")
+                            return@withContext Pair(true, null)
+                        }
+                    } else {
+                        Log.e(TAG, "프로필 이미지 업로드 실패: ${responseBody?.message}")
+                        return@withContext Pair(false, null)
+                    }
+                } else {
+                    Log.e(TAG, "프로필 이미지 업로드 HTTP 오류: ${response.code()}")
+                    return@withContext Pair(false, null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "프로필 이미지 업로드 예외: ${e.message}")
+                return@withContext Pair(false, null)
+            }
+        }
+    }
+
+    // AuthAPI를 사용한 회원가입 프로필 이미지 업로드
+    suspend fun uploadSignupProfileImage(imageUri: Uri, fileName: String): Pair<Boolean, String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Uri 파일로 변환
+                val file = uriToFile(imageUri, fileName)
+                if (file == null) {
+                    Log.e(TAG, "Uri를 파일로 변환하는데 실패했습니다")
+                    return@withContext Pair(false, null)
+                }
+
+                // MultipartBody.Part 생성
+                val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", file.name, requestBody)
+
+                // AuthAPI 호출 - 디버깅 정보 추가
+                Log.d(TAG, "회원가입 프로필 이미지 업로드 API 호출:")
+                Log.d(TAG, "  - 파일명: ${file.name}")
+                Log.d(TAG, "  - 파일 크기: ${file.length()} bytes")
+                Log.d(TAG, "  - 요청 파라미터명: 'file'")
+                Log.d(TAG, "  - Content-Type: image/*")
+                val response = authApi.uploadSignupProfileImage(filePart)
+
+                // 임시 파일 삭제
+                file.delete()
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    Log.d(TAG, "회원가입 프로필 이미지 업로드 응답: $responseBody")
+                    
+                    if (responseBody?.isSuccess == true) {
+                        Log.d(TAG, "회원가입 프로필 이미지 업로드 성공")
+                        
+                        // 응답의 result 필드에서 이미지 URL 추출
+                        val imageUrl = responseBody.result
+                        Log.d(TAG, "서버에서 반환받은 이미지 URL: $imageUrl")
+                        
+                        return@withContext Pair(true, imageUrl)
+                    } else {
+                        Log.e(TAG, "회원가입 프로필 이미지 업로드 실패: ${responseBody?.message}")
+                        return@withContext Pair(false, null)
+                    }
+                } else {
+                    // HTTP 오류 상세 정보 로깅
+                    Log.e(TAG, "회원가입 프로필 이미지 업로드 HTTP 오류: ${response.code()}")
+                    Log.e(TAG, "회원가입 프로필 이미지 업로드 HTTP 메시지: ${response.message()}")
+                    
+                    // 오류 응답 바디 확인
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e(TAG, "회원가입 프로필 이미지 업로드 오류 바디: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "오류 바디 읽기 실패: ${e.message}")
+                    }
+                    
+                    return@withContext Pair(false, null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "회원가입 프로필 이미지 업로드 예외: ${e.message}")
+                return@withContext Pair(false, null)
+            }
+        }
+    }
 }

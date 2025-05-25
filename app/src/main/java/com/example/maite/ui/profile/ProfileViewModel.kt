@@ -386,6 +386,58 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         return resultLiveData
     }
     
+    // 프로필 이미지 업로드 기능 (URL 반환 버전)
+    fun uploadProfileImageWithUrl(imageUri: Uri, fileName: String): LiveData<Pair<Boolean, String?>> {
+        val resultLiveData = MutableLiveData<Pair<Boolean, String?>>()
+        
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "프로필 이미지 업로드 시작 (URL 반환 버전): $fileName")
+                
+                // 사용자 ID 확인
+                val userId = preferencesUtil.getUserId()
+                if (userId == null || userId == 0L) {
+                    Log.e(TAG, "프로필 이미지 업로드 실패: 사용자 ID가 없습니다. 테스트 ID 1 사용")
+                    val testUserId = 1L
+                    val result = userRepository.uploadProfileImageWithUrl(testUserId, imageUri, fileName)
+                    resultLiveData.postValue(result)
+                    return@launch
+                }
+                
+                // 이미지 업로드 요청
+                val result = userRepository.uploadProfileImageWithUrl(userId, imageUri, fileName)
+                resultLiveData.postValue(result)
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "프로필 이미지 업로드 예외: ${e.message}")
+                resultLiveData.postValue(Pair(false, null))
+            }
+        }
+        
+        return resultLiveData
+    }
+
+    // 회원가입용 프로필 이미지 업로드 (AuthAPI 사용)
+    fun uploadSignupProfileImage(imageUri: Uri, fileName: String): LiveData<Pair<Boolean, String?>> {
+        val resultLiveData = MutableLiveData<Pair<Boolean, String?>>()
+        
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "회원가입 프로필 이미지 업로드 시작: $fileName")
+                
+                // AuthAPI를 통한 이미지 업로드 요청
+                val result = userRepository.uploadSignupProfileImage(imageUri, fileName)
+                resultLiveData.postValue(result)
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "회원가입 프로필 이미지 업로드 예외: ${e.message}")
+                resultLiveData.postValue(Pair(false, null))
+            }
+        }
+        
+        return resultLiveData
+    }
+    
     // 임시 프로필 이미지 URI 저장 기능
     fun setTempProfileImageUri(uri: String) {
         Log.d(TAG, "임시 프로필 이미지 URI 저장: $uri")
