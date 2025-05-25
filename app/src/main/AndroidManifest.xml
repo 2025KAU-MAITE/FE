@@ -8,6 +8,27 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
+    <!-- 카카오페이 관련 권한 -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" 
+        tools:ignore="QueryAllPackagesPermission" />
+    
+    <!-- 카카오톡 앱 호출을 위한 쿼리 -->
+    <queries>
+        <package android:name="com.kakao.talk" />
+        <package android:name="com.kakao.pay" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="kakaotalk" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="kakaokompassauth" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="kakaopay" />
+        </intent>
+    </queries>
 
     <application
         android:name=".MaiteApplication"
@@ -40,6 +61,36 @@
         <activity
             android:name=".MainActivity"
             android:exported="true">
+        </activity>
+
+        <!-- 카카오페이 결제 WebView 액티비티 -->
+        <activity
+            android:name=".ui.payment.KakaoPayWebViewActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MAITE"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait">
+            
+            <!-- 카카오페이 결제 결과 딥링크 처리 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" 
+                      android:host="3.39.205.32"
+                      android:pathPrefix="/kakao" />
+            </intent-filter>
+            
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="3.39.205.32"
+                      android:pathPrefix="/kakao" />
+            </intent-filter>
         </activity>
 
         <uses-library android:name="org.apache.http.legacy" android:required="false"/>

@@ -62,10 +62,18 @@ class UserRepository(private val context: Context) {
                         Log.d(TAG, "캐시된 프로필 이미지 URL: $profileImageUrl")
                     }
                     
+                    // 요금제 정보 처리
+                    val subscribed = response.result.subscribed
+                    Log.d(TAG, "요금제 정보: subscribed=$subscribed")
+                    
+                    // 요금제 정보를 로컬에 저장
+                    preferencesUtil.setUserPremiumStatus(subscribed)
+                    
                     UserInfo(
                         name = response.result.name,
                         mateCount = 100, // TODO: 실제 API에서 mate count 받아오기
-                        profileImageUrl = profileImageUrl
+                        profileImageUrl = profileImageUrl,
+                        subscribed = subscribed
                     )
                 } else {
                     Log.e(TAG, "사용자 정보 조회 실패: ${response.message}")
@@ -143,7 +151,7 @@ class UserRepository(private val context: Context) {
     }
 
     // 친구 요청 전송
-    suspend fun sendFriendRequests(userIds: List<String>): Boolean {
+    suspend fun sendFriendRequest(userId: Long): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 val token = preferencesUtil.getAccessToken()
@@ -152,10 +160,11 @@ class UserRepository(private val context: Context) {
                     return@withContext false
                 }
                 
-                Log.d(TAG, "친구 요청 API 호출: userIds=$userIds")
-                val response = userApiService.sendFriendRequests(userIds)
+                Log.d(TAG, "친구 요청 API 호출: userId=$userId")
+                val request = AddFriendRequest(userId = userId)
+                val response = userApiService.sendFriendRequest(request)
                 
-                if (response.isSuccessful && response.body() == true) {
+                if (response.isSuccessful) {
                     Log.d(TAG, "친구 요청 전송 성공")
                     true
                 } else {

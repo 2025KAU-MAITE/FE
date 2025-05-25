@@ -2,6 +2,7 @@ package com.example.maite.repository
 
 import android.util.Log
 import com.example.maite.api.UserApiService
+import com.example.maite.model.AddFriendRequest
 import com.example.maite.model.UserSearchResponse
 import com.example.maite.model.UserSearchResult
 import kotlinx.coroutines.Dispatchers
@@ -35,14 +36,15 @@ class SearchUserRepository(private val userApiService: UserApiService) {
     }
 
     // 친구 요청 보내기
-    suspend fun sendFriendRequests(userIds: List<String>): Boolean {
+    suspend fun sendFriendRequest(userId: Long): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                val response = userApiService.sendFriendRequests(userIds)
+                val request = AddFriendRequest(userId = userId)
+                val response = userApiService.sendFriendRequest(request)
                 val success = response.isSuccessful
                 
                 if (success) {
-                    Log.d(TAG, "${userIds.size}명에게 친구 요청 전송 성공")
+                    Log.d(TAG, "사용자 ID $userId 에게 친구 요청 전송 성공")
                 } else {
                     Log.e(TAG, "친구 요청 전송 실패: ${response.code()}")
                 }

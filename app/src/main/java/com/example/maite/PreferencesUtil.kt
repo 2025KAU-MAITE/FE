@@ -114,10 +114,24 @@ class PreferencesUtil(context: Context) {
     }
     
     /**
-     * 특정 키의 문자열 값 삭제
+     * 문자열 값 삭제
      */
     fun removeString(key: String) {
         prefs.edit().remove(key).apply()
+    }
+    
+    /**
+     * 불린 값 저장
+     */
+    fun setBoolean(key: String, value: Boolean) {
+        prefs.edit().putBoolean(key, value).apply()
+    }
+    
+    /**
+     * 불린 값 가져오기
+     */
+    fun getBoolean(key: String, defaultValue: Boolean = false): Boolean {
+        return prefs.getBoolean(key, defaultValue)
     }
     
     /**
@@ -192,5 +206,33 @@ class PreferencesUtil(context: Context) {
      */
     fun getSharedPreferences(): SharedPreferences {
         return prefs
+    }
+    
+    /**
+     * 사용자 요금제 정보 저장
+     */
+    fun setUserPremiumStatus(isPremium: Boolean) {
+        setBoolean("user_is_premium", isPremium)
+    }
+    
+    /**
+     * 사용자 요금제 정보 가져오기
+     */
+    fun getUserPremiumStatus(): Boolean {
+        return getBoolean("user_is_premium", false) // 기본값: false (베이직)
+    }
+    
+    /**
+     * 사용자 요금제 이름 가져오기
+     */
+    fun getUserPlanName(): String {
+        return if (getUserPremiumStatus()) "프리미엄" else "베이직"
+    }
+    
+    /**
+     * 현재 요금제 정보 가져오기 (설정 화면용)
+     */
+    fun getCurrentPlan(): String {
+        return getUserPlanName()
     }
 }
