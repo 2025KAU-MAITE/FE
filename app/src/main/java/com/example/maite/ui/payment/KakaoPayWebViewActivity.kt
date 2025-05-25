@@ -77,14 +77,7 @@ class KakaoPayWebViewActivity : AppCompatActivity() {
     }
     
     private fun setupToolbar() {
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            setDisplayShowHomeEnabled(true)
-            title = "카카오페이 결제"
-        }
-        
-        binding.toolbar.setNavigationOnClickListener {
+        binding.btnBack.setOnClickListener {
             finishWithCancel()
         }
     }

@@ -41,7 +41,7 @@ class SettingsFragment : Fragment() {
         
         // 뒤로가기 버튼
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
-            activity?.onBackPressedDispatcher?.onBackPressed()
+            parentFragmentManager.popBackStack()
         }
         
         // 로그아웃 버튼
@@ -69,13 +69,7 @@ class SettingsFragment : Fragment() {
         try {
             // SubscriptionFragment로 이동
             val subscriptionFragment = com.example.maite.ui.subscription.SubscriptionFragment.newInstance()
-            requireActivity().supportFragmentManager.beginTransaction()
-                .setCustomAnimations(
-                    R.anim.slide_in_right,
-                    R.anim.slide_out_left,
-                    R.anim.slide_in_left,
-                    R.anim.slide_out_right
-                )
+            parentFragmentManager.beginTransaction()
                 .replace(R.id.main_frm, subscriptionFragment)
                 .addToBackStack(null)
                 .commit()

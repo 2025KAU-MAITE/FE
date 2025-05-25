@@ -63,7 +63,7 @@ class SubscriptionFragment : Fragment() {
         
         // 뒤로가기 버튼
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
-            activity?.onBackPressedDispatcher?.onBackPressed()
+            parentFragmentManager.popBackStack()
         }
         
         // 현재 요금제 정보 설정

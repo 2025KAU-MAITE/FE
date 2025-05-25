@@ -274,10 +274,8 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
     
     // 설정 화면으로 이동
     private fun navigateToSettings() {
-        val fragmentManager = requireActivity().supportFragmentManager
         val settingsFragment = com.example.maite.ui.settings.SettingsFragment()
-        
-        fragmentManager.beginTransaction()
+        parentFragmentManager.beginTransaction()
             .replace(R.id.main_frm, settingsFragment)
             .addToBackStack(null)
             .commit()
