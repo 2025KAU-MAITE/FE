@@ -11,8 +11,10 @@ import com.example.maite.R
 import com.example.maite.model.User
 import de.hdodenhof.circleimageview.CircleImageView
 
-class SearchAdapter(private val users: MutableList<User>) : 
-    RecyclerView.Adapter<SearchAdapter.UserViewHolder>() {
+class SearchAdapter(
+    private val users: MutableList<User>,
+    private val onSelectionChanged: () -> Unit = {}
+) : RecyclerView.Adapter<SearchAdapter.UserViewHolder>() {
     
     // Track the currently selected position
     private var selectedPosition = RecyclerView.NO_POSITION
@@ -87,5 +89,8 @@ class SearchAdapter(private val users: MutableList<User>) :
         users[position].isSelected = true
         selectedPosition = position
         notifyItemChanged(position)
+        
+        // Notify the fragment about selection change
+        onSelectionChanged()
     }
 }

@@ -5,9 +5,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.widget.AppCompatButton
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.widget.addTextChangedListener
+import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -26,7 +30,9 @@ class SearchFragment : Fragment() {
     private lateinit var searchAdapter: SearchAdapter
     private lateinit var etSearch: EditText
     private lateinit var rvSearchResults: RecyclerView
-    private lateinit var btnSend: AppCompatButton
+    private lateinit var btnSend: ConstraintLayout
+    private lateinit var btnBg: ImageView
+    private lateinit var btnText: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -42,15 +48,20 @@ class SearchFragment : Fragment() {
         etSearch = view.findViewById(R.id.etSearch)
         rvSearchResults = view.findViewById(R.id.rvSearchResults)
         btnSend = view.findViewById(R.id.btnSend)
+        btnBg = view.findViewById(R.id.btnBg)
+        btnText = view.findViewById(R.id.btnText)
         
         // Update button text to match functionality
-        btnSend.text = "친구 추가하기"
+        btnText.text = "친구 추가하기"
 
         setupViewModel()
         setupRecyclerView()
         setupSearchListener()
         observeViewModel()
         setupSendButton()
+        
+        // Set initial button state
+        updateButtonState()
     }
 
     private fun setupViewModel() {
@@ -62,7 +73,10 @@ class SearchFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        searchAdapter = SearchAdapter(mutableListOf())
+        searchAdapter = SearchAdapter(mutableListOf()) { 
+            // This callback is called whenever selection changes
+            updateButtonState()
+        }
         rvSearchResults.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = searchAdapter
@@ -86,7 +100,7 @@ class SearchFragment : Fragment() {
         lifecycleScope.launch {
             searchViewModel.isLoading.collect { isLoading ->
                 // Toggle loading indicator visibility
-                btnSend.isEnabled = !isLoading
+                updateButtonState()
             }
         }
 
@@ -122,8 +136,21 @@ class SearchFragment : Fragment() {
     }
     
     private fun updateButtonState() {
-        // Enable button only if a user is selected
-        btnSend.isEnabled = searchAdapter.getSelectedUser() != null
+        // Enable button only if a user is selected and not loading
+        val selectedUser = searchAdapter.getSelectedUser()
+        val isEnabled = selectedUser != null
+        
+        btnSend.isClickable = isEnabled
+        
+        if (isEnabled) {
+            ImageViewCompat.setImageTintList(btnBg, ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
+            btnText.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+            btnSend.alpha = 1.0f
+        } else {
+            ImageViewCompat.setImageTintList(btnBg, ContextCompat.getColorStateList(requireContext(), R.color.btn_inactive))
+            btnText.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+            btnSend.alpha = 0.7f
+        }
     }
 
     companion object {
