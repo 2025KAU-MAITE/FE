@@ -1,5 +1,6 @@
 package com.example.maite.view
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,8 +11,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.maite.R
 import com.example.maite.model.Message
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 class MessageAdapter(private val currentUserId: String) :
     ListAdapter<Message, RecyclerView.ViewHolder>(MessageDiffCallback()) {
@@ -41,8 +44,21 @@ class MessageAdapter(private val currentUserId: String) :
         }
     }
 
+    // 리스트가 변경될 때마다 호출되는 submitList 메서드 오버라이드
+    override fun submitList(list: List<Message>?) {
+        Log.d("MessageAdapter", "메시지 목록 업데이트: ${list?.size}개")
+        if (list != null && list.isNotEmpty()) {
+            list.forEachIndexed { index, message ->
+                Log.d("MessageAdapter", "[$index] id=${message.id}, content=${message.content}, senderId=${message.senderId}")
+            }
+        }
+        super.submitList(list)
+    }
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = getItem(position)
+
+        Log.d("MessageAdapter", "메시지 표시: id=${message.id}, 내용=${message.content}, 타입=${getItemViewType(position)}")
 
         when (holder) {
             is SentMessageViewHolder -> holder.bind(message)
@@ -95,9 +111,24 @@ class MessageAdapter(private val currentUserId: String) :
 
     companion object {
         private fun formatTime(timestamp: Long): String {
+            // 명시적으로 로컬 시간대 설정
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = timestamp
+
+            // 디버그용 로그
+            Log.d("TimeDebug", "원본 타임스탬프: $timestamp")
+            Log.d("TimeDebug", "UTC 시간: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date(timestamp))}")
+            Log.d("TimeDebug", "로컬 시간: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))}")
+
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+            // 명시적으로 타임존 설정 (시스템 기본값)
+            sdf.timeZone = TimeZone.getDefault()
+
             return sdf.format(Date(timestamp))
         }
+
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
     }

@@ -1,6 +1,7 @@
 package com.example.maite.view
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,6 +18,8 @@ import com.example.maite.viewmodel.ChatRoomViewModelFactory
 import com.bumptech.glide.Glide
 import com.example.maite.R
 import com.example.maite.PreferencesUtil
+import com.example.maite.model.Message
+import com.example.maite.network.WebSocketManager
 
 class ChatRoomFragment : Fragment() {
 
@@ -64,16 +67,22 @@ class ChatRoomFragment : Fragment() {
         chatItem = arguments?.getParcelable(ARG_CHAT_ITEM)
             ?: throw IllegalArgumentException("ChatListItem이 필요합니다")
 
+        // PreferencesUtil 초기화
+        preferencesUtil = PreferencesUtil(requireContext())
+
         // 즉시 UI 설정 (API 호출 없이)
         setupChatRoomUI()
 
-        // ViewModel 초기화 - Context 전달
+        // ViewModel 초기화 - Context 및 PreferencesUtil 전달
         val repository = ChatRoomRepository(requireContext())
-        val factory = ChatRoomViewModelFactory(chatItem.id, repository)
+        val factory = ChatRoomViewModelFactory(chatItem.id, repository, preferencesUtil)
         viewModel = ViewModelProvider(this, factory)[ChatRoomViewModel::class.java]
 
         setupUI()
         observeViewModel()
+
+        // 로그 추가
+        Log.d(TAG, "ChatRoomFragment 초기화 완료 - 채팅방 ID: ${chatItem.id}, 사용자 ID: $currentUserId")
     }
 
     private fun setupChatRoomUI() {
@@ -137,24 +146,23 @@ class ChatRoomFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        // 메시지 목록 관찰만 유지 (채팅방 정보는 이미 ChatListItem에서 가져옴)
+        // 메시지 목록 관찰
         viewModel.messages.observe(viewLifecycleOwner) { messages ->
+            Log.d(TAG, "메시지 목록 변경: ${messages.size}개")
             messageAdapter.submitList(messages) {
                 if (messages.isNotEmpty()) {
-                    binding.messageRv.smoothScrollToPosition(messages.size - 1)
+                    binding.messageRv.post {
+                        binding.messageRv.smoothScrollToPosition(messages.size - 1)
+                    }
                 }
             }
-        }
-
-        // 로딩 상태 관찰
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            // 로딩 표시 처리
         }
 
         // 에러 메시지 관찰
         viewModel.errorMessage.observe(viewLifecycleOwner) { errorMessage ->
             errorMessage?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "에러 메시지: $it")
                 viewModel.clearError()
             }
         }
