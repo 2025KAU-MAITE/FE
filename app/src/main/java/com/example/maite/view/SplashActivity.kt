@@ -129,20 +129,26 @@ class SplashActivity : AppCompatActivity() {
     }
     
     private fun navigateToLoginImmediately() {
-        // 로고를 완전히 투명하게 만들어서 화면 전환시 겹치지 않도록
-        binding.ivSplashLogo.alpha = 0f
+        // 로고를 정확한 위치에 고정 (LoginActivity가 시작될 때까지)
+        binding.ivSplashLogo.clearAnimation()
         
         val intent = Intent(this, LoginActivity::class.java)
         intent.putExtra("from_splash", true)
         
-        // 새로운 태스크로 시작하여 백스택 클리어
+        // SINGLE_TOP으로 더 빠른 전환
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
         
         // 전환 애니메이션 완전히 제거
         overridePendingTransition(0, 0)
         
-        finish()
+        // 즉시 Activity 시작 
+        startActivity(intent)
+        
+        // 매우 짧은 지연 후 finish (완벽한 겹침을 위해)
+        Handler(Looper.getMainLooper()).postDelayed({
+            finish()
+            overridePendingTransition(0, 0)
+        }, 16) // 1 프레임 지연 (16ms)
     }
     
     data class TargetPosition(val x: Float, val y: Float)

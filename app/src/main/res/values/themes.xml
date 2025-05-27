@@ -23,10 +23,15 @@
     
     <!-- Login theme with white status bar and navigation bar -->
     <style name="Theme.MAITE.Login" parent="Theme.MAITE">
+        <item name="android:windowBackground">@color/login_background</item>
         <item name="android:statusBarColor">@color/login_background</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@color/login_background</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowActivityTransitions">false</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowContentOverlay">@null</item>
     </style>
     
     <!-- Splash theme with fullscreen and white background -->

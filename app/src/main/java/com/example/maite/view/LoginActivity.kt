@@ -85,16 +85,36 @@ class LoginActivity : AppCompatActivity() {
     private fun handleSplashTransition() {
         val fromSplash = intent.getBooleanExtra("from_splash", false)
         if (fromSplash) {
-            // 처음에는 로고를 투명하게 설정
-            binding.ivLogo.alpha = 0f
+            Log.d(TAG, "스플래시에서 전환됨 - 매끄러운 텍스트 애니메이션 시작")
             
-            // 스플래시에서 온 경우 로고가 이미 정확한 위치에 있으므로 즉시 페이드인
+            // 스플래시에서 온 경우: 로고를 즉시 완전히 보이게 설정
+            binding.ivLogo.alpha = 1f
+            binding.ivLogo.visibility = View.VISIBLE
+            
+            // "Hi Maite!" 텍스트의 매끄러운 등장 애니메이션
+            // 로고가 이미 정확한 위치에 있으므로, 텍스트 부분만 페이드인
             binding.ivLogo.post {
+                // 약간의 딜레이 후 텍스트 강조 효과 (선택사항)
                 binding.ivLogo.animate()
-                    .alpha(1f)
-                    .setDuration(300)
+                    .scaleX(1.05f)
+                    .scaleY(1.05f)
+                    .setDuration(150)
+                    .withEndAction {
+                        binding.ivLogo.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(150)
+                            .start()
+                    }
                     .start()
             }
+        } else {
+            // 일반적인 경우 (앱 아이콘에서 직접 온 경우): 페이드인 효과
+            binding.ivLogo.alpha = 0f
+            binding.ivLogo.animate()
+                .alpha(1f)
+                .setDuration(300)
+                .start()
         }
     }
     

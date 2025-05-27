@@ -25,8 +25,10 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         
-        <!-- 추가 시스템 스플래시 방지 설정 -->
+        <!-- 화면 전환 최적화 설정 -->
         <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowNoDisplay">false</item>
+        <item name="android:windowActivityTransitions">false</item>
     </style>
 </resources>
