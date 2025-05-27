@@ -138,17 +138,15 @@ class SplashActivity : AppCompatActivity() {
         // SINGLE_TOP으로 더 빠른 전환
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         
-        // 전환 애니메이션 완전히 제거
-        overridePendingTransition(0, 0)
-        
         // 즉시 Activity 시작 
         startActivity(intent)
         
-        // 매우 짧은 지연 후 finish (완벽한 겹침을 위해)
-        Handler(Looper.getMainLooper()).postDelayed({
-            finish()
-            overridePendingTransition(0, 0)
-        }, 16) // 1 프레임 지연 (16ms)
+        // 애니메이션 완전히 제거 - 즉시 전환
+        overridePendingTransition(0, 0)
+        
+        // 즉시 finish
+        finish()
+        overridePendingTransition(0, 0)
     }
     
     data class TargetPosition(val x: Float, val y: Float)
