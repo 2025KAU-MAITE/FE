@@ -32,7 +32,7 @@
             android:layout_marginStart="8dp"
             android:text="요금제 관리"
             android:textColor="#333333"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/btn_back"
