@@ -29,15 +29,16 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // 시스템 스플래시를 완전히 비활성화했으므로 바로 커스텀 레이아웃 표시
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
         preferencesUtil = PreferencesUtil(this)
         
-        // 로고가 화면에 그려진 후 애니메이션 시작
-        binding.ivSplashLogo.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+        // 레이아웃이 완료되면 즉시 애니메이션 시작
+        binding.root.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                binding.ivSplashLogo.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                binding.root.viewTreeObserver.removeOnGlobalLayoutListener(this)
                 startLogoAnimation()
             }
         })
@@ -47,7 +48,7 @@ class SplashActivity : AppCompatActivity() {
         // 로고를 잠시 중앙에서 보여준 후 애니메이션 시작
         Handler(Looper.getMainLooper()).postDelayed({
             animateLogoToLoginPosition()
-        }, 600) // 0.6초 동안 중앙에서 보여줌 (조금 더 빠르게)
+        }, 1200) // 1.2초 동안 중앙에서 보여줌 (충분히 보여주기)
     }
     
     private fun animateLogoToLoginPosition() {
