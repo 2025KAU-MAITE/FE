@@ -66,6 +66,9 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
+        // 스플래시에서 온 경우 로고 페이드인 효과
+        handleSplashTransition()
+        
         // Setup back press handling
         setupBackPressHandling()
         
@@ -74,6 +77,25 @@ class LoginActivity : AppCompatActivity() {
         
         // Set up click listeners
         setupClickListeners()
+    }
+    
+    /**
+     * Handle transition from splash screen
+     */
+    private fun handleSplashTransition() {
+        val fromSplash = intent.getBooleanExtra("from_splash", false)
+        if (fromSplash) {
+            // 처음에는 로고를 투명하게 설정
+            binding.ivLogo.alpha = 0f
+            
+            // 스플래시에서 온 경우 로고가 이미 정확한 위치에 있으므로 즉시 페이드인
+            binding.ivLogo.post {
+                binding.ivLogo.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .start()
+            }
+        }
     }
     
     /**

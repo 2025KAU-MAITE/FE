@@ -28,4 +28,14 @@
         <item name="android:navigationBarColor">@color/login_background</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
     </style>
+    
+    <!-- Splash theme with fullscreen and white background -->
+    <style name="Theme.MAITE.Splash" parent="Theme.MAITE">
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
 </resources>
