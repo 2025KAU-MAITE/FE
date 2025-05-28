@@ -17,8 +17,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import android.util.Log
-import kotlinx.coroutines.delay  // delay 함수를 사용하기 위한 import 추가
-import com.example.maite.PreferencesUtil  // 추가된 import
+import com.example.maite.PreferencesUtil
 import com.example.maite.util.TimetableColorManager
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
@@ -203,104 +202,29 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 // 로딩 이벤트 발행
                 _timetableEvent.emit(TimetableEvent.Loading("시간표를 불러오는 중..."))
                 
-                // 최대 5번 시도 (동기화 신뢰성 향상)
-                var retryCount = 0
-                var maxRetries = 5
-                var serverData = emptyList<TimetableEntry>()
-                var lastError: Exception? = null
+                Log.d(TAG, "서버에서 시간표 로드 시도")
+                val serverData = timetableRepository.loadTimetable(userId)
                 
-                // 캐시 문제 방지를 위해 최초 한 번은 기다린 후 시도
-                delay(500)
+                Log.d(TAG, "서버에서 ${serverData.size}개 시간표 항목 로드")
                 
-                // 시간표 ID 저장 상태 확인 (디버깅용)
-                val preferencesUtil = PreferencesUtil(getApplication())
-                val savedTimetableId = preferencesUtil.getLong("timetable_id_$userId")
-                Log.d(TAG, "저장된 시간표 ID: $savedTimetableId")
-                
-                while (retryCount < maxRetries) {
-                    try {
-                        // 시간표 로드 시도
-                        Log.d(TAG, "시간표 로드 시도 #${retryCount + 1}")
-                        serverData = timetableRepository.loadTimetable(userId)
-                        
-                        if (serverData.isNotEmpty()) {
-                            Log.d(TAG, "[시도 ${retryCount + 1}] 시간표 로드 성공: ${serverData.size}개 항목")
-                            break
-                        } else {
-                            // 서버에서 데이터가 비어있는 경우 - 서버에 데이터가 없거나 접근 권한 문제일 수 있음
-                            Log.w(TAG, "[시도 ${retryCount + 1}] 서버에서 빈 시간표가 로드됨. 시간표를 먼저 저장해야 할 수 있습니다.")
-                            
-                            // 기존에 로컬에 저장된 시간표 데이터가 있는지 확인
-                            val localData = _timetable.value
-                            if (!localData.isNullOrEmpty() && retryCount >= 2) {
-                                // 로컬 데이터가 있고 여러 번 시도했는데 서버 데이터가 비어있다면, 로컬 데이터를 서버에 저장 시도
-                                Log.d(TAG, "로컬 데이터(${localData.size}개 항목)를 서버에 저장 시도")
-                                val saveSuccess = timetableRepository.saveTimetable(userId, localData)
-                                Log.d(TAG, "로컬 데이터 서버 저장 결과: $saveSuccess")
-                                
-                                if (saveSuccess) {
-                                    // 저장 성공하면 다시 로드 시도
-                                    serverData = timetableRepository.loadTimetable(userId)
-                                    if (serverData.isNotEmpty()) {
-                                        Log.d(TAG, "로컬 데이터 서버 저장 후 로드 성공: ${serverData.size}개 항목")
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                        
-                        retryCount++
-                        if (retryCount < maxRetries) {
-                            // 다음 시도 전에 점점 더 길게 대기
-                            val waitTime = 500L * (retryCount + 1)
-                            Log.d(TAG, "다음 시도 전 ${waitTime}ms 대기")
-                            delay(waitTime)
-                        }
-                    } catch (e: Exception) {
-                        lastError = e
-                        Log.e(TAG, "[시도 ${retryCount + 1}] 시간표 로드 오류", e)
-                        retryCount++
-                        
-                        // 다음 시도 전에 점점 더 길게 대기
-                        val waitTime = 500L * (retryCount + 1)
-                        delay(waitTime)
-                    }
-                }
-                
-                // 로드된 데이터가 있으면 처리
+                // 로드된 데이터 상세 로그
                 if (serverData.isNotEmpty()) {
-                    Log.d(TAG, "서버에서 ${serverData.size}개 시간표 항목 로드 완료")
-                    
-                    // 로드된 데이터 상세 로그
                     serverData.forEach { entry ->
                         Log.d(TAG, "항목: ${entry.title}, 요일=${entry.dayOfWeek}, 시간=${entry.startHour}:${entry.startMinute}-${entry.endHour}:${entry.endMinute}")
                     }
-                    
-                    // ViewModel 상태 업데이트 (메인 스레드 안전)
-                    _timetable.postValue(serverData)
-                    
-                    // TimetableDataHolder 업데이트 (싱글톤 - 앱 전체 공유)
-                    Log.d(TAG, "TimetableDataHolder 업데이트: ${serverData.size}개 항목")
-                    TimetableDataHolder.updateTimetable(serverData)
-                    
-                    // 업데이트 후 DataHolder 상태 확인
-                    Log.d(TAG, "TimetableDataHolder 현재 항목 수: ${TimetableDataHolder.getEntriesCount()}")
-                    
-                    // 성공 이벤트 발행
-                    _timetableEvent.emit(TimetableEvent.Loaded(serverData.size))
                 } else {
-                    // 로드 실패 처리
-                    if (lastError != null) {
-                        Log.e(TAG, "모든 시도 후 시간표 로드 실패", lastError)
-                        _timetableEvent.emit(TimetableEvent.Error("시간표를 가져올 수 없습니다: ${lastError.message}"))
-                    } else {
-                        // 서버에 시간표 항목이 없는 경우 (정상적인 상황일 수 있음)
-                        Log.w(TAG, "모든 시도 후 빈 시간표 반환됨 - 아직 시간표 항목이 없는 것으로 판단")
-                        _timetable.postValue(emptyList())  // 빈 시간표 설정
-                        TimetableDataHolder.clear()  // DataHolder 초기화
-                        _timetableEvent.emit(TimetableEvent.Loaded(0))
-                    }
+                    Log.d(TAG, "서버에서 빈 시간표 로드됨 - 새로운 사용자이거나 아직 시간표가 없음")
                 }
+                
+                // ViewModel 상태 업데이트
+                _timetable.postValue(serverData)
+                
+                // TimetableDataHolder 업데이트
+                Log.d(TAG, "TimetableDataHolder 업데이트: ${serverData.size}개 항목")
+                TimetableDataHolder.updateTimetable(serverData)
+                
+                // 성공 이벤트 발행
+                _timetableEvent.emit(TimetableEvent.Loaded(serverData.size))
                 
                 Log.d(TAG, "=== 시간표 로드 완료 ===")
             } catch (e: Exception) {
@@ -502,6 +426,142 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
         
         return resultLiveData
+    }
+
+    // 실시간 시간표 항목 추가 (즉시 서버 저장)
+    fun addTimetableEntryToServer(entry: TimetableEntry) {
+        val currentList = _timetable.value?.toMutableList() ?: mutableListOf()
+
+        // 충돌 검사
+        val conflictingEntry = currentList.find { existing ->
+            existing.dayOfWeek == entry.dayOfWeek && (
+                    (entry.startHour < existing.endHour && entry.endHour > existing.startHour) ||
+                            (existing.startHour <= entry.startHour && existing.endHour >= entry.endHour) ||
+                            (entry.startHour <= existing.startHour && entry.endHour >= existing.endHour)
+                    )
+        }
+
+        if (conflictingEntry != null) {
+            viewModelScope.launch {
+                _timetableEvent.emit(TimetableEvent.Conflict(conflictingEntry, entry))
+            }
+            return
+        }
+
+        // 충돌 없는 경우 서버에 추가
+        viewModelScope.launch {
+            try {
+                val userId = currentUserId ?: run {
+                    _timetableEvent.emit(TimetableEvent.Error("사용자 ID가 설정되지 않았습니다"))
+                    return@launch
+                }
+                
+                _timetableEvent.emit(TimetableEvent.SyncStarted("일정을 추가하는 중..."))
+                
+                val success = timetableRepository.addEventToServer(userId, entry)
+                
+                if (success) {
+                    // 로컬 상태 업데이트
+                    currentList.add(entry)
+                    _timetable.value = currentList
+                    TimetableDataHolder.updateTimetable(currentList)
+                    
+                    _timetableEvent.emit(TimetableEvent.Added(entry))
+                    _timetableEvent.emit(TimetableEvent.SyncCompleted(true, "일정이 추가되었습니다"))
+                    Log.d(TAG, "실시간 일정 추가 성공: ${entry.title}")
+                } else {
+                    _timetableEvent.emit(TimetableEvent.Error("일정 추가에 실패했습니다"))
+                    _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "일정 추가 실패"))
+                    Log.e(TAG, "실시간 일정 추가 실패: ${entry.title}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "실시간 일정 추가 중 예외 발생", e)
+                _timetableEvent.emit(TimetableEvent.Error("일정 추가 중 오류가 발생했습니다: ${e.message}"))
+                _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "일정 추가 중 오류 발생"))
+            }
+        }
+    }
+
+    // 실시간 시간표 항목 삭제 (즉시 서버 삭제)
+    fun removeTimetableEntryFromServer(entry: TimetableEntry) {
+        val currentList = _timetable.value?.toMutableList() ?: mutableListOf()
+        
+        if (!currentList.contains(entry)) {
+            Log.w(TAG, "삭제하려는 항목이 로컬에 없습니다: ${entry.title}")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val userId = currentUserId ?: run {
+                    _timetableEvent.emit(TimetableEvent.Error("사용자 ID가 설정되지 않았습니다"))
+                    return@launch
+                }
+                
+                _timetableEvent.emit(TimetableEvent.SyncStarted("일정을 삭제하는 중..."))
+                
+                val eventId = entry.id ?: run {
+                    _timetableEvent.emit(TimetableEvent.Error("일정 ID가 없어 삭제할 수 없습니다"))
+                    return@launch
+                }
+                
+                val success = timetableRepository.deleteEventFromServer(userId, eventId)
+                
+                if (success) {
+                    // 로컬 상태 업데이트
+                    currentList.remove(entry)
+                    _timetable.value = currentList
+                    TimetableDataHolder.updateTimetable(currentList)
+                    
+                    _timetableEvent.emit(TimetableEvent.Removed(entry))
+                    _timetableEvent.emit(TimetableEvent.SyncCompleted(true, "일정이 삭제되었습니다"))
+                    Log.d(TAG, "실시간 일정 삭제 성공: ${entry.title}")
+                } else {
+                    _timetableEvent.emit(TimetableEvent.Error("일정 삭제에 실패했습니다"))
+                    _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "일정 삭제 실패"))
+                    Log.e(TAG, "실시간 일정 삭제 실패: ${entry.title}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "실시간 일정 삭제 중 예외 발생", e)
+                _timetableEvent.emit(TimetableEvent.Error("일정 삭제 중 오류가 발생했습니다: ${e.message}"))
+                _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "일정 삭제 중 오류 발생"))
+            }
+        }
+    }
+
+    // 실시간 시간표 초기화 (즉시 서버 삭제)
+    fun clearTimetableFromServer() {
+        viewModelScope.launch {
+            try {
+                val userId = currentUserId ?: run {
+                    _timetableEvent.emit(TimetableEvent.Error("사용자 ID가 설정되지 않았습니다"))
+                    return@launch
+                }
+                
+                _timetableEvent.emit(TimetableEvent.SyncStarted("시간표를 초기화하는 중..."))
+                
+                val success = timetableRepository.clearAllEventsFromServer(userId)
+                
+                if (success) {
+                    // 로컬 상태 업데이트
+                    _timetable.value = emptyList()
+                    TimetableDataHolder.updateTimetable(emptyList())
+                    colorManager.clearColorMappings()
+                    
+                    _timetableEvent.emit(TimetableEvent.Cleared)
+                    _timetableEvent.emit(TimetableEvent.SyncCompleted(true, "시간표가 초기화되었습니다"))
+                    Log.d(TAG, "실시간 시간표 초기화 성공")
+                } else {
+                    _timetableEvent.emit(TimetableEvent.Error("시간표 초기화에 실패했습니다"))
+                    _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "시간표 초기화 실패"))
+                    Log.e(TAG, "실시간 시간표 초기화 실패")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "실시간 시간표 초기화 중 예외 발생", e)
+                _timetableEvent.emit(TimetableEvent.Error("시간표 초기화 중 오류가 발생했습니다: ${e.message}"))
+                _timetableEvent.emit(TimetableEvent.SyncCompleted(false, "시간표 초기화 중 오류 발생"))
+            }
+        }
     }
 
     // 시간표 관련 이벤트 봉인 클래스
