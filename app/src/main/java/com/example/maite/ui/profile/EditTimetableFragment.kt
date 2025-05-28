@@ -42,7 +42,6 @@ class EditTimetableFragment : Fragment() {
     // 색상 관리자
     private lateinit var colorManager: TimetableColorManager
 
-
     // 요일 선택 옵션
     private val dayOptions = arrayOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
 
@@ -64,7 +63,7 @@ class EditTimetableFragment : Fragment() {
     // 색상은 일관되게 유지
     private val defaultColor = "#4C7EED"
 
-    // 임시 시간표 리스트 (저장 전까지 유지)
+    // 임시 시간표 리스트 (서버 데이터와 동기화)
     private val temporaryEntries = mutableListOf<TimetableEntry>()
 
     override fun onCreateView(
@@ -81,17 +80,29 @@ class EditTimetableFragment : Fragment() {
         // 색상 관리자 초기화
         colorManager = TimetableColorManager(requireContext())
 
-        // 기존 시간표 항목들을 임시 리스트에 복사
+        // 서버에서 최신 시간표 데이터 로드
+        val preferencesUtil = PreferencesUtil(requireContext())
+        val userId = preferencesUtil.getUserId()
+        
+        if (userId != null) {
+            lifecycleScope.launch {
+                viewModel.loadTimetableFromServer(userId)
+            }
+        }
+        
+        // 기존 시간표 항목들을 임시 리스트에 복사 (서버 데이터 로드 후에 업데이트됨)
         viewModel.timetable.value?.let {
+            temporaryEntries.clear()
             temporaryEntries.addAll(it)
         }
         
         // 초기 상태에서는 변경사항 없음으로 설정
         hasChanges = false
-        // 저장 버튼 비활성화 및 색상 변경
-        binding.btnSave.isEnabled = false
-        binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.light_gray))
-        binding.btnSave.alpha = 0.7f
+        // 저장 버튼은 항상 활성화 (실시간 방식에서는 닫기 기능)
+        binding.btnSave.isEnabled = true
+        binding.btnSave.text = "완료"
+        binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
+        binding.btnSave.alpha = 1.0f
 
         setupUI()
         setupTimeSelectionObservers()
@@ -123,129 +134,23 @@ class EditTimetableFragment : Fragment() {
         // 기본 시간 표시 업데이트
         updateTimeDisplay()
 
-        // 일정 추가 버튼
+        // 일정 추가 버튼 - 실시간 서버 저장
         binding.btnAddEntry.setOnClickListener {
-            addTimetableEntry()
+            addTimetableEntryRealtime()
         }
 
-        // 저장 버튼
+        // 저장 버튼 - 단순 화면 전환
         binding.btnSave.setOnClickListener {
-            // 로딩 다이얼로그 표시
-            val loadingDialog = LoadingDialog(requireContext())
-            loadingDialog.show()
-            
-            // 서버에 저장
-            val preferencesUtil = PreferencesUtil(requireContext())
-            val userId = preferencesUtil.getUserId()
-            val accessToken = preferencesUtil.getAccessToken()
-            
-            if (userId != null) {
-                // accessToken 없을 때 처리
-                if (accessToken == null) {
-                    loadingDialog.dismiss()
-                    Toast.makeText(requireContext(), "시간표 저장을 위해 로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                
-                Log.d("EditTimetableFragment", "시간표 저장 시작: userId=$userId, 항목 수=${temporaryEntries.size}")
-                
-                // 저장 중 상태 표시
-                binding.btnSave.isEnabled = false
-                binding.btnSave.text = "저장 중..."
-                
-                // 테스트 용도로 저장하려는 시간표 로깅
-                Log.d("EditTimetableFragment", "저장 데이터 로그:")
-                for (entry in temporaryEntries) {
-                    Log.d("EditTimetableFragment", "- 항목: ${entry.title}, 요일=${entry.dayOfWeek}, 시간=${entry.startHour}:${entry.startMinute}-${entry.endHour}:${entry.endMinute}, 위치=${entry.location}")
-                }
-                
-                lifecycleScope.launch {
-                    try {
-                        // 개선된 저장 흐름 
-                        Log.d("EditTimetableFragment", "개선된 저장 프로세스 시작")
-                        
-                        // 1. 시간표 업데이트
-                        viewModel.updateTimetable(temporaryEntries)
-                        
-                        // 2. 서버에 저장 (최대 3회 시도)
-                        var success = false
-                        var retryCount = 0
-                        val maxRetries = 3
-                        
-                        while (retryCount < maxRetries && !success) {
-                            try {
-                                Log.d("EditTimetableFragment", "서버 저장 시도 #${retryCount + 1}")
-                                
-                                // 실제 저장 계획 추가 로깅
-                                Log.d("EditTimetableFragment", "현재 저장 플로우: 시간표 업데이트 → 실제 저장 요청")
-                                
-                                // saveTimetableToServer 호출
-                                success = viewModel.saveTimetableToServer(userId)
-                                
-                                if (success) {
-                                    Log.d("EditTimetableFragment", "✅ 서버 저장 성공!")
-                                    // 새로 로드 추가 (저장 후 확인)
-                                    viewModel.loadTimetableFromServer(userId)
-                                    break
-                                } else {
-                                    Log.w("EditTimetableFragment", "서버 저장 실패, 재시도 중... (${retryCount + 1}/${maxRetries})")
-                                    retryCount++
-                                    
-                                    if (retryCount < maxRetries) {
-                                        // 다음 시도 전 잠시 대기
-                                        delay(500L * (retryCount + 1))
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("EditTimetableFragment", "서버 저장 중 예외 발생 (시도 ${retryCount + 1}/${maxRetries})", e)
-                                retryCount++
-                                
-                                if (retryCount < maxRetries) {
-                                    delay(500L * (retryCount + 1))
-                                }
-                            }
-                        }
-                        
-                        // 저장 완료 후 처리
-                        withContext(Dispatchers.Main) {
-                            binding.btnSave.isEnabled = true
-                            binding.btnSave.text = "저장"
-                            loadingDialog.dismiss()
-                            
-                            Toast.makeText(requireContext(), "시간표가 저장되었습니다.", Toast.LENGTH_SHORT).show()
-                            
-                            // 이전 화면으로 돌아가기 전에 시간표 로드 한 번 더 하고 나가기
-                            delay(300) // 잠시 대기 후 다시 로드 (서버 동기화 시간 확보)
-                            viewModel.loadTimetableFromServer(userId)
-                            delay(200)
-                            
-                            // 이전 화면으로 돌아가기
-                            parentFragmentManager.popBackStack()
-                        }
-                    } catch (e: Exception) {
-                        // 예외 처리 추가
-                        Log.e("EditTimetableFragment", "시간표 저장 중 예외 발생", e)
-                        
-                        withContext(Dispatchers.Main) {
-                            binding.btnSave.isEnabled = true
-                            binding.btnSave.text = "저장"
-                            loadingDialog.dismiss()
-                            Toast.makeText(requireContext(), "시간표 저장 중 문제가 발생했으나, 저장을 완료했습니다.", Toast.LENGTH_SHORT).show()
-                            
-                            // 이전 화면으로 돌아가기
-                            parentFragmentManager.popBackStack()
-                        }
-                    }
-                }
-            } else {
-                loadingDialog.dismiss()
-                Toast.makeText(requireContext(), "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.", Toast.LENGTH_SHORT).show()
+            // 변경사항이 있으면 메시지 표시 후 이전 화면으로 돌아가기
+            if (hasChanges) {
+                Toast.makeText(requireContext(), "변경사항이 저장되었습니다.", Toast.LENGTH_SHORT).show()
             }
+            parentFragmentManager.popBackStack()
         }
 
-        // 초기화 버튼
+        // 초기화 버튼 - 실시간 서버 초기화
         binding.btnClear.setOnClickListener {
-            showClearConfirmationDialog()
+            showClearConfirmationDialogRealtime()
         }
 
         // 뒤로가기 버튼
@@ -284,26 +189,59 @@ class EditTimetableFragment : Fragment() {
             viewModel.timetableEvent.collect { event ->
                 when (event) {
                     is ProfileViewModel.TimetableEvent.Added -> {
-                        // 일정 추가 성공
+                        // 실시간 일정 추가 성공
+                        Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
                         clearInputFields()
+                        // 시간표 UI 즉시 갱신
+                        updateTimetableFromServer()
                     }
-                    is ProfileViewModel.TimetableEvent.Conflict -> {
-                        // 일정 충돌 발생 (임시 시간표에서 처리)
-                        showConflictDialog(event.existing, event.new)
+                    is ProfileViewModel.TimetableEvent.Removed -> {
+                        // 실시간 일정 삭제 성공
+                        Toast.makeText(requireContext(), "${event.entry.title} 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                        // 시간표 UI 즉시 갱신
+                        updateTimetableFromServer()
                     }
                     is ProfileViewModel.TimetableEvent.Cleared -> {
-                        // 시간표 초기화 완료
-                        temporaryEntries.clear()
-                        updateTimetablePreview()
+                        // 실시간 시간표 초기화 성공
                         Toast.makeText(requireContext(), "시간표가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
+                        // 시간표 UI 즉시 갱신
+                        updateTimetableFromServer()
+                    }
+                    is ProfileViewModel.TimetableEvent.Conflict -> {
+                        // 일정 충돌 발생
+                        showConflictDialogRealtime(event.existing, event.new)
+                    }
+                    is ProfileViewModel.TimetableEvent.Error -> {
+                        // 에러 발생
+                        Toast.makeText(requireContext(), event.message, Toast.LENGTH_LONG).show()
+                    }
+                    is ProfileViewModel.TimetableEvent.SyncCompleted -> {
+                        // 동기화 완료
+                        if (event.success) {
+                            Log.d("EditTimetableFragment", "서버 동기화 성공: ${event.message}")
+                        } else {
+                            Log.e("EditTimetableFragment", "서버 동기화 실패: ${event.message}")
+                            Toast.makeText(requireContext(), "동기화 오류: ${event.message}", Toast.LENGTH_SHORT).show()
+                        }
                     }
                     else -> { /* 다른 이벤트 처리 */ }
                 }
             }
         }
+        
+        // 시간표 데이터 변경 관찰 (실시간 업데이트 반영)
+        viewModel.timetable.observe(viewLifecycleOwner) { timetableList ->
+            // 서버에서 받은 최신 데이터로 임시 리스트 동기화
+            temporaryEntries.clear()
+            temporaryEntries.addAll(timetableList)
+            
+            // 서버에서 받은 최신 데이터로 미리보기 업데이트
+            updateTimetablePreviewFromServer(timetableList)
+        }
     }
 
-    private fun addTimetableEntry() {
+    // 실시간 일정 추가 (즉시 서버 저장)
+    private fun addTimetableEntryRealtime() {
         val title = binding.etTitle.text?.toString()?.trim() ?: ""
         val location = binding.etLocation.text?.toString()?.trim() ?: ""
 
@@ -330,27 +268,11 @@ class EditTimetableFragment : Fragment() {
         // 색상 관리자를 사용하여 색상 배정
         val entry = colorManager.assignColor(entryWithoutColor)
 
-        // 임시 시간표에 충돌 검사 후 추가 (수정된 충돌 검사 로직 - 분 단위)
-        val conflictingEntry = temporaryEntries.find { existing ->
-            existing.dayOfWeek == entry.dayOfWeek && isTimeConflict(
-                entryStart = entry.startHour * 60 + entry.startMinute,
-                entryEnd = entry.endHour * 60 + entry.endMinute,
-                existingStart = existing.startHour * 60 + existing.startMinute,
-                existingEnd = existing.endHour * 60 + existing.endMinute
-            )
-        }
-
-        if (conflictingEntry != null) {
-            // 충돌 시 다이얼로그 표시
-            showConflictDialog(conflictingEntry, entry)
-        } else {
-            // 충돌 없는 경우 추가
-            temporaryEntries.add(entry)
-            clearInputFields()
-            updateTimetablePreview()
-            setChangesFlag(true) // 변경사항 있음 표시
-            Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
-        }
+        // 즉시 서버에 추가 (실시간)
+        viewModel.addTimetableEntryToServer(entry)
+        
+        // 성공 메시지는 observeEvents에서 처리됨
+        clearInputFields()
     }
 
     // 시간 충돌 여부 확인 (분 단위)
@@ -396,13 +318,15 @@ class EditTimetableFragment : Fragment() {
         binding.btnEndTime.text = endFormatted
     }
 
-    // 시간표 미리보기 업데이트 - 30분 단위 정확한 표시
+    // 시간표 미리보기 업데이트 - 30분 단위 정확한 표시 (임시 데이터 사용)
     private fun updateTimetablePreview() {
+        updateTimetablePreviewWithEntries(temporaryEntries)
+    }
+
+    // 공통 시간표 미리보기 생성 메서드 (실제 구현)
+    private fun updateTimetablePreviewWithEntries(entries: List<TimetableEntry>) {
         val timetableLayout = binding.timetablePreview
         timetableLayout.removeAllViews()
-
-        // 시간표 생성을 위한 데이터
-        val entries = temporaryEntries
 
         // 동적 시간 범위 계산 - 24시까지 표시 가능하도록 수정
         var minHour = 8  // 8시부터 시작 (기본값 변경)
@@ -622,14 +546,12 @@ class EditTimetableFragment : Fragment() {
                             Toast.makeText(context, "${entry.title} 선택됨", Toast.LENGTH_SHORT).show()
                         }
                         
-                        // 길게 누르면 삭제 기능
+                        // 길게 누르면 삭제 기능 - 실시간 서버 삭제
                         setOnLongClickListener {
-                            // 선택된 항목을 임시 목록에서 제거
-                            temporaryEntries.remove(entry)
+                            // 실시간 서버에서 삭제
+                            viewModel.removeTimetableEntryFromServer(entry)
                             selectedEntry = null
-                            updateTimetablePreview()
-                            setChangesFlag(true) // 변경사항 있음 표시
-                            Toast.makeText(context, "${entry.title} 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                            // 성공 메시지는 observeEvents에서 처리됨
                             true
                         }
                     }
@@ -666,41 +588,53 @@ class EditTimetableFragment : Fragment() {
         timetableLayout.addView(tableLayout)
     }
 
-    private fun showConflictDialog(existing: TimetableEntry, new: TimetableEntry) {
+    // 실시간 충돌 다이얼로그 (서버 기반)
+    private fun showConflictDialogRealtime(existing: TimetableEntry, new: TimetableEntry) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("시간 충돌")
             .setMessage("이미 '${existing.title}'(이)가 있는 시간입니다. 덮어쓰시겠습니까?")
             .setPositiveButton("덮어쓰기") { _, _ ->
-                // 기존 항목 제거
-                temporaryEntries.remove(existing)
-                // 새 항목 추가
-                temporaryEntries.add(new)
-                // 선택 초기화
-                selectedEntry = null
-                // 시간표 업데이트
+                // 기존 항목을 서버에서 삭제
+                viewModel.removeTimetableEntryFromServer(existing)
+                // 새 항목을 서버에 추가
+                viewModel.addTimetableEntryToServer(new)
                 clearInputFields()
-                updateTimetablePreview()
-                setChangesFlag(true) // 변경사항 있음 표시
-                Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("취소", null)
             .show()
     }
 
-    private fun showClearConfirmationDialog() {
+    // 서버에서 최신 시간표 데이터를 가져와서 UI 업데이트
+    private fun updateTimetableFromServer() {
+        val preferencesUtil = PreferencesUtil(requireContext())
+        val userId = preferencesUtil.getUserId()
+        
+        if (userId != null) {
+            lifecycleScope.launch {
+                viewModel.loadTimetableFromServer(userId)
+            }
+        }
+    }
+
+    // 서버 데이터 기반 시간표 미리보기 업데이트
+    private fun updateTimetablePreviewFromServer(entries: List<TimetableEntry>) {
+        updateTimetablePreviewWithEntries(entries)
+    }
+
+    // 실시간 초기화 확인 다이얼로그
+    private fun showClearConfirmationDialogRealtime() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("시간표 초기화")
-            .setMessage("시간표를 모두 초기화하시겠습니까?")
+            .setMessage("시간표를 모두 초기화하시겠습니까? 서버에서 즉시 삭제됩니다.")
             .setPositiveButton("초기화") { _, _ ->
-                temporaryEntries.clear()
+                // 실시간 서버에서 초기화
+                viewModel.clearTimetableFromServer()
+                
+                // 로컬 색상 매핑 초기화
+                colorManager.clearColorMappings()
                 selectedEntry = null
                 
-                // 색상 매핑도 초기화
-                colorManager.clearColorMappings()
-                
-                updateTimetablePreview()
-                setChangesFlag(true) // 변경사항 있음 표시
-                Toast.makeText(requireContext(), "시간표가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
+                // 성공 메시지는 observeEvents에서 처리됨
             }
             .setNegativeButton("취소", null)
             .show()
@@ -726,31 +660,19 @@ class EditTimetableFragment : Fragment() {
             .show()
     }
     
-    // 변경사항 플래그 설정 및 저장 버튼 상태 변경
+    // 변경사항 플래그 설정 (실시간 방식에서는 저장 버튼 항상 활성화)
     private fun setChangesFlag(hasChanges: Boolean) {
         this.hasChanges = hasChanges
-        binding.btnSave.isEnabled = hasChanges
-        
-        // 버튼 색상 변경: 비활성화 시 회색, 활성화 시 메인컨러
-        if (hasChanges) {
-            // 활성화 상태: 메인 컨러 유지
-            binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
-            binding.btnSave.alpha = 1.0f
-        } else {
-            // 비활성화 상태: 회색으로 변경
-            binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.light_gray))
-            binding.btnSave.alpha = 0.7f
-        }
+        // 실시간 방식에서는 저장 버튼이 완료 기능이므로 항상 활성화
+        binding.btnSave.isEnabled = true
+        binding.btnSave.text = "완료"
+        binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
+        binding.btnSave.alpha = 1.0f
     }
 
     private fun clearInputFields() {
         binding.etTitle.setText("")
         binding.etLocation.setText("")
-    }
-
-    // delay 함수 호출 문제를 해결하기 위한 헬퍼 함수
-    private suspend fun suspendWithTimeout(timeMillis: Long) {
-        delay(timeMillis) // Long 타입으로 자동 인식됨
     }
 
     override fun onDestroyView() {

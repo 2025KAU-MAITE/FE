@@ -15,23 +15,19 @@ interface TimetableApi {
     @GET("api/timetables/my")
     suspend fun getMyTimetable(): Response<MyTimetablesResponse>
 
-    @DELETE("api/timetables/{timetableId}")
-    suspend fun deleteTimetable(@Path("timetableId") timetableId: Long): Response<TimetableResponse>
+    @DELETE("api/timetables/myTimetableId")
+    suspend fun deleteTimetable(): Response<TimetableResponse>
 
-    @POST("api/timetables/{timetableId}/event")
+    @POST("api/timetables/myTimetableId/event")
     suspend fun createEvent(
-        @Path("timetableId") timetableId: Long,
         @Body request: CreateEventRequest
     ): Response<EventResponse>
 
-    @GET("api/timetables/{timetableId}/events")
-    suspend fun getAllEvents(
-        @Path("timetableId") timetableId: Long
-    ): Response<EventsResponse>
+    @GET("api/timetables/myTimetableId/events")
+    suspend fun getAllEvents(): Response<EventsResponse>
 
-    @DELETE("api/timetables/{timetableId}/event/{eventId}")
+    @DELETE("api/timetables/myTimetableId/event/{eventId}")
     suspend fun deleteEvent(
-        @Path("timetableId") timetableId: Long,
         @Path("eventId") eventId: Long
     ): Response<EventResponse>
 }
@@ -87,10 +83,10 @@ data class EventsResponse(
     val result: List<EventDto>
 )
 
-// 내 시간표 목록을 위한 새로운 응답 클래스 (result가 배열)
+// 내 시간표 조회를 위한 응답 클래스 (result가 단일 객체)
 data class MyTimetablesResponse(
     val isSuccess: Boolean,
     val code: String,
     val message: String,
-    val result: List<TimetableResult>  // 배열로 정의
+    val result: TimetableResult  // 단일 객체로 변경
 )
