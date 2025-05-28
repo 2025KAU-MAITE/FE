@@ -25,6 +25,8 @@ import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
 import com.example.maite.data.model.ProposalType
 import com.example.maite.model.TimetableEntry
+import com.example.maite.model.NotificationItem
+import com.example.maite.model.NotificationType
 import com.example.maite.ui.home.HomeViewModel
 import com.example.maite.ui.home.HomeViewModelFactory
 import com.example.maite.ui.profile.ProfileViewModel
@@ -114,9 +116,60 @@ class HomeFragment : Fragment() {
             }
         }
 
-        // 읽지 않은 제안 표시
+        // NotificationViewModel에서 알림 데이터 관찰하여 제안 표시
+        notificationViewModel.notifications.observe(viewLifecycleOwner) { notifications ->
+            // 회의 제안 및 회의방 초대 알림 필터링
+            val meetingProposals = notifications.filter { 
+                it.type == NotificationType.MEETING_INVITE 
+            }
+            val roomInvites = notifications.filter { 
+                it.type == NotificationType.ROOM_INVITE 
+            }
+            
+            // 회의 제안을 우선으로 표시, 없으면 회의방 초대 표시
+            val allProposals = meetingProposals + roomInvites
+            
+            if (allProposals.isNotEmpty()) {
+                val notification = allProposals.first()
+                binding.cardProposal.visibility = View.VISIBLE
+                
+                // 알림 타입에 따라 표시 방식 구분
+                if (notification.type == NotificationType.ROOM_INVITE) {
+                    // 회의방 초대 표시
+                    binding.tvProposalTitle.text = "${notification.senderName}님의 회의방 초대"
+                    binding.tvProposalDate.text = "회의방: ${notification.senderName}"
+                    binding.tvProposalTime.visibility = View.GONE
+                    binding.tvProposalLocation.visibility = View.GONE
+                    
+                    binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
+                    binding.ivInviteIcon.setImageResource(R.drawable.ic_room_invite)
+                    binding.ivInviteIcon.visibility = View.VISIBLE
+                } else {
+                    // 회의 제안 표시
+                    binding.tvProposalTitle.text = notification.meetingDetails?.title ?: notification.message
+                    binding.tvProposalDate.text = "날짜: ${notification.meetingDetails?.date ?: ""}"
+                    binding.tvProposalTime.text = "시간: ${notification.meetingDetails?.time ?: ""}"
+                    binding.tvProposalLocation.text = "장소: ${notification.meetingDetails?.location ?: ""}"
+                    binding.tvProposalTime.visibility = View.VISIBLE
+                    binding.tvProposalLocation.visibility = View.VISIBLE
+                    
+                    binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
+                    binding.ivInviteIcon.setImageResource(R.drawable.ic_meeting_invite)
+                    binding.ivInviteIcon.visibility = View.VISIBLE
+                }
+                
+                binding.tvNoProposals.visibility = View.GONE
+            } else {
+                binding.cardProposal.visibility = View.GONE
+                binding.tvNoProposals.visibility = View.VISIBLE
+            }
+        }
+        
+        // 기존 ProposalRepository 기반 제안 표시 (백업용으로 유지)
         viewModel.proposals.observe(viewLifecycleOwner) { proposals: List<MeetingProposal> ->
-            if (proposals.isNotEmpty()) {
+            // NotificationViewModel에서 데이터가 없을 때만 사용
+            val hasNotificationData = notificationViewModel.notifications.value?.isNotEmpty() == true
+            if (!hasNotificationData && proposals.isNotEmpty()) {
                 val proposal = proposals.first()
                 binding.cardProposal.visibility = View.VISIBLE
                 
@@ -148,23 +201,46 @@ class HomeFragment : Fragment() {
                 }
                 
                 binding.tvNoProposals.visibility = View.GONE
-            } else {
-                binding.cardProposal.visibility = View.GONE
-                binding.tvNoProposals.visibility = View.VISIBLE
             }
         }
 
         // 수락 버튼 클릭
         binding.btnAccept.setOnClickListener {
-            viewModel.proposals.value?.firstOrNull()?.let { proposal ->
-                animateCardAndRemove(proposal, isAccepted = true)
+            // NotificationViewModel의 데이터를 우선 사용
+            val notifications = notificationViewModel.notifications.value
+            val allProposals = notifications?.filter { 
+                it.type == NotificationType.MEETING_INVITE || 
+                it.type == NotificationType.ROOM_INVITE 
+            }
+            
+            if (!allProposals.isNullOrEmpty()) {
+                val notification = allProposals.first()
+                handleNotificationAccept(notification)
+            } else {
+                // 백업: 기존 ProposalRepository 데이터 사용
+                viewModel.proposals.value?.firstOrNull()?.let { proposal ->
+                    animateCardAndRemove(proposal, isAccepted = true)
+                }
             }
         }
 
         // 거절 버튼 클릭
         binding.btnDecline.setOnClickListener {
-            viewModel.proposals.value?.firstOrNull()?.let { proposal ->
-                animateCardAndRemove(proposal, isAccepted = false)
+            // NotificationViewModel의 데이터를 우선 사용
+            val notifications = notificationViewModel.notifications.value
+            val allProposals = notifications?.filter { 
+                it.type == NotificationType.MEETING_INVITE || 
+                it.type == NotificationType.ROOM_INVITE 
+            }
+            
+            if (!allProposals.isNullOrEmpty()) {
+                val notification = allProposals.first()
+                handleNotificationDecline(notification)
+            } else {
+                // 백업: 기존 ProposalRepository 데이터 사용
+                viewModel.proposals.value?.firstOrNull()?.let { proposal ->
+                    animateCardAndRemove(proposal, isAccepted = false)
+                }
             }
         }
 
@@ -526,6 +602,93 @@ class HomeFragment : Fragment() {
                 binding.tvNoProposals.visibility = View.VISIBLE
                 binding.cardProposal.alpha = 1f
                 binding.cardProposal.translationY = 0f
+            }
+            .start()
+    }
+    
+    // NotificationViewModel 데이터를 이용한 수락 처리
+    private fun handleNotificationAccept(notification: NotificationItem) {
+        binding.cardProposal.animate()
+            .alpha(0f)
+            .translationY(100f)
+            .setDuration(500)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                // NotificationViewModel을 통해 수락 처리
+                when (notification.type) {
+                    NotificationType.MEETING_INVITE -> {
+                        notificationViewModel.acceptMeetingProposal(notification.id)
+                        Toast.makeText(
+                            requireContext(),
+                            "회의 제안을 수락했습니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        
+                        // 회의 목록 새로고침
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            viewModel.loadNearestMeeting()
+                        }, 500)
+                    }
+                    NotificationType.ROOM_INVITE -> {
+                        notificationViewModel.acceptRoomInvite(notification.id)
+                        Toast.makeText(
+                            requireContext(),
+                            "회의방에 참가했습니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    else -> {}
+                }
+
+                // 뷰 초기화
+                binding.cardProposal.visibility = View.GONE
+                binding.tvNoProposals.visibility = View.VISIBLE
+                binding.cardProposal.alpha = 1f
+                binding.cardProposal.translationY = 0f
+                
+                // 알림 데이터 새로고침
+                notificationViewModel.loadNotifications()
+            }
+            .start()
+    }
+    
+    // NotificationViewModel 데이터를 이용한 거절 처리
+    private fun handleNotificationDecline(notification: NotificationItem) {
+        binding.cardProposal.animate()
+            .alpha(0f)
+            .translationY(100f)
+            .setDuration(500)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                // NotificationViewModel을 통해 거절 처리
+                when (notification.type) {
+                    NotificationType.MEETING_INVITE -> {
+                        notificationViewModel.declineMeetingProposal(notification.id)
+                        Toast.makeText(
+                            requireContext(),
+                            "회의 제안을 거절했습니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    NotificationType.ROOM_INVITE -> {
+                        notificationViewModel.declineRoomInvite(notification.id)
+                        Toast.makeText(
+                            requireContext(),
+                            "회의방 초대를 거절했습니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    else -> {}
+                }
+
+                // 뷰 초기화
+                binding.cardProposal.visibility = View.GONE
+                binding.tvNoProposals.visibility = View.VISIBLE
+                binding.cardProposal.alpha = 1f
+                binding.cardProposal.translationY = 0f
+                
+                // 알림 데이터 새로고침
+                notificationViewModel.loadNotifications()
             }
             .start()
     }

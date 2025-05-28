@@ -128,12 +128,42 @@ class ListDetailFragment : Fragment() {
                 Log.d("ListDetailFragment", "SuggestBottomSheet: 사용 가능한 요일 정보가 아직 없거나 비어있습니다.")
                 // 사용 가능한 요일이 없을 경우, 모든 요일을 전달하거나 사용자에게 알림
                 val allDaysList = ArrayList((1..7).toList())
-                val suggestBottomSheet = SuggestBottomSheet.newInstance(allDaysList)
+                
+                // roomId와 inviteEmails 가져오기
+                val roomId = maiteListItem?.roomId?.toInt() ?: -1
+                val inviteEmails = ArrayList(participantEmails)
+                
+                if (roomId == -1) {
+                    Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                if (inviteEmails.isEmpty()) {
+                    Toast.makeText(requireContext(), "초대할 참가자가 없습니다.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                val suggestBottomSheet = SuggestBottomSheet.newInstance(allDaysList, roomId, inviteEmails)
                 suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
             } else {
                 val availableDaysList = ArrayList(availableDaysOfWeek)
                 Log.d("ListDetailFragment", "SuggestBottomSheet 생성, 전달 요일: $availableDaysList")
-                val suggestBottomSheet = SuggestBottomSheet.newInstance(availableDaysList)
+                
+                // roomId와 inviteEmails 가져오기
+                val roomId = maiteListItem?.roomId?.toInt() ?: -1
+                val inviteEmails = ArrayList(participantEmails)
+                
+                if (roomId == -1) {
+                    Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                if (inviteEmails.isEmpty()) {
+                    Toast.makeText(requireContext(), "초대할 참가자가 없습니다.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                val suggestBottomSheet = SuggestBottomSheet.newInstance(availableDaysList, roomId, inviteEmails)
                 suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
             }
         }
