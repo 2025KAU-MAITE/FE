@@ -48,7 +48,7 @@ class HomeFragment : Fragment() {
     }
     private val profileViewModel: ProfileViewModel by activityViewModels()
     private val preferencesUtil by lazy { PreferencesUtil(requireContext()) }
-    
+
     // 알림 ViewModel 추가
     private val notificationViewModel by viewModels<NotificationViewModel> {
         NotificationViewModelFactory(requireContext())
@@ -64,16 +64,16 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         // 사용자 ID를 가져와서 시간표 로드
         val userId = preferencesUtil.getUserId()
-        
+
         if (userId != null) {
             // 서버에서 시간표 로드
             lifecycleScope.launch {
                 profileViewModel.loadTimetableFromServer(userId)
             }
-            
+
             // 5초 후에도 시간표가 비어있으면 다시 로드 시도
             Handler(Looper.getMainLooper()).postDelayed({
                 if (viewModel.timetableEntries.value?.isEmpty() == true) {
@@ -83,7 +83,7 @@ class HomeFragment : Fragment() {
                 }
             }, 5000)
         } else {
-            
+
             // 사용자 ID가 없는 경우 로그인 필요 안내
             Snackbar.make(
                 binding.root,
@@ -91,7 +91,7 @@ class HomeFragment : Fragment() {
                 Snackbar.LENGTH_LONG
             ).show()
         }
-        
+
         // 시간표 관찰 및 표시
         viewModel.timetableEntries.observe(viewLifecycleOwner) { entries ->
             renderTimetable(entries)
@@ -119,20 +119,20 @@ class HomeFragment : Fragment() {
         // NotificationViewModel에서 알림 데이터 관찰하여 제안 표시
         notificationViewModel.notifications.observe(viewLifecycleOwner) { notifications ->
             // 회의 제안 및 회의방 초대 알림 필터링
-            val meetingProposals = notifications.filter { 
-                it.type == NotificationType.MEETING_INVITE 
+            val meetingProposals = notifications.filter {
+                it.type == NotificationType.MEETING_INVITE
             }
-            val roomInvites = notifications.filter { 
-                it.type == NotificationType.ROOM_INVITE 
+            val roomInvites = notifications.filter {
+                it.type == NotificationType.ROOM_INVITE
             }
-            
+
             // 회의 제안을 우선으로 표시, 없으면 회의방 초대 표시
             val allProposals = meetingProposals + roomInvites
-            
+
             if (allProposals.isNotEmpty()) {
                 val notification = allProposals.first()
                 binding.cardProposal.visibility = View.VISIBLE
-                
+
                 // 알림 타입에 따라 표시 방식 구분
                 if (notification.type == NotificationType.ROOM_INVITE) {
                     // 회의방 초대 표시
@@ -140,7 +140,7 @@ class HomeFragment : Fragment() {
                     binding.tvProposalDate.text = "회의방: ${notification.senderName}"
                     binding.tvProposalTime.visibility = View.GONE
                     binding.tvProposalLocation.visibility = View.GONE
-                    
+
                     binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
                     binding.ivInviteIcon.setImageResource(R.drawable.ic_room_invite)
                     binding.ivInviteIcon.visibility = View.VISIBLE
@@ -152,19 +152,19 @@ class HomeFragment : Fragment() {
                     binding.tvProposalLocation.text = "장소: ${notification.meetingDetails?.location ?: ""}"
                     binding.tvProposalTime.visibility = View.VISIBLE
                     binding.tvProposalLocation.visibility = View.VISIBLE
-                    
+
                     binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
                     binding.ivInviteIcon.setImageResource(R.drawable.ic_meeting_invite)
                     binding.ivInviteIcon.visibility = View.VISIBLE
                 }
-                
+
                 binding.tvNoProposals.visibility = View.GONE
             } else {
                 binding.cardProposal.visibility = View.GONE
                 binding.tvNoProposals.visibility = View.VISIBLE
             }
         }
-        
+
         // 기존 ProposalRepository 기반 제안 표시 (백업용으로 유지)
         viewModel.proposals.observe(viewLifecycleOwner) { proposals: List<MeetingProposal> ->
             // NotificationViewModel에서 데이터가 없을 때만 사용
@@ -172,15 +172,17 @@ class HomeFragment : Fragment() {
             if (!hasNotificationData && proposals.isNotEmpty()) {
                 val proposal = proposals.first()
                 binding.cardProposal.visibility = View.VISIBLE
-                
+
                 // 회의방 초대인지 회의 제안인지 구분하여 표시 (디자인 개선)
                 if (proposal.type == ProposalType.ROOM_INVITE) {
                     // 회의방 초대 표시
                     binding.tvProposalTitle.text = "${proposal.fromUser}님의 회의방 초대"
                     binding.tvProposalDate.text = "회의방: ${proposal.roomName ?: ""}"
+                    binding.tvProposalFrom.text = "초대자: ${proposal.fromUser}"
                     binding.tvProposalTime.visibility = View.GONE
                     binding.tvProposalLocation.visibility = View.GONE
-                    
+                    binding.tvProposalFrom.visibility = View.VISIBLE
+
                     // 회의방 초대의 경우에도 흰색 배경 사용
                     binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
                     binding.ivInviteIcon.setImageResource(R.drawable.ic_room_invite)
@@ -191,16 +193,23 @@ class HomeFragment : Fragment() {
                     binding.tvProposalDate.text = "날짜: ${proposal.date ?: ""}"
                     binding.tvProposalTime.text = "시간: ${proposal.time ?: ""}"
                     binding.tvProposalLocation.text = "장소: ${proposal.location ?: ""}"
+                    binding.tvProposalFrom.text = "제안자: ${proposal.fromUser}"
                     binding.tvProposalTime.visibility = View.VISIBLE
                     binding.tvProposalLocation.visibility = View.VISIBLE
-                    
+                    binding.tvProposalFrom.visibility = View.VISIBLE
+
                     // 회의 제안의 경우 기본 카드 배경색 유지
                     binding.cardProposal.setCardBackgroundColor(resources.getColor(R.color.white, null))
                     binding.ivInviteIcon.setImageResource(R.drawable.ic_meeting_invite)
                     binding.ivInviteIcon.visibility = View.VISIBLE
                 }
-                
+
                 binding.tvNoProposals.visibility = View.GONE
+            } else {
+                binding.cardProposal.visibility = View.GONE
+                binding.tvNoProposals.visibility = View.VISIBLE
+                // 모든 제안 정보 숨기기
+                binding.tvProposalFrom.visibility = View.GONE
             }
         }
 
@@ -208,11 +217,11 @@ class HomeFragment : Fragment() {
         binding.btnAccept.setOnClickListener {
             // NotificationViewModel의 데이터를 우선 사용
             val notifications = notificationViewModel.notifications.value
-            val allProposals = notifications?.filter { 
-                it.type == NotificationType.MEETING_INVITE || 
-                it.type == NotificationType.ROOM_INVITE 
+            val allProposals = notifications?.filter {
+                it.type == NotificationType.MEETING_INVITE ||
+                        it.type == NotificationType.ROOM_INVITE
             }
-            
+
             if (!allProposals.isNullOrEmpty()) {
                 val notification = allProposals.first()
                 handleNotificationAccept(notification)
@@ -228,11 +237,11 @@ class HomeFragment : Fragment() {
         binding.btnDecline.setOnClickListener {
             // NotificationViewModel의 데이터를 우선 사용
             val notifications = notificationViewModel.notifications.value
-            val allProposals = notifications?.filter { 
-                it.type == NotificationType.MEETING_INVITE || 
-                it.type == NotificationType.ROOM_INVITE 
+            val allProposals = notifications?.filter {
+                it.type == NotificationType.MEETING_INVITE ||
+                        it.type == NotificationType.ROOM_INVITE
             }
-            
+
             if (!allProposals.isNullOrEmpty()) {
                 val notification = allProposals.first()
                 handleNotificationDecline(notification)
@@ -265,10 +274,10 @@ class HomeFragment : Fragment() {
                 binding.notificationBadge.visibility = View.GONE
             }
         }
-        
+
         // 알림 데이터 로드
         notificationViewModel.loadNotifications()
-        
+
         // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
         viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->
             if (roomName != null) {
@@ -277,7 +286,7 @@ class HomeFragment : Fragment() {
                     "'$roomName' 회의방에 참가하였습니다.",
                     Toast.LENGTH_SHORT
                 ).show()
-                
+
                 // 이벤트 처리후 초기화 - 직접 접근하지 않고 ViewModel의 메서드 사용
                 try {
                     // 이벤트 처리후 초기화
@@ -287,30 +296,30 @@ class HomeFragment : Fragment() {
                 }
             }
         }
-        
+
         // 회의방으로 이동 이벤트 관찰
         viewModel.navigateToRoomId.observe(viewLifecycleOwner) { roomId ->
             if (roomId != null) {
                 // 바텀 네비게이션에서 List 탭으로 이동
                 val mainActivity = activity as? MainActivity
                 mainActivity?.navigateToListTab()
-                
+
                 // 로딩 시간을 주기 위해 약간의 딜레이 후 처리
                 Handler(Looper.getMainLooper()).postDelayed({
                     // SharedPreferences나 앱 내 데이터 저장소에 방금 참가한 방 ID 저장
                     preferencesUtil.setLastJoinedRoomId(roomId)
-                    
+
                     // 방금 수락한 방 ID 초기화 (중복 이동 방지)
                     viewModel.clearNavigateToRoomId()
                 }, 300)
             }
         }
-        
+
         // 로딩 상태 관찰
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
-        
+
         // 오류 메시지 관찰
         viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
             errorMessage?.let {
@@ -320,7 +329,7 @@ class HomeFragment : Fragment() {
                 } else {
                     it
                 }
-                
+
                 Snackbar.make(binding.root, displayMessage, Snackbar.LENGTH_LONG)
                     .setAction("확인") {
                         viewModel.clearError()
@@ -341,7 +350,7 @@ class HomeFragment : Fragment() {
     // 시간표 렌더링 메서드 - 안전한 버전으로 수정
     private fun renderTimetable(entries: List<TimetableEntry>) {
         try {
-            
+
             val timetableLayout = binding.flTimetable
             timetableLayout.removeAllViews()
 
@@ -451,7 +460,7 @@ class HomeFragment : Fragment() {
                         val endTime = e.endHour * 60 + e.endMinute
                         val hourStart = hour * 60
                         val hourEnd = (hour + 1) * 60
-                        
+
                         e.dayOfWeek == day && !(endTime <= hourStart || startTime >= hourEnd)
                     }
 
@@ -465,34 +474,34 @@ class HomeFragment : Fragment() {
                     } else {
                         // 일정이 있는 셀 생성
                         val entry = entriesInThisHour[0]
-                        
+
                         val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
                         val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
                         val hourStartMinutes = hour * 60
                         val hourEndMinutes = (hour + 1) * 60
-                        
+
                         val isStartHour = startTimeInMinutes >= hourStartMinutes && startTimeInMinutes < hourEndMinutes
                         val isEndHour = endTimeInMinutes > hourStartMinutes && endTimeInMinutes <= hourEndMinutes
-                        
+
                         val cell = LinearLayout(requireContext()).apply {
                             val startRatio = if (startTimeInMinutes <= hourStartMinutes) 0f
-                                           else (startTimeInMinutes - hourStartMinutes) / 60f
+                            else (startTimeInMinutes - hourStartMinutes) / 60f
                             val endRatio = if (endTimeInMinutes >= hourEndMinutes) 1f
-                                         else (endTimeInMinutes - hourStartMinutes) / 60f
-                            
+                            else (endTimeInMinutes - hourStartMinutes) / 60f
+
                             val topMargin = (hourCellHeight * startRatio).toInt()
                             val heightRatio = endRatio - startRatio
                             val cellContentHeight = (hourCellHeight * heightRatio).toInt()
-                            
+
                             layoutParams = TableRow.LayoutParams(0, cellContentHeight, 1f).apply {
                                 this.topMargin = topMargin
                             }
-                            
+
                             gravity = Gravity.CENTER
                             orientation = LinearLayout.VERTICAL
                             // 순수한 색상만 사용 - 테두리 제거
                             setBackgroundColor(Color.parseColor(entry.colorHex))
-                            
+
                             // 텍스트 표시 - 시간 정보 제거
                             if (isStartHour) {
                                 addView(TextView(requireContext()).apply {
@@ -504,8 +513,8 @@ class HomeFragment : Fragment() {
                                     maxLines = 1
                                     setPadding(4, 4, 4, 4)
                                 })
-                            } else if (isEndHour && !entry.location.isNullOrEmpty() && 
-                                       (endTimeInMinutes - startTimeInMinutes) >= 60) {
+                            } else if (isEndHour && !entry.location.isNullOrEmpty() &&
+                                (endTimeInMinutes - startTimeInMinutes) >= 60) {
                                 addView(TextView(requireContext()).apply {
                                     text = "장소:${entry.location}"
                                     textSize = 9f
@@ -517,7 +526,7 @@ class HomeFragment : Fragment() {
                                 })
                             }
                         }
-                        
+
                         row.addView(cell)
                     }
                 }
@@ -535,9 +544,9 @@ class HomeFragment : Fragment() {
             } catch (e: Exception) {
                 // 마진 설정 실패 시 무시
             }
-            
+
         } catch (e: Exception) {
-            
+
             // 에러 발생 시 기본 메시지 표시
             val errorTextView = TextView(requireContext()).apply {
                 text = "시간표를 불러오는 중 문제가 발생했습니다."
@@ -561,10 +570,10 @@ class HomeFragment : Fragment() {
                     // UI 업데이트 진행중 표시
                     val loadingDialog = LoadingDialog(requireContext())
                     loadingDialog.show()
-                    
+
                     // 제안 수락 처리 - 실제 API 호출
                     viewModel.acceptProposal(proposal)
-                    
+
                     // 제안 유형에 따라 다른 처리
                     if (proposal.type == ProposalType.MEETING) {
                         // 회의 제안이면 회의 목록 갱신
@@ -573,7 +582,7 @@ class HomeFragment : Fragment() {
                             viewModel.loadNearestMeeting()
                             Log.d("HomeFragment", "회의 목록 새로 가져오기 완료")
                         }, 500) // 0.5초 대기 후 새로고침
-                        
+
                         // 성공 메시지 표시
                         Toast.makeText(
                             requireContext(),
@@ -582,13 +591,13 @@ class HomeFragment : Fragment() {
                         ).show()
                     }
                     // ROOM_INVITE인 경우는 roomJoinEvent로 처리됨 (별도의 토스트 메시지 관찰자로)
-                    
+
                     // 잠시 후 로딩 닫기
                     loadingDialog.dismiss()
                 } else {
                     // 제안 거절 처리 - 실제 API 호출
                     viewModel.declineProposal(proposal)
-                    
+
                     // 거절 메시지 표시
                     Toast.makeText(
                         requireContext(),
@@ -605,7 +614,7 @@ class HomeFragment : Fragment() {
             }
             .start()
     }
-    
+
     // NotificationViewModel 데이터를 이용한 수락 처리
     private fun handleNotificationAccept(notification: NotificationItem) {
         binding.cardProposal.animate()
@@ -623,7 +632,7 @@ class HomeFragment : Fragment() {
                             "회의 제안을 수락했습니다.",
                             Toast.LENGTH_SHORT
                         ).show()
-                        
+
                         // 회의 목록 새로고침
                         Handler(Looper.getMainLooper()).postDelayed({
                             viewModel.loadNearestMeeting()
@@ -645,13 +654,13 @@ class HomeFragment : Fragment() {
                 binding.tvNoProposals.visibility = View.VISIBLE
                 binding.cardProposal.alpha = 1f
                 binding.cardProposal.translationY = 0f
-                
+
                 // 알림 데이터 새로고침
                 notificationViewModel.loadNotifications()
             }
             .start()
     }
-    
+
     // NotificationViewModel 데이터를 이용한 거절 처리
     private fun handleNotificationDecline(notification: NotificationItem) {
         binding.cardProposal.animate()
@@ -686,7 +695,7 @@ class HomeFragment : Fragment() {
                 binding.tvNoProposals.visibility = View.VISIBLE
                 binding.cardProposal.alpha = 1f
                 binding.cardProposal.translationY = 0f
-                
+
                 // 알림 데이터 새로고침
                 notificationViewModel.loadNotifications()
             }
