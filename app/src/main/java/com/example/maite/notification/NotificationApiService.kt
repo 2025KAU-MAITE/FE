@@ -15,8 +15,16 @@ interface NotificationApiService {
     
     // 친구 요청 알림 조회
     @GET("/api/mates/requests")
-    suspend fun getFriendRequestNotifications(): Response<List<FriendRequestNotification>>
+    suspend fun getFriendRequestNotifications(): Response<ApiResponse<List<FriendRequestNotification>>>
 }
+
+// API 공통 응답 래퍼 구조
+data class ApiResponse<T>(
+    val isSuccess: Boolean,
+    val code: String,
+    val message: String,
+    val result: T
+)
 
 // API 응답 모델
 data class RoomInviteNotification(

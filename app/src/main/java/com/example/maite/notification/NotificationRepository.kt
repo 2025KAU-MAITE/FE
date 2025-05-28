@@ -45,9 +45,15 @@ class NotificationRepository(
         return try {
             val response = api.getFriendRequestNotifications()
             if (response.isSuccessful) {
-                val notifications = response.body() ?: emptyList()
-                Log.d(TAG, "친구 요청 알림 조회 성공: ${notifications.size}개")
-                Result.success(notifications)
+                val apiResponse = response.body()
+                if (apiResponse?.isSuccess == true) {
+                    val notifications = apiResponse.result ?: emptyList()
+                    Log.d(TAG, "친구 요청 알림 조회 성공: ${notifications.size}개")
+                    Result.success(notifications)
+                } else {
+                    Log.e(TAG, "친구 요청 알림 조회 실패: ${apiResponse?.message}")
+                    Result.failure(Exception("API Error: ${apiResponse?.message}"))
+                }
             } else {
                 Log.e(TAG, "친구 요청 알림 조회 실패: ${response.code()}")
                 Result.failure(Exception("Failed to get friend request notifications: ${response.code()}"))

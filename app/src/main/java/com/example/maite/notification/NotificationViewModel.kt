@@ -127,7 +127,7 @@ class NotificationViewModel(
                                     id = request.requestId,
                                     type = NotificationType.FRIEND_REQUEST,
                                     senderName = request.name,
-                                    message = "${request.name}님이 친구 요청을 보냈어요.",
+                                    message = "${request.name}의 친구 초대를 받았어요.",
                                     profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
                                     profileImageUrl = profileImageUrl,
                                     senderEmail = request.email,
