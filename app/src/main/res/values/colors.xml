@@ -9,6 +9,7 @@
     <color name="light_gray">#DDDDDD</color>
     <color name="border_default">#C7C7C7</color>
     <color name="btn_inactive">#C4C4C4</color>
+    <color name="red_color">#FF5252</color>
     
     <!-- Invite cards -->
     <color name="colorRoomInvite">#F9F2FF</color> <!-- 연한 보라색 배경 -->
