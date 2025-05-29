@@ -54,7 +54,8 @@ class NotificationAdapter(
         // 알림 타입에 따라 버튼 표시 조정
         when (notification.type) {
             NotificationType.ROOM_INVITE,
-            NotificationType.MEETING_INVITE -> {
+            NotificationType.MEETING_INVITE,
+            NotificationType.FRIEND_REQUEST -> {
                 holder.buttonsLayout.visibility = View.VISIBLE
                 holder.btnAccept.text = "수락"
                 holder.btnDecline.text = "거절"
@@ -68,7 +69,7 @@ class NotificationAdapter(
                 }
             }
             else -> {
-                // 친구 요청이나 채팅 알림은 현재 미구현
+                // 채팅 알림 등은 현재 미구현
                 holder.buttonsLayout.visibility = View.GONE
             }
         }
