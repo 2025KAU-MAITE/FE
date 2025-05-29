@@ -184,33 +184,36 @@ class EditTimetableFragment : Fragment() {
         return title.isNotEmpty() && location.isNotEmpty()
     }
 
-    // 저장하기 버튼 상태 업데이트
+    // 저장하기 버튼 상태 업데이트 - 회의 제안 바텀시트 스타일로 변경
     private fun updateSaveButtonState() {
         val context = context ?: return
         
         if (isDeleteMode) {
             // 삭제 모드
-            binding.btnSave.text = "삭제하기"
-            binding.btnSave.backgroundTintList = ContextCompat.getColorStateList(context, R.color.red_color)
-            binding.btnSave.setTextColor(ContextCompat.getColor(context, R.color.white))
+            binding.btnText.text = "삭제하기"
+            binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.red_color))
+            binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
             binding.btnSave.isEnabled = true
+            binding.btnSave.isClickable = true
             binding.btnSave.alpha = 1.0f
         } else {
             // 저장 모드
-            binding.btnSave.text = "저장하기"
+            binding.btnText.text = "저장하기"
             val isValid = areAllFieldsFilled()
             
             if (isValid) {
                 // 활성화 상태
-                binding.btnSave.backgroundTintList = ContextCompat.getColorStateList(context, R.color.mainColor)
-                binding.btnSave.setTextColor(ContextCompat.getColor(context, R.color.white))
+                binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.mainColor))
+                binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
                 binding.btnSave.isEnabled = true
+                binding.btnSave.isClickable = true
                 binding.btnSave.alpha = 1.0f
             } else {
                 // 비활성화 상태
-                binding.btnSave.backgroundTintList = ContextCompat.getColorStateList(context, R.color.btn_inactive)
-                binding.btnSave.setTextColor(ContextCompat.getColor(context, R.color.black))
+                binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.btn_inactive))
+                binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.black))
                 binding.btnSave.isEnabled = false
+                binding.btnSave.isClickable = false
                 binding.btnSave.alpha = 0.5f
             }
         }

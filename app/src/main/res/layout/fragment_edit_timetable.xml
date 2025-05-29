@@ -48,16 +48,18 @@
             app:layout_constraintBottom_toBottomOf="@id/btn_back" />
 
         <!-- 시간표 미리보기 -->
+
+        <!-- 입력 영역 - 회의 제안 바텀시트 스타일 적용 -->
+
         <ScrollView
             android:id="@+id/scroll_timetable"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="330dp"
             android:layout_marginStart="8dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="8dp"
-            app:layout_constraintBottom_toTopOf="@+id/card_input"
+            android:layout_marginTop="24dp"
+            android:layout_marginEnd="4dp"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_header">
 
@@ -67,30 +69,33 @@
                 android:layout_height="wrap_content" />
         </ScrollView>
 
-        <!-- 입력 영역 - 회의 제안 바텀시트 스타일 적용 -->
         <androidx.cardview.widget.CardView
             android:id="@+id/card_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="6dp"
             app:cardCornerRadius="16dp"
             app:cardElevation="2dp"
             app:layout_constraintBottom_toTopOf="@id/btn_save"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/scroll_timetable">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="240dp"
                 android:padding="16dp">
 
                 <!-- 제목 -->
+
                 <TextView
                     android:id="@+id/tv_title_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
                     android:text="제목"
                     android:textSize="16dp"
                     android:textStyle="bold"
@@ -103,10 +108,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_title_label"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/tv_title_label"
-                    app:layout_constraintTop_toTopOf="@+id/tv_title_label"
-                    app:layout_constraintBottom_toBottomOf="@+id/tv_title_label">
+                    app:layout_constraintTop_toTopOf="@+id/tv_title_label">
 
                     <EditText
                         android:id="@+id/et_title"
@@ -116,10 +121,10 @@
                         android:hint="제목을 입력하세요"
                         android:inputType="text"
                         android:maxLines="1"
-                        android:paddingStart="12dp"
-                        android:paddingTop="8dp"
-                        android:paddingEnd="12dp"
-                        android:paddingBottom="8dp"
+                        android:paddingStart="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="6dp"
                         android:textColorHint="@color/black"
                         android:textSize="16dp" />
                 </androidx.cardview.widget.CardView>
@@ -129,7 +134,7 @@
                     android:id="@+id/tv_day_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
+                    android:layout_marginTop="20dp"
                     android:text="요일"
                     android:textSize="16dp"
                     android:textStyle="bold"
@@ -142,9 +147,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_day_label"
                     app:layout_constraintStart_toEndOf="@+id/tv_day_label"
-                    app:layout_constraintTop_toTopOf="@+id/tv_day_label"
-                    app:layout_constraintBottom_toBottomOf="@+id/tv_day_label">
+                    app:layout_constraintTop_toTopOf="@+id/tv_day_label">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:layout_width="match_parent"
@@ -155,10 +160,10 @@
                             android:id="@+id/btn_day_select"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginEnd="12dp"
-                            android:layout_marginBottom="8dp"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginBottom="6dp"
                             android:text="월요일"
                             android:textSize="16dp"
                             app:layout_constraintBottom_toBottomOf="parent"
@@ -173,7 +178,7 @@
                     android:id="@+id/tv_time_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
+                    android:layout_marginTop="20dp"
                     android:text="시간"
                     android:textSize="16dp"
                     android:textStyle="bold"
@@ -186,9 +191,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_time_label"
                     app:layout_constraintStart_toEndOf="@+id/tv_time_label"
-                    app:layout_constraintTop_toTopOf="@+id/tv_time_label"
-                    app:layout_constraintBottom_toBottomOf="@+id/tv_time_label">
+                    app:layout_constraintTop_toTopOf="@+id/tv_time_label">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:layout_width="match_parent"
@@ -199,10 +204,10 @@
                             android:id="@+id/btn_start_time"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginEnd="12dp"
-                            android:layout_marginBottom="8dp"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginBottom="6dp"
                             android:text="09:00"
                             android:textSize="16dp"
                             app:layout_constraintBottom_toBottomOf="parent"
@@ -219,9 +224,9 @@
                     android:layout_marginStart="16dp"
                     android:text="~"
                     android:textSize="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/time1CardView"
                     app:layout_constraintStart_toEndOf="@+id/time1CardView"
-                    app:layout_constraintTop_toTopOf="@+id/time1CardView"
-                    app:layout_constraintBottom_toBottomOf="@+id/time1CardView" />
+                    app:layout_constraintTop_toTopOf="@+id/time1CardView" />
 
                 <androidx.cardview.widget.CardView
                     android:id="@+id/time2CardView"
@@ -229,9 +234,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_time_separator"
                     app:layout_constraintStart_toEndOf="@+id/tv_time_separator"
-                    app:layout_constraintTop_toTopOf="@+id/tv_time_separator"
-                    app:layout_constraintBottom_toBottomOf="@+id/tv_time_separator">
+                    app:layout_constraintTop_toTopOf="@+id/tv_time_separator">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:layout_width="match_parent"
@@ -242,10 +247,10 @@
                             android:id="@+id/btn_end_time"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginEnd="12dp"
-                            android:layout_marginBottom="8dp"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginBottom="6dp"
                             android:text="10:00"
                             android:textSize="16dp"
                             app:layout_constraintBottom_toBottomOf="parent"
@@ -256,11 +261,12 @@
                 </androidx.cardview.widget.CardView>
 
                 <!-- 장소 -->
+
                 <TextView
                     android:id="@+id/tv_location_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
+                    android:layout_marginTop="28dp"
                     android:text="장소"
                     android:textSize="16dp"
                     android:textStyle="bold"
@@ -273,10 +279,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_location_label"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/tv_location_label"
-                    app:layout_constraintTop_toTopOf="@+id/tv_location_label"
-                    app:layout_constraintBottom_toBottomOf="@+id/tv_location_label">
+                    app:layout_constraintTop_toTopOf="@+id/tv_location_label">
 
                     <EditText
                         android:id="@+id/et_location"
@@ -286,10 +292,10 @@
                         android:hint="장소를 입력하세요"
                         android:inputType="text"
                         android:maxLines="1"
-                        android:paddingStart="12dp"
-                        android:paddingTop="8dp"
-                        android:paddingEnd="12dp"
-                        android:paddingBottom="8dp"
+                        android:paddingStart="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="6dp"
                         android:textColorHint="@color/black"
                         android:textSize="16dp" />
                 </androidx.cardview.widget.CardView>
@@ -297,22 +303,38 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- 저장하기 버튼 - 회의 제안 바텀시트와 동일한 스타일 -->
-        <com.google.android.material.button.MaterialButton
+        <!-- 저장하기 버튼 - 회의 제안 바텀시트와 동일한 스타일로 변경 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/btn_save"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_marginStart="24dp"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="24dp"
-            android:text="저장하기"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            android:backgroundTint="@color/mainColor"
-            app:cornerRadius="28dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent">
+
+            <ImageView
+                android:id="@+id/btnBg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/btn_bottom" />
+
+            <TextView
+                android:id="@+id/btnText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="저장하기"
+                android:textColor="@color/white"
+                android:textSize="16dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="@+id/btnBg"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/btnBg" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
