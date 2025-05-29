@@ -445,19 +445,56 @@ class TimetableRepository(private val context: Context) {
             else -> 1
         }
 
-        // color가 null인 경우 기본값 설정
-        val color = eventDto.color ?: "#5B7BF5"  // 기본 파란색
+        // 제목과 장소 정보 
+        val title = eventDto.title
+        val location = eventDto.place ?: ""
+        
+        // 서버에서 받은 색상 처리
+        val serverColor = eventDto.color
+        
+        // 색상 처리 로직 개선: 기존 색상 매핑 확인 후 적용
+        val finalColor = when {
+            // 1. 서버 색상이 있고 구 색상(#5B7BF5, #4C7EED)이 아닌 경우 그대로 사용
+            !serverColor.isNullOrEmpty() && serverColor != "#5B7BF5" && serverColor != "#4C7EED" -> {
+                Log.d(TAG, "서버 색상 사용: $title -> $serverColor")
+                serverColor  
+            }
+            // 2. 기존 색상 매핑이 있는지 확인
+            else -> {
+                val existingColor = colorManager.getColorMapping(title, location)
+                if (existingColor != null) {
+                    Log.d(TAG, "기존 매핑 색상 사용: $title -> $existingColor")
+                    existingColor
+                } else {
+                    // 3. 새로운 색상 배정
+                    val tempEntry = TimetableEntry(
+                        id = eventDto.id,
+                        title = title,
+                        dayOfWeek = dayOfWeek,
+                        startHour = startTimeParts[0].toIntOrNull() ?: 0,
+                        startMinute = startTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
+                        endHour = endTimeParts[0].toIntOrNull() ?: 0,
+                        endMinute = endTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
+                        location = location,
+                        colorHex = "" // 임시값
+                    )
+                    val assignedEntry = colorManager.assignColor(tempEntry)
+                    Log.d(TAG, "새 색상 배정: $title -> ${assignedEntry.colorHex}")
+                    assignedEntry.colorHex
+                }
+            }
+        }
 
         return TimetableEntry(
             id = eventDto.id,
-            title = eventDto.title,
+            title = title,
             dayOfWeek = dayOfWeek,
             startHour = startTimeParts[0].toIntOrNull() ?: 0,
             startMinute = startTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
             endHour = endTimeParts[0].toIntOrNull() ?: 0,
             endMinute = endTimeParts.getOrNull(1)?.toIntOrNull() ?: 0,
-            location = eventDto.place ?: "", // place를 location으로 변환
-            colorHex = color
+            location = location,
+            colorHex = finalColor
         )
     }
 }

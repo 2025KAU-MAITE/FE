@@ -8,15 +8,17 @@ class TimetableColorManager(private val context: Context) {
     
     private val preferencesUtil = PreferencesUtil(context)
     
-    // MAITE 프로젝트에 어울리는 색상 팔레트 (6개) - 더 짙은 색상으로 변경하여 텍스트 가독성 향상
-    // 기존 파스텔 톤에서 채도와 명도를 조정한 버전
+    // MAITE 프로젝트에 어울리는 색상 팔레트 (8개) - 팀원 제공 색상에서 짙은 색상 위주 선택
+    // 텍스트 가독성을 고려하여 각 팔레트에서 가장 짙은 색상들로 구성
     private val colorPalette = listOf(
-        "#5B7BF5", // 진한 파란색 (기존 d7e3fc에서 변경)
-        "#FF8A65", // 진한 복숭아색 (기존 ffc09f에서 변경)
-        "#4DB6AC", // 진한 청록색 (기존 95b8d1에서 변경)
-        "#81C784", // 진한 연두색 (기존 DCFFFB에서 변경)
-        "#F06292", // 진한 분홍색 (기존 f8bbd0에서 변경)
-        "#7986CB"  // 진한 보라색 (기존 b2dfdb에서 변경)
+        "#809bce", // Honeydew & Cerulean - 짙은 파스텔 블루 (가장 짙음)
+        "#ffc09f", // Peach & Lemon - 따뜻한 복숭아색
+        "#a0ced9", // Peach & Lemon - 차분한 청록색  
+        "#abc4ff", // Alice Blue & Lavender - 선명한 라벤더 블루
+        "#95b8d1", // Honeydew & Cerulean - 부드러운 하늘색
+        "#DABFDE", // Pastel Rainbow - 세련된 라벤더 퍼플
+        "#b2dfdb", // Pink & Mint - 은은한 민트 그린
+        "#f8bbd0"  // Pink & Mint - 온화한 핑크 (가장 연하지만 포인트용)
     )
     
     // 제목-장소 조합을 키로 하는 색상 매핑을 저장/조회하는 함수들
@@ -29,7 +31,8 @@ class TimetableColorManager(private val context: Context) {
         preferencesUtil.setString("color_mapping_$key", colorHex)
     }
     
-    private fun getColorMapping(title: String, location: String): String? {
+    // Repository에서도 사용할 수 있도록 public으로 변경
+    fun getColorMapping(title: String, location: String): String? {
         val key = getColorMappingKey(title, location)
         return preferencesUtil.getString("color_mapping_$key")
     }
