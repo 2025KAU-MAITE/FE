@@ -8,16 +8,17 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.widget.addTextChangedListener // EditText 변경 감지
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import com.example.maite.databinding.BottomSheetSuggestBinding
+import com.example.maite.ApiClient
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.naver.maps.geometry.LatLng
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.util.Locale
-// Import FragmentTransaction if needed, though usually included with fragment imports
-// import androidx.fragment.app.FragmentTransaction
 
 class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlaceSelectedListener {
     private var _binding: BottomSheetSuggestBinding? = null
@@ -26,20 +27,34 @@ class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlace
     // ViewModel 공유 (Activity 스코프) - 실제 ViewModel 클래스로 교체 필요
     private val sharedViewModel: TimeSelectionViewModel by activityViewModels()
     private var availableDaysOfWeek: List<Int>? = null
+    private var roomId: Int = -1
+    private var inviteEmails: List<String> = emptyList()
 
     private var selectedPlaceLatLng: LatLng? = null
     private var selectedPlaceName: String? = null
+    
+    private val meetingApi by lazy {
+        ApiClient.getClient(requireContext()).create(MeetingApi::class.java)
+    }
 
     companion object {
         const val ARG_AVAILABLE_DAYS = "available_days"
+        const val ARG_ROOM_ID = "room_id"
+        const val ARG_INVITE_EMAILS = "invite_emails"
 
-        // newInstance 수정: 사용 가능한 요일 목록을 받도록 함
-        fun newInstance(availableDays: ArrayList<Int>): SuggestBottomSheet {
+        // newInstance 수정: 사용 가능한 요일 목록과 roomId, inviteEmails를 받도록 함
+        fun newInstance(
+            availableDays: ArrayList<Int>, 
+            roomId: Int, 
+            inviteEmails: ArrayList<String>
+        ): SuggestBottomSheet {
             val fragment = SuggestBottomSheet()
             fragment.arguments = Bundle().apply {
                 putIntegerArrayList(ARG_AVAILABLE_DAYS, availableDays)
+                putInt(ARG_ROOM_ID, roomId)
+                putStringArrayList(ARG_INVITE_EMAILS, inviteEmails)
             }
-            Log.d("SuggestBottomSheet", "newInstance 호출됨, 전달된 요일: $availableDays")
+            Log.d("SuggestBottomSheet", "newInstance 호출됨, 전달된 요일: $availableDays, roomId: $roomId, inviteEmails: $inviteEmails")
             return fragment
         }
     }
@@ -47,14 +62,22 @@ class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlace
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("SuggestBottomSheet", "onCreate 호출됨")
-        // Argument에서 사용 가능한 요일 목록 가져오기
+        // Argument에서 데이터 가져오기
         arguments?.let {
             availableDaysOfWeek = it.getIntegerArrayList(ARG_AVAILABLE_DAYS)
-            Log.d("SuggestBottomSheet", "onCreate에서 Argument 로드, 사용 가능 요일: $availableDaysOfWeek")
+            roomId = it.getInt(ARG_ROOM_ID, -1)
+            inviteEmails = it.getStringArrayList(ARG_INVITE_EMAILS) ?: emptyList()
+            Log.d("SuggestBottomSheet", "onCreate에서 Argument 로드, 사용 가능 요일: $availableDaysOfWeek, roomId: $roomId, inviteEmails: $inviteEmails")
         }
         if (availableDaysOfWeek == null) {
             Log.w("SuggestBottomSheet", "사용 가능한 요일 정보가 전달되지 않았습니다. 모든 요일을 허용합니다.")
             availableDaysOfWeek = listOf(1, 2, 3, 4, 5, 6, 7) // 기본값: 모든 요일 허용
+        }
+        if (roomId == -1) {
+            Log.e("SuggestBottomSheet", "roomId가 전달되지 않았습니다!")
+        }
+        if (inviteEmails.isEmpty()) {
+            Log.w("SuggestBottomSheet", "inviteEmails가 비어있습니다. 아무에게도 알림이 가지 않습니다.")
         }
     }
 
@@ -146,11 +169,8 @@ class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlace
 
             Log.i("SuggestBottomSheet", "회의 제안 완료: 제목='$title', 날짜=$selectedDate, 시작=$startTime, 종료=$endTime, 장소='$placeName', 좌표=$placeLatLng")
 
-            // 여기서 api 통해 정보 전달
-
-            Toast.makeText(context, "회의 제안이 완료되었습니다", Toast.LENGTH_SHORT).show()
-
-            dismiss()
+            // 회의 제안 API 호출
+            sendMeetingProposal(title, selectedDate, startTime, endTime)
         }
     }
 
@@ -276,5 +296,66 @@ class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlace
         }
 
         checkAndUpdateDoneButtonState()
+    }
+    
+    // 회의 제안 API 호출 메서드
+    private fun sendMeetingProposal(
+        title: String,
+        selectedDate: LocalDate,
+        startTime: TimePair,
+        endTime: TimePair
+    ) {
+        if (roomId == -1) {
+            Toast.makeText(context, "roomId가 설정되지 않았습니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        if (inviteEmails.isEmpty()) {
+            Toast.makeText(context, "초대할 사용자가 없습니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // 날짜와 시간을 API 형식으로 변환
+        val meetingDate = selectedDate.toString() // "2025-05-29" 형식
+        val meetingTime = String.format("%02d:%02d", startTime.first, startTime.second) // "14:00" 형식
+        val address = selectedPlaceName ?: "선택된 장소 없음" // 선택된 장소 이름
+        
+        val request = MeetingProposalRequest(
+            title = title,
+            meetingDate = meetingDate,
+            meetingTime = meetingTime,
+            inviteEmails = inviteEmails,
+            address = address  // 🆕 장소 정보 추가
+        )
+        
+        Log.d("SuggestBottomSheet", "API 호출 시작: roomId=$roomId, request=$request")
+        
+        // 로딩 상태 표시 (선택사항)
+        binding.doneBtn.isEnabled = false
+        binding.btnText.text = "전송 중..."
+        
+        lifecycleScope.launch {
+            try {
+                val response = meetingApi.sendMeetingProposal(roomId, request)
+                
+                if (response.isSuccessful) {
+                    Log.d("SuggestBottomSheet", "API 호출 성공: ${response.code()}")
+                    Toast.makeText(context, "회의 제안을 보냈습니다!", Toast.LENGTH_SHORT).show()
+                    dismiss()
+                } else {
+                    Log.e("SuggestBottomSheet", "API 호출 실패: ${response.code()} - ${response.message()}")
+                    Toast.makeText(context, "회의 제안 전송에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e("SuggestBottomSheet", "회의 제안 API 호출 중 오류", e)
+                Toast.makeText(context, "네트워크 오류가 발생했습니다. 다시 시도해주세요.", Toast.LENGTH_LONG).show()
+            } finally {
+                // 로딩 상태 해제
+                if (_binding != null) {
+                    binding.doneBtn.isEnabled = true
+                    binding.btnText.text = "제안하기"
+                }
+            }
+        }
     }
 }

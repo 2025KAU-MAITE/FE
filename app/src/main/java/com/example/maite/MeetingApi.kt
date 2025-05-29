@@ -3,6 +3,7 @@ package com.example.maite
 import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -28,4 +29,20 @@ interface MeetingApi {
     // ✅ 회의방 초대 수락하기 (POST /rooms/{roomId}/join)
     @POST("rooms/{roomId}/join")
     suspend fun joinRoom(@Path("roomId") roomId: Int): Response<Void>
+    
+    // 🆕 회의 제안 보내기 (POST /meetings/rooms/{roomId})
+    @POST("meetings/rooms/{roomId}")
+    suspend fun sendMeetingProposal(
+        @Path("roomId") roomId: Int,
+        @Body proposal: MeetingProposalRequest
+    ): Response<Void>
 }
+
+// 🆕 회의 제안 요청 데이터 모델
+data class MeetingProposalRequest(
+    val title: String,
+    val meetingDate: String,  // "2025-05-29" 형식
+    val meetingTime: String,  // "14:00" 형식
+    val inviteEmails: List<String>,
+    val address: String  // 🆕 장소 필드 추가
+)
