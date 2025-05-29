@@ -104,9 +104,12 @@ class HomeFragment : Fragment() {
         // 가장 가까운 회의 표시
         viewModel.nearestMeeting.observe(viewLifecycleOwner) { meeting: MeetingItem? ->
             if (meeting != null) {
+                // 홈화면 표시용 날짜 형식 변환 (yyyy-MM-dd → yyyy.MM.dd)
+                val displayDate = meeting.date.replace("-", ".")
+                
                 binding.cardMeeting.visibility = View.VISIBLE
                 binding.tvMeetingTitle.text = meeting.title
-                binding.tvMeetingDate.text = "날짜: ${meeting.date}"
+                binding.tvMeetingDate.text = "날짜: $displayDate"
                 binding.tvMeetingTime.text = "시간: ${meeting.startTime} ~ ${meeting.endTime}"
                 binding.tvMeetingLocation.text = "장소: ${meeting.location}"
                 binding.tvNoMeetings.visibility = View.GONE
@@ -277,6 +280,10 @@ class HomeFragment : Fragment() {
 
         // 알림 데이터 로드
         notificationViewModel.loadNotifications()
+        
+        // 초기 회의 목록 로드 (HomeViewModel 초기화 후)
+        viewModel.loadNearestMeeting()
+        Log.d("HomeFragment", "초기 회의 목록 로드 시작")
 
         // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
         viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->
@@ -633,10 +640,11 @@ class HomeFragment : Fragment() {
                             Toast.LENGTH_SHORT
                         ).show()
 
-                        // 회의 목록 새로고침
+                        // 회의 목록 새로고침 (대기 시간 증가)
                         Handler(Looper.getMainLooper()).postDelayed({
                             viewModel.loadNearestMeeting()
-                        }, 500)
+                            Log.d("HomeFragment", "NotificationViewModel을 통한 회의 목록 새로고침 완료")
+                        }, 1500) // 1.5초로 증가
                     }
                     NotificationType.ROOM_INVITE -> {
                         notificationViewModel.acceptRoomInvite(notification.id)
