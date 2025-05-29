@@ -589,7 +589,7 @@ class EditTimetableFragment : Fragment() {
                                 // 새 항목 선택
                                 selectedEntry = entry
                                 isDeleteMode = true
-                                Toast.makeText(context, "${entry.title} 선택됨 - 삭제하기 버튼을 눌러주세요", Toast.LENGTH_SHORT).show()
+
                             }
                             updateSaveButtonState()
                             // 시간표 재갱신해서 선택 상태 반영
