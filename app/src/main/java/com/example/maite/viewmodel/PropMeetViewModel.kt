@@ -16,6 +16,9 @@ import com.example.maite.model.PropMeetRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PropMeetViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PropMeetRepository.getInstance()
@@ -30,6 +33,9 @@ class PropMeetViewModel(application: Application) : AndroidViewModel(application
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
+    // 날짜 형식 파서 (yyyy-MM-dd)
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
     init {
         loadProposedMeetings()
     }
@@ -37,7 +43,25 @@ class PropMeetViewModel(application: Application) : AndroidViewModel(application
     fun loadProposedMeetings() {
         Log.d("PropMeetViewModel", "loadProposedMeetings 호출")
         val meetings = repository.getProposedMeetings()
-        _proposedMeetings.value = meetings
+
+        // 날짜 기준으로 정렬 (제일 빠른 날짜가 맨 위에)
+        val sortedMeetings = meetings.sortedBy { meetItem ->
+            try {
+                // 날짜 파싱
+                dateFormat.parse(meetItem.date) ?: Date(Long.MAX_VALUE)
+            } catch (e: Exception) {
+                Log.e("PropMeetViewModel", "날짜 파싱 오류: ${meetItem.date}", e)
+                // 파싱 오류 시 가장 나중 날짜로 처리
+                Date(Long.MAX_VALUE)
+            }
+        }
+
+        Log.d("PropMeetViewModel", "회의 정렬 완료: ${sortedMeetings.size}개 항목")
+        sortedMeetings.forEachIndexed { index, item ->
+            Log.d("PropMeetViewModel", "$index: ${item.title}, 날짜: ${item.date}")
+        }
+
+        _proposedMeetings.value = sortedMeetings
     }
 
     fun acceptMeeting(item: PropMeetItem) {
