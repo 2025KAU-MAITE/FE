@@ -6,6 +6,7 @@ import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
 import com.example.maite.model.InviteUserRequest
+import com.example.maite.model.MeetingResponse
 import com.example.maite.model.MessageApiResponse
 import com.example.maite.model.ServerMateItem
 import okhttp3.MultipartBody
@@ -55,4 +56,7 @@ interface MaiteApiService {
         @Path("roomId") roomId: Long,
         @Query("lastMessageId") lastMessageId: Long? = null
     ): Response<MessageApiResponse>
+
+    @GET("meetings/rooms/{roomId}")
+    suspend fun getMeetingsByRoom(@Path("roomId") roomId: Long): Response<List<MeetingResponse>>
 }

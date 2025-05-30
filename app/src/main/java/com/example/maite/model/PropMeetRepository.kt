@@ -1,12 +1,45 @@
 package com.example.maite.model
 
-class PropMeetRepository {
+import android.util.Log
+import java.util.concurrent.CopyOnWriteArrayList
 
+class PropMeetRepository private constructor() {
+    // 스레드 안전한 리스트 사용
+    private val propItems = CopyOnWriteArrayList<PropMeetItem>()
+
+    // 현재 제안된 회의 목록 반환
     fun getProposedMeetings(): List<PropMeetItem> {
-        return listOf(
-            PropMeetItem("산학 프로젝트 회의", "2025.03.02", "08:00 ~ 10:00", "경기도 성남시 어쩌구 저쩌구"),
-            PropMeetItem("팀 스터디", "2025.03.05", "14:00 ~ 15:00", "온라인 (Zoom)"),
-            PropMeetItem("아이디어 구체화 회의", "2025.03.10", "10:00 ~ 11:30", "본관 3층 회의실")
-        )
+        Log.d("PropMeetRepository", "getProposedMeetings 호출: ${propItems.size}개 항목")
+        return propItems.toList()
+    }
+
+    // 단일 제안 추가
+    fun addProposal(item: PropMeetItem) {
+        propItems.add(item)
+        Log.d("PropMeetRepository", "addProposal: ${item.title}, 현재 ${propItems.size}개 항목")
+    }
+
+    // 여러 제안 한번에 추가
+    fun addAllProposals(items: List<PropMeetItem>) {
+        propItems.addAll(items)
+        Log.d("PropMeetRepository", "addAllProposals: ${items.size}개 항목 추가, 현재 ${propItems.size}개 항목")
+    }
+
+    // 모든 제안 삭제
+    fun clearProposals() {
+        propItems.clear()
+        Log.d("PropMeetRepository", "clearProposals: 모든 항목 삭제됨")
+    }
+
+    // 싱글톤 구현
+    companion object {
+        @Volatile
+        private var instance: PropMeetRepository? = null
+
+        fun getInstance(): PropMeetRepository {
+            return instance ?: synchronized(this) {
+                instance ?: PropMeetRepository().also { instance = it }
+            }
+        }
     }
 }

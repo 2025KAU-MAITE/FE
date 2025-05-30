@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp"
-        android:text="회의 제안 목록"
+        android:text="회의 목록"
         android:textSize="24dp"
         android:textStyle="bold"
         app:layout_constraintStart_toEndOf="@+id/backBtn"

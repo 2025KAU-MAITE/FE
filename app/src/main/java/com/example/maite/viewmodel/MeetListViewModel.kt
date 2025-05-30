@@ -5,8 +5,11 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.maite.model.MeetListItem
 import com.example.maite.model.MeetListRepository
+import android.util.Log
+
 class MeetListViewModel : ViewModel() {
-    private val repository = MeetListRepository()
+    // 싱글톤 인스턴스 사용
+    private val repository = MeetListRepository.getInstance()
 
     private val _meetList = MutableLiveData<List<MeetListItem>>()
     val meetList: LiveData<List<MeetListItem>> = _meetList
@@ -16,7 +19,9 @@ class MeetListViewModel : ViewModel() {
     }
 
     private fun loadMeetList() {
-        // Repository를 통해 데이터 로드
-        _meetList.value = repository.getMeetList()
+        // Repository에서 데이터 로드
+        val data = repository.getMeetList()
+        _meetList.value = data
+        Log.d("MeetListViewModel", "회의 목록 로드: ${data.size}개 항목")
     }
 }

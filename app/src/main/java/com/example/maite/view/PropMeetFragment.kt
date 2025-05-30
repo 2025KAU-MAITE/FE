@@ -1,14 +1,16 @@
 package com.example.maite
 
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast // Toast import 추가
+import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.databinding.FragmentPropMeetBinding
+import com.example.maite.model.MeetingDataManager
 import com.example.maite.model.PropMeetItem
 import com.example.maite.view.PropMeetAdapter
 import com.example.maite.view.PropMeetClickListener
@@ -32,18 +34,42 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewModel = ViewModelProvider(this)[PropMeetViewModel::class.java]
+        // ViewModel 초기화
+        viewModel = ViewModelProvider(
+            this,
+            PropMeetViewModel.Factory(requireActivity().application)
+        )[PropMeetViewModel::class.java]
+
+        // 로깅 추가: MeetingDataManager에서 직접 데이터 확인
+        val meetingDataManager = MeetingDataManager(requireContext())
+        val propMeetings = meetingDataManager.getPropMeetRepository().getProposedMeetings()
+        Log.d("PropMeetFragment", "Repository data count: ${propMeetings.size}")
+        propMeetings.forEach { item ->
+            Log.d("PropMeetFragment", "Item: ${item.title}, date: ${item.date}, status: ${item.acceptance}")
+        }
+
+        // 어댑터 초기화
         adapter = PropMeetAdapter(this)
 
+        // RecyclerView 설정
         binding.propRV.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@PropMeetFragment.adapter
         }
 
+        // 제안된 회의 데이터 관찰
         viewModel.proposedMeetings.observe(viewLifecycleOwner) { meetings ->
-            // LiveData 변경 시 어댑터에 새 리스트 제출 (변경된 리스트가 반영됨)
+            Log.d("PropMeetFragment", "ViewModel data count: ${meetings.size}")
             adapter.submitList(meetings)
+
+            // 로그 추가: 실제로 어댑터에 전달된 데이터 확인
+            meetings.forEach { item ->
+                Log.d("PropMeetFragment", "ViewModel Item: ${item.title}, date: ${item.date}")
+            }
         }
+
+        // 수동으로 데이터 로드 요청 (문제 해결을 위해 추가)
+        viewModel.loadProposedMeetings()
 
         binding.backBtn.setOnClickListener {
             parentFragmentManager.popBackStack()
