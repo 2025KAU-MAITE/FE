@@ -50,6 +50,7 @@ class MeetingDataManager(private val context: Context) {
                             val meetingDate = dateFormat.parse(meeting.meetingDate)
 
                             // 필드 존재 여부 확인
+                            val id = meeting.meetingId
                             val title = meeting.title.orEmpty()
                             val date = meeting.meetingDate.orEmpty()
                             val time = meeting.meetingTime.orEmpty()
@@ -61,6 +62,7 @@ class MeetingDataManager(private val context: Context) {
                                     // 과거 회의
                                     Log.d("MeetingDataManager", "과거 회의로 분류: ${meeting.title}")
                                     pastMeetings.add(MeetListItem(
+                                        meetingId = id,
                                         title = title,
                                         date = date,
                                         time = time,
@@ -70,6 +72,7 @@ class MeetingDataManager(private val context: Context) {
                                     // 미래 회의 (제안)
                                     Log.d("MeetingDataManager", "미래 회의로 분류: ${meeting.title}")
                                     futureMeetings.add(PropMeetItem(
+                                        meetingId = id,
                                         title = title,
                                         date = date,
                                         time = time,
