@@ -1,13 +1,45 @@
 package com.example.maite.model
 
-class MeetListRepository {
+import android.util.Log
+import java.util.concurrent.CopyOnWriteArrayList
+
+class MeetListRepository private constructor() {
+    // 스레드 안전한 리스트 사용
+    private val meetItems = CopyOnWriteArrayList<MeetListItem>()
+
+    // 현재 회의 목록 반환
     fun getMeetList(): List<MeetListItem> {
-        return listOf(
-            MeetListItem("산학 프로젝트 회의 1차", "2025.03.02", "08:00 ~ 10:00", "경기도 성남시 어쩌구 저쩌구"),
-            MeetListItem("팀 스터디", "2025.03.05", "14:00 ~ 16:00", "온라인 (Zoom)"),
-            MeetListItem("아이디어 구체화 회의", "2025.03.10", "10:00 ~ 11:30", "회사 회의실 A"),
-            MeetListItem("중간 결과 발표 준비", "2025.04.15", "13:00 ~ 15:00", "스터디 카페"),
-            MeetListItem("어버이날 선물", "2025.05.06", "13:00 ~ 14:00", "스타벅스")
-        )
+        Log.d("MeetListRepository", "getMeetList 호출: ${meetItems.size}개 항목")
+        return meetItems.toList()
+    }
+
+    // 단일 회의 추가
+    fun addMeeting(item: MeetListItem) {
+        meetItems.add(item)
+        Log.d("MeetListRepository", "addMeeting: ${item.title}, 현재 ${meetItems.size}개 항목")
+    }
+
+    // 여러 회의 한번에 추가
+    fun addAllMeetings(items: List<MeetListItem>) {
+        meetItems.addAll(items)
+        Log.d("MeetListRepository", "addAllMeetings: ${items.size}개 항목 추가, 현재 ${meetItems.size}개 항목")
+    }
+
+    // 모든 회의 삭제
+    fun clearMeetings() {
+        meetItems.clear()
+        Log.d("MeetListRepository", "clearMeetings: 모든 항목 삭제됨")
+    }
+
+    // 싱글톤 구현
+    companion object {
+        @Volatile
+        private var instance: MeetListRepository? = null
+
+        fun getInstance(): MeetListRepository {
+            return instance ?: synchronized(this) {
+                instance ?: MeetListRepository().also { instance = it }
+            }
+        }
     }
 }

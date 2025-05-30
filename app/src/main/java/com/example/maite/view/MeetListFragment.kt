@@ -10,7 +10,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.databinding.FragmentMeetListBinding
 import com.example.maite.view.MeetListAdapter
 import com.example.maite.viewmodel.MeetListViewModel
-// import android.widget.Toast // Toast 제거 또는 주석 처리
+import com.example.maite.model.MeetListRepository
+import android.util.Log
 
 class MeetListFragment : Fragment() {
     private var _binding: FragmentMeetListBinding? = null
@@ -30,6 +31,10 @@ class MeetListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 디버깅 목적: 저장소에서 직접 데이터 확인
+        val repoData = MeetListRepository.getInstance().getMeetList()
+        Log.d("MeetListFragment", "저장소 직접 접근 데이터: ${repoData.size}개 항목")
+
         setupRecyclerView()
         observeViewModel()
 
@@ -41,13 +46,14 @@ class MeetListFragment : Fragment() {
     private fun setupRecyclerView() {
         // 어댑터 초기화 (아이템 클릭 시 MeetDetailFragment로 전환)
         meetAdapter = MeetListAdapter { meetItem ->
-            // *** START: 아이템 클릭 시 MeetDetailFragment로 전환하는 로직 ***
+            // MeetDetailFragment로 전환하는 로직
             val detailFragment = MeetDetailFragment.newInstance(meetItem)
             parentFragmentManager.beginTransaction()
-                .replace(R.id.main_frm, detailFragment) // R.id.main_frm은 실제 컨테이너 ID로 변경
-                .addToBackStack(null) // 백스택에 추가하여 뒤로가기 가능하게 함
+                .replace(R.id.main_frm, detailFragment)
+                .addToBackStack(null)
                 .commit()
-            // *** END: 아이템 클릭 시 MeetDetailFragment로 전환하는 로직 ***
+
+            Log.d("MeetListFragment", "회의 아이템 클릭됨: ${meetItem.title}, ${meetItem.date}")
         }
 
         binding.meetListRV.apply {
@@ -58,7 +64,9 @@ class MeetListFragment : Fragment() {
 
     private fun observeViewModel() {
         viewModel.meetList.observe(viewLifecycleOwner) { list ->
+            Log.d("MeetListFragment", "회의 목록 업데이트됨: ${list.size}개 항목")
             meetAdapter.submitList(list)
+
         }
     }
 

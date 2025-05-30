@@ -159,24 +159,21 @@ class ListFragment : Fragment() {
         _binding = null
     }
 
-    /**
-     * 마지막으로 참가한 회의방 ID를 확인하고 해당 회의방으로 이동
-     */
     private fun checkLastJoinedRoom() {
         val preferencesUtil = com.example.maite.PreferencesUtil(requireContext())
         val roomId = preferencesUtil.getLastJoinedRoomId()
-        
+
         if (roomId != null) {
             android.util.Log.d("ListFragment", "마지막으로 참가한 회의방 ID: $roomId")
-            
+
             // 이미 저장된 방 ID가 있으면 해당 방으로 이동
             viewModel.getRoomDetail(roomId.toLong())
-            
+
             // 처리 완료 후 저장된 방 ID 초기화
             preferencesUtil.clearLastJoinedRoomId()
         } else {
             android.util.Log.d("ListFragment", "마지막으로 참가한 회의방 ID 없음")
-            
+
             // 초기 데이터 로드
             refreshMaiteList()
         }

@@ -5,6 +5,7 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class MeetListItem(
+    val meetingId: Long,
     val title: String,
     val date: String,
     val time: String,

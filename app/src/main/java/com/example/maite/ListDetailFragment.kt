@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import android.view.Gravity
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -24,10 +25,13 @@ import com.bumptech.glide.request.RequestOptions
 import com.example.maite.databinding.FragmentListDetailBinding
 import com.example.maite.model.InviteUserRequest
 import com.example.maite.model.MaiteListItem
+import com.example.maite.model.MeetingDataManager
 import com.example.maite.viewmodel.InviteListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class ListDetailFragment : Fragment() {
     private var _binding: FragmentListDetailBinding? = null
@@ -35,6 +39,9 @@ class ListDetailFragment : Fragment() {
 
     private val sharedViewModel: TimeSelectionViewModel by activityViewModels()
     private lateinit var inviteViewModel: InviteListViewModel
+
+    // 회의 데이터 관리자 추가
+    private lateinit var meetingDataManager: MeetingDataManager
 
     private lateinit var apiService: MaiteApiService
     private var maiteListItem: MaiteListItem? = null
@@ -60,6 +67,9 @@ class ListDetailFragment : Fragment() {
         // sharedViewModel.setTimetableData는 loadTimetableData 이후에 호출됩니다.
 
         apiService = MaiteRetrofitClient.getInstance(requireContext())
+
+        // 회의 데이터 관리자 초기화
+        meetingDataManager = MeetingDataManager(requireContext())
 
         return binding.root
     }
@@ -182,8 +192,275 @@ class ListDetailFragment : Fragment() {
                 .commit()
         }
 
+        // 룸 ID가 있으면 회의 데이터 가져오기
+        maiteListItem?.roomId?.let { roomId ->
+            loadMeetingsData(roomId)
+        }
+
         // 초기 시간표 데이터 로드 및 그리기
         loadTimetableData() // 이 시점에서 classes가 업데이트되고 createTimetable이 호출됨
+    }
+
+    /**
+     * 회의 데이터를 가져오는 함수
+     * @param roomId 회의 데이터를 가져올 방의 ID
+     */
+    private fun loadMeetingsData(roomId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 로딩 표시기 표시 (UI에 로딩 표시기가 있다면)
+                // binding.meetingsProgressBar?.visibility = View.VISIBLE
+
+                val success = meetingDataManager.fetchAndDistributeMeetings(roomId)
+
+                if (success) {
+                    // 데이터 로드 성공 - UI 업데이트
+                    updateMeetingsUI()
+
+                    Log.d("ListDetailFragment", "회의 데이터 로드 성공")
+                } else {
+                    Log.e("ListDetailFragment", "회의 데이터 로드 실패")
+                    Toast.makeText(requireContext(), "회의 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "회의 데이터 로드 중 오류", e)
+                Toast.makeText(requireContext(), "회의 데이터 로드 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                // 로딩 표시기 숨기기
+                // binding.meetingsProgressBar?.visibility = View.GONE
+            }
+        }
+    }
+
+    /**
+     * 회의 데이터 UI 업데이트
+     */
+    private fun updateMeetingsUI() {
+        val pastMeetings = meetingDataManager.getMeetListRepository().getMeetList()
+        val futureMeetings = meetingDataManager.getPropMeetRepository().getProposedMeetings()
+
+        Log.d("ListDetailFragment", "과거 회의 수: ${pastMeetings.size}, 미래 회의 수: ${futureMeetings.size}")
+
+        // 포맷터 설정 - yyyy-MM-dd 형식을 파싱하기 위함
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        try {
+            // 가장 최근 과거 회의 찾기 (날짜 내림차순 정렬 후 첫번째 항목)
+            if (pastMeetings.isNotEmpty()) {
+                val latestPastMeeting = pastMeetings
+                    .sortedByDescending {
+                        try {
+                            dateFormat.parse(it.date)?.time ?: 0
+                        } catch (e: Exception) {
+                            Log.e("ListDetailFragment", "날짜 파싱 오류: ${it.date}", e)
+                            0 // 파싱 실패 시 가장 오래된 날짜로 처리
+                        }
+                    }
+                    .firstOrNull()
+
+                if (latestPastMeeting != null) {
+                    Log.d("ListDetailFragment", "최근 회의: ${latestPastMeeting.title}, 날짜: ${latestPastMeeting.date}")
+
+                    // UI 업데이트
+                    binding.meetTitle.text = latestPastMeeting.title
+                    binding.meetDate.text = formatDateForDisplay(latestPastMeeting.date)
+                    binding.meetTime.text = latestPastMeeting.time
+                    binding.meetPlace.text = latestPastMeeting.place
+
+                    // 회의 카드 표시
+                    binding.cardView3.visibility = View.VISIBLE
+                } else {
+                    Log.d("ListDetailFragment", "정렬 후 최근 회의가 없음")
+                    binding.cardView3.visibility = View.GONE
+                }
+            } else {
+                // 과거 회의가 없을 경우 UI 처리
+                Log.d("ListDetailFragment", "최근 회의 없음")
+                binding.cardView3.visibility = View.GONE
+            }
+
+            // 가장 가까운 미래 회의 찾기 (날짜 오름차순 정렬 후 첫번째 항목)
+            if (futureMeetings.isNotEmpty()) {
+                val earliestFutureMeeting = futureMeetings
+                    .sortedBy {
+                        try {
+                            dateFormat.parse(it.date)?.time ?: Long.MAX_VALUE
+                        } catch (e: Exception) {
+                            Log.e("ListDetailFragment", "날짜 파싱 오류: ${it.date}", e)
+                            Long.MAX_VALUE // 파싱 실패 시 가장 미래 날짜로 처리
+                        }
+                    }
+                    .firstOrNull()
+
+                if (earliestFutureMeeting != null) {
+                    Log.d("ListDetailFragment",
+                        "다가오는 회의: ${earliestFutureMeeting.title}, " +
+                                "날짜: ${earliestFutureMeeting.date}, " +
+                                "상태: ${earliestFutureMeeting.acceptance}")
+
+                    // UI 업데이트
+                    binding.propTitle.text = earliestFutureMeeting.title
+                    binding.propDate.text = formatDateForDisplay(earliestFutureMeeting.date)
+                    binding.propTime.text = earliestFutureMeeting.time
+                    binding.propPlace.text = earliestFutureMeeting.place
+
+                    // 회의 상태에 따라 UI 업데이트
+                    when (earliestFutureMeeting.acceptance.uppercase()) {
+                        "ACCEPTED" -> {
+                            // 수락된 회의: 수락/거절 버튼 숨김, 상태 표시
+                            binding.acceptBtn.visibility = View.GONE
+                            binding.rejectBtn.visibility = View.GONE
+
+                            // 상태 카드 표시
+                            binding.status.visibility = View.VISIBLE
+                            binding.statusBackground.setBackgroundResource(R.color.mainColor)
+                            binding.statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+                            binding.statusText.text = "수락됨"
+                        }
+                        "REJECTED" -> {
+                            // 거절된 회의: 수락/거절 버튼 숨김, 상태 표시
+                            binding.acceptBtn.visibility = View.GONE
+                            binding.rejectBtn.visibility = View.GONE
+
+                            // 상태 카드 표시
+                            binding.status.visibility = View.VISIBLE
+                            binding.statusBackground.setBackgroundResource(R.color.light_gray)
+                            binding.statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.black))
+                            binding.statusText.text = "거절됨"
+                        }
+                        else -> {
+                            // PENDING 또는 다른 상태: 수락/거절 버튼 표시, 상태 숨김
+                            binding.acceptBtn.visibility = View.VISIBLE
+                            binding.rejectBtn.visibility = View.VISIBLE
+                            binding.status.visibility = View.GONE
+
+                            // 수락/거절 버튼 이벤트 설정
+                            binding.acceptBtn.setOnClickListener {
+                                val meetingId = earliestFutureMeeting.meetingId
+                                acceptMeeting(meetingId)
+                            }
+
+                            binding.rejectBtn.setOnClickListener {
+                                val meetingId = earliestFutureMeeting.meetingId
+                                rejectMeeting(meetingId)
+                            }
+                        }
+                    }
+
+                    // 회의 카드 표시
+                    binding.cardView2.visibility = View.VISIBLE
+                } else {
+                    Log.d("ListDetailFragment", "정렬 후 다가오는 회의가 없음")
+                    binding.cardView2.visibility = View.GONE
+                }
+            } else {
+                // 미래 회의가 없을 경우 UI 처리
+                Log.d("ListDetailFragment", "다가오는 회의 없음")
+                binding.cardView2.visibility = View.GONE
+            }
+        } catch (e: Exception) {
+            Log.e("ListDetailFragment", "회의 데이터 UI 업데이트 중 오류", e)
+            // 오류 발생 시 카드 숨기기
+            binding.cardView2.visibility = View.GONE
+            binding.cardView3.visibility = View.GONE
+        }
+    }
+
+    private fun acceptMeeting(meetingId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 로딩 표시 (옵션)
+                binding.acceptBtn.isEnabled = false
+                binding.rejectBtn.isEnabled = false
+
+                val response = withContext(Dispatchers.IO) {
+                    apiService.acceptMeetingInvite(meetingId)
+                }
+
+                if (response.isSuccessful) {
+                    Log.d("ListDetailFragment", "회의 수락 성공: 회의 ID $meetingId")
+                    Toast.makeText(requireContext(), "회의를 수락했습니다.", Toast.LENGTH_SHORT).show()
+
+                    // 회의 데이터 다시 로드하여 UI 업데이트
+                    maiteListItem?.roomId?.let { roomId ->
+                        loadMeetingsData(roomId)
+                    }
+                } else {
+                    Log.e("ListDetailFragment", "회의 수락 실패: ${response.code()}")
+                    Toast.makeText(requireContext(), "회의 수락 실패: 상태 코드 ${response.code()}", Toast.LENGTH_SHORT).show()
+
+                    // 버튼 다시 활성화
+                    binding.acceptBtn.isEnabled = true
+                    binding.rejectBtn.isEnabled = true
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "회의 수락 처리 중 오류", e)
+                Toast.makeText(requireContext(), "회의 수락 처리 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                // 버튼 다시 활성화
+                binding.acceptBtn.isEnabled = true
+                binding.rejectBtn.isEnabled = true
+            }
+        }
+    }
+
+    /**
+     * 회의 초대 거절 처리
+     * @param meetingId 거절할 회의 ID
+     */
+    private fun rejectMeeting(meetingId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 로딩 표시 (옵션)
+                binding.acceptBtn.isEnabled = false
+                binding.rejectBtn.isEnabled = false
+
+                val response = withContext(Dispatchers.IO) {
+                    apiService.rejectMeetingInvite(meetingId)
+                }
+
+                if (response.isSuccessful) {
+                    Log.d("ListDetailFragment", "회의 거절 성공: 회의 ID $meetingId")
+                    Toast.makeText(requireContext(), "회의를 거절했습니다.", Toast.LENGTH_SHORT).show()
+
+                    // 회의 데이터 다시 로드하여 UI 업데이트
+                    maiteListItem?.roomId?.let { roomId ->
+                        loadMeetingsData(roomId)
+                    }
+                } else {
+                    Log.e("ListDetailFragment", "회의 거절 실패: ${response.code()}")
+                    Toast.makeText(requireContext(), "회의 거절 실패: 상태 코드 ${response.code()}", Toast.LENGTH_SHORT).show()
+
+                    // 버튼 다시 활성화
+                    binding.acceptBtn.isEnabled = true
+                    binding.rejectBtn.isEnabled = true
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "회의 거절 처리 중 오류", e)
+                Toast.makeText(requireContext(), "회의 거절 처리 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                // 버튼 다시 활성화
+                binding.acceptBtn.isEnabled = true
+                binding.rejectBtn.isEnabled = true
+            }
+        }
+    }
+
+    private fun formatDateForDisplay(dateString: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault())
+            val date = inputFormat.parse(dateString)
+
+            if (date != null) {
+                outputFormat.format(date)
+            } else {
+                dateString // 파싱 실패 시 원본 반환
+            }
+        } catch (e: Exception) {
+            Log.e("ListDetailFragment", "날짜 포맷 변환 오류", e)
+            dateString // 오류 발생 시 원본 반환
+        }
     }
 
     private fun loadTimetableData() {
@@ -598,9 +875,6 @@ class ListDetailFragment : Fragment() {
         val className: String,
         val color: Int
     )
-
-    // TimeRange data class는 현재 사용되지 않으므로 제거하거나 주석 처리 가능
-    // data class TimeRange( ... )
 
     companion object {
         private const val ARG_MAITE_LIST_ITEM = "maite_list_item"
