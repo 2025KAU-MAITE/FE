@@ -59,4 +59,14 @@ interface MaiteApiService {
 
     @GET("meetings/rooms/{roomId}")
     suspend fun getMeetingsByRoom(@Path("roomId") roomId: Long): Response<List<MeetingResponse>>
+
+    @POST("meetings/{meetingId}/invites/accept")
+    suspend fun acceptMeetingInvite(
+        @Path("meetingId") meetingId: Long
+    ): Response<Void>
+
+    @POST("meetings/{meetingId}/invites/reject")
+    suspend fun rejectMeetingInvite(
+        @Path("meetingId") meetingId: Long
+    ): Response<Void>
 }

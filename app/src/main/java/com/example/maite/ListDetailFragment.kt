@@ -306,13 +306,13 @@ class ListDetailFragment : Fragment() {
 
                             // 수락/거절 버튼 이벤트 설정
                             binding.acceptBtn.setOnClickListener {
-                                Toast.makeText(requireContext(), "회의 수락", Toast.LENGTH_SHORT).show()
-                                // 여기에 수락 API 호출 코드 추가
+                                val meetingId = earliestFutureMeeting.meetingId
+                                acceptMeeting(meetingId)
                             }
 
                             binding.rejectBtn.setOnClickListener {
-                                Toast.makeText(requireContext(), "회의 거절", Toast.LENGTH_SHORT).show()
-                                // 여기에 거절 API 호출 코드 추가
+                                val meetingId = earliestFutureMeeting.meetingId
+                                rejectMeeting(meetingId)
                             }
                         }
                     }
@@ -333,6 +333,86 @@ class ListDetailFragment : Fragment() {
             // 오류 발생 시 카드 숨기기
             binding.cardView2.visibility = View.GONE
             binding.cardView3.visibility = View.GONE
+        }
+    }
+
+    private fun acceptMeeting(meetingId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 로딩 표시 (옵션)
+                binding.acceptBtn.isEnabled = false
+                binding.rejectBtn.isEnabled = false
+
+                val response = withContext(Dispatchers.IO) {
+                    apiService.acceptMeetingInvite(meetingId)
+                }
+
+                if (response.isSuccessful) {
+                    Log.d("ListDetailFragment", "회의 수락 성공: 회의 ID $meetingId")
+                    Toast.makeText(requireContext(), "회의를 수락했습니다.", Toast.LENGTH_SHORT).show()
+
+                    // 회의 데이터 다시 로드하여 UI 업데이트
+                    maiteListItem?.roomId?.let { roomId ->
+                        loadMeetingsData(roomId)
+                    }
+                } else {
+                    Log.e("ListDetailFragment", "회의 수락 실패: ${response.code()}")
+                    Toast.makeText(requireContext(), "회의 수락 실패: 상태 코드 ${response.code()}", Toast.LENGTH_SHORT).show()
+
+                    // 버튼 다시 활성화
+                    binding.acceptBtn.isEnabled = true
+                    binding.rejectBtn.isEnabled = true
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "회의 수락 처리 중 오류", e)
+                Toast.makeText(requireContext(), "회의 수락 처리 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                // 버튼 다시 활성화
+                binding.acceptBtn.isEnabled = true
+                binding.rejectBtn.isEnabled = true
+            }
+        }
+    }
+
+    /**
+     * 회의 초대 거절 처리
+     * @param meetingId 거절할 회의 ID
+     */
+    private fun rejectMeeting(meetingId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 로딩 표시 (옵션)
+                binding.acceptBtn.isEnabled = false
+                binding.rejectBtn.isEnabled = false
+
+                val response = withContext(Dispatchers.IO) {
+                    apiService.rejectMeetingInvite(meetingId)
+                }
+
+                if (response.isSuccessful) {
+                    Log.d("ListDetailFragment", "회의 거절 성공: 회의 ID $meetingId")
+                    Toast.makeText(requireContext(), "회의를 거절했습니다.", Toast.LENGTH_SHORT).show()
+
+                    // 회의 데이터 다시 로드하여 UI 업데이트
+                    maiteListItem?.roomId?.let { roomId ->
+                        loadMeetingsData(roomId)
+                    }
+                } else {
+                    Log.e("ListDetailFragment", "회의 거절 실패: ${response.code()}")
+                    Toast.makeText(requireContext(), "회의 거절 실패: 상태 코드 ${response.code()}", Toast.LENGTH_SHORT).show()
+
+                    // 버튼 다시 활성화
+                    binding.acceptBtn.isEnabled = true
+                    binding.rejectBtn.isEnabled = true
+                }
+            } catch (e: Exception) {
+                Log.e("ListDetailFragment", "회의 거절 처리 중 오류", e)
+                Toast.makeText(requireContext(), "회의 거절 처리 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                // 버튼 다시 활성화
+                binding.acceptBtn.isEnabled = true
+                binding.rejectBtn.isEnabled = true
+            }
         }
     }
 

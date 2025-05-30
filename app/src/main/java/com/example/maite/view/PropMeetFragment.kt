@@ -64,11 +64,18 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
 
             // 로그 추가: 실제로 어댑터에 전달된 데이터 확인
             meetings.forEach { item ->
-                Log.d("PropMeetFragment", "ViewModel Item: ${item.title}, date: ${item.date}")
+                Log.d("PropMeetFragment", "ViewModel Item: ${item.title}, date: ${item.date}, status: ${item.acceptance}")
             }
         }
 
-        // 수동으로 데이터 로드 요청 (문제 해결을 위해 추가)
+        // 오류 상태 관찰
+        viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
+            if (!errorMessage.isNullOrEmpty()) {
+                Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
+            }
+        }
+
+        // 수동으로 데이터 로드 요청
         viewModel.loadProposedMeetings()
 
         binding.backBtn.setOnClickListener {
@@ -82,14 +89,20 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
     }
 
     override fun onAcceptClick(item: PropMeetItem) {
-        viewModel.acceptMeeting(item) // ViewModel에 수락 처리 및 제거 요청
-        // Toast 메시지 표시
-        Toast.makeText(requireContext(), "회의를 수락했습니다", Toast.LENGTH_SHORT).show()
+        if (item.acceptance != "PENDING") {
+            Toast.makeText(requireContext(), "이미 처리된 회의입니다", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewModel.acceptMeeting(item) // ViewModel에 수락 처리 요청
     }
 
     override fun onRejectClick(item: PropMeetItem) {
-        viewModel.rejectMeeting(item) // ViewModel에 거절 처리 및 제거 요청
-        // Toast 메시지 표시
-        Toast.makeText(requireContext(), "회의를 거절했습니다", Toast.LENGTH_SHORT).show()
+        if (item.acceptance != "PENDING") {
+            Toast.makeText(requireContext(), "이미 처리된 회의입니다", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewModel.rejectMeeting(item) // ViewModel에 거절 처리 요청
     }
 }

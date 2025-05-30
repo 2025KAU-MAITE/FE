@@ -31,6 +31,16 @@ class PropMeetRepository private constructor() {
         Log.d("PropMeetRepository", "clearProposals: 모든 항목 삭제됨")
     }
 
+    fun updateProposal(updatedItem: PropMeetItem) {
+        val index = propItems.indexOfFirst { it.meetingId == updatedItem.meetingId }
+        if (index >= 0) {
+            propItems[index] = updatedItem
+            Log.d("PropMeetRepository", "제안 상태 업데이트: ${updatedItem.title}, 신규 상태: ${updatedItem.acceptance}")
+        } else {
+            Log.w("PropMeetRepository", "업데이트할 제안을 찾을 수 없음: ${updatedItem.meetingId}")
+        }
+    }
+
     // 싱글톤 구현
     companion object {
         @Volatile
