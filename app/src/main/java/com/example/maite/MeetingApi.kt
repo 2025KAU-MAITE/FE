@@ -11,7 +11,7 @@ import retrofit2.http.Path
 interface MeetingApi {
 
     // ✅ 내 회의 목록 가져오기 (GET /meetings)
-    @GET("meetings/my")
+    @GET("meetings")
     suspend fun getMyMeetings(): Response<List<MeetingItem>>
     
     // ✅ 받은 제안 목록 가져오기 (GET /proposals)

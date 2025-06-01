@@ -10,15 +10,23 @@ import com.example.maite.data.model.MeetingItem
 import com.example.maite.data.model.MeetingProposal
 import com.example.maite.data.model.ProposalType
 import com.example.maite.data.repository.ProposalRepository
+import com.example.maite.repository.MeetingRepository
 import com.example.maite.model.TimetableEntry
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
+import android.os.Handler
+import android.os.Looper
 
 /**
  * 홈 화면 ViewModel - 회의 및 제안 관련 데이터 처리
  */
-class HomeViewModel(private val proposalRepository: ProposalRepository? = null) : ViewModel() {
+class HomeViewModel(
+    private val proposalRepository: ProposalRepository? = null,
+    private val meetingRepository: MeetingRepository? = null
+) : ViewModel() {
 
     private val TAG = "HomeViewModel"
 
@@ -128,105 +136,177 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
     }
 
     /**
-     * 가장 가까운 회의 가져오기
+     * 가장 가까운 회의 가져오기 - MeetingRepository 사용으로 개선
      */
     fun loadNearestMeeting() {
-        proposalRepository?.let { repository ->
+        Log.d(TAG, "loadNearestMeeting() 호출")
+        
+        meetingRepository?.let { repository ->
             viewModelScope.launch {
                 _isLoading.value = true
                 _error.value = null
                 
                 try {
-                    android.util.Log.d(TAG, "실제 API로 회의 데이터 가져오기 시도")
+                    Log.d(TAG, "MeetingRepository로 회의 데이터 가져오기 시도")
                     
-                    // 실제 API 호출
+                    // MeetingRepository를 통한 실제 API 호출 (GET /meetings)
                     val result = repository.getMyMeetings()
                     
                     result.onSuccess { meetings ->
-                        android.util.Log.d(TAG, "회의 로딩 성공: ${meetings.size}개")
+                        Log.d(TAG, "회의 로딩 성공: ${meetings.size}개")
+                        
+                        // 각 회의 상세 정보 로깅
+                        meetings.forEachIndexed { index, meeting ->
+                            Log.d(TAG, "회의[$index]: ID=${meeting.id}, 제목=${meeting.title}, 날짜=${meeting.date}, 시간=${meeting.startTime}, 장소=${meeting.location}")
+                        }
                         
                         if (meetings.isNotEmpty()) {
-                            // 가장 가까운 회의 찾기
+                            // 가장 가까운 회의 찾기 - 개선된 로직 사용
                             val nearestMeeting = findNearestMeeting(meetings)
                             _nearestMeeting.value = nearestMeeting
-                            android.util.Log.d(TAG, "가장 가까운 회의: $nearestMeeting")
+                            Log.d(TAG, "가장 가까운 회의: $nearestMeeting")
                         } else {
-                            android.util.Log.d(TAG, "회의가 없습니다.")
+                            Log.d(TAG, "회의가 없습니다.")
                             _nearestMeeting.value = null
                         }
                     }.onFailure { e ->
-                        android.util.Log.e(TAG, "회의 로딩 실패", e)
+                        Log.e(TAG, "회의 로딩 실패", e)
                         _error.value = "회의 정보를 가져오는 중 오류가 발생했습니다: ${e.message}"
-                        
-                        // API 연동 실패 시 임시 데이터 사용 (테스트용)
-                        val todayDate = java.text.SimpleDateFormat("yyyy.MM.dd", java.util.Locale.getDefault()).format(java.util.Date())
-                        
-                        _nearestMeeting.value = MeetingItem(
-                            id = 1,
-                            title = "개발 회의 (임시 데이터)",
-                            date = todayDate,
-                            startTime = "14:00",
-                            endTime = "15:00",
-                            location = "항공대 과학관 204호"
-                        )
-                        android.util.Log.d(TAG, "임시 회의 데이터 사용")
+                        _nearestMeeting.value = null
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e(TAG, "회의 로딩 중 예외 발생", e)
+                    Log.e(TAG, "회의 로딩 중 예외 발생", e)
                     _error.value = "회의 정보를 가져오는 중 오류가 발생했습니다"
+                    _nearestMeeting.value = null
                 } finally {
                     _isLoading.value = false
                 }
+            }
+        } ?: run {
+            Log.w(TAG, "MeetingRepository가 null입니다.")
+            // MeetingRepository가 없는 경우 fallback으로 ProposalRepository 사용
+            proposalRepository?.let { repository ->
+                viewModelScope.launch {
+                    _isLoading.value = true
+                    _error.value = null
+                    
+                    try {
+                        Log.d(TAG, "ProposalRepository로 회의 데이터 가져오기 시도 (fallback)")
+                        
+                        val result = repository.getMyMeetings()
+                        
+                        result.onSuccess { meetings ->
+                            Log.d(TAG, "회의 로딩 성공: ${meetings.size}개")
+                            
+                            if (meetings.isNotEmpty()) {
+                                val nearestMeeting = findNearestMeeting(meetings)
+                                _nearestMeeting.value = nearestMeeting
+                                Log.d(TAG, "가장 가까운 회의: $nearestMeeting")
+                            } else {
+                                Log.d(TAG, "회의가 없습니다.")
+                                _nearestMeeting.value = null
+                            }
+                        }.onFailure { e ->
+                            Log.e(TAG, "회의 로딩 실패", e)
+                            _error.value = "회의 정보를 가져오는 중 오류가 발생했습니다: ${e.message}"
+                            _nearestMeeting.value = null
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "회의 로딩 중 예외 발생", e)
+                        _error.value = "회의 정보를 가져오는 중 오류가 발생했습니다"
+                        _nearestMeeting.value = null
+                    } finally {
+                        _isLoading.value = false
+                    }
+                }
+            } ?: run {
+                Log.e(TAG, "ProposalRepository도 null입니다. 두 레포지토리 모두 사용할 수 없습니다.")
+                _error.value = "회의 정보를 가져오는 중 오류가 발생했습니다"
+                _nearestMeeting.value = null
             }
         }
     }
     
     /**
-     * 회의 목록에서 가장 가까운 회의를 찾는 함수
+     * 회의 목록에서 가장 가까운 회의를 찾는 함수 (개선된 버전)
+     * 요구사항: 현재 날짜와 가장 가까운 미래 회의 1개 반환
+     * - 과거 회의는 제외
+     * - 같은 날짜에 여러 회의가 있으면 시간 기준 가장 가까운 것
      */
     private fun findNearestMeeting(meetings: List<MeetingItem>): MeetingItem? {
-        val today = java.util.Calendar.getInstance()
-        val formatter = java.text.SimpleDateFormat("yyyy.MM.dd", java.util.Locale.getDefault())
+        val now = Calendar.getInstance()
         
-        // 시간순 정렬 후 가장 가까운 회의 찾기
-        return meetings.sortedBy { meeting -> 
+        // 스웨거에서 받아오는 날짜 형식에 맞춰서 수정! (yyyy-MM-dd)
+        val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        
+        Log.d(TAG, "가장 가까운 회의 찾기 시작. 전체 회의 수: ${meetings.size}")
+        
+        // 1. 모든 회의를 날짜/시간 순으로 정렬하고, 미래 회의만 필터링
+        val futureMeetings = meetings.mapNotNull { meeting ->
             try {
-                val meetingDate = formatter.parse(meeting.date) ?: return@sortedBy Long.MAX_VALUE
+                Log.d(TAG, "회의 처리 중: ${meeting.title}, 날짜: ${meeting.date}, 시간: ${meeting.startTime}")
+                
+                // 날짜 파싱 (yyyy-MM-dd 형식)
+                val meetingDate = dateFormatter.parse(meeting.date)
+                if (meetingDate == null) {
+                    Log.w(TAG, "날짜 파싱 실패: ${meeting.date}")
+                    return@mapNotNull null
+                }
+                
+                Log.d(TAG, "날짜 파싱 성공: ${meeting.date}")
+                
+                // 시간 파싱
                 val timeComponents = meeting.startTime.split(":")
+                if (timeComponents.size < 2) {
+                    Log.w(TAG, "시간 형식 오류: ${meeting.startTime}")
+                    return@mapNotNull null
+                }
+                
                 val hour = timeComponents[0].toIntOrNull() ?: 0
                 val minute = timeComponents[1].toIntOrNull() ?: 0
                 
-                val meetingCalendar = java.util.Calendar.getInstance().apply {
+                Log.d(TAG, "시간 파싱 성공: ${hour}:${minute}")
+                
+                // 회의 시간 생성
+                val meetingCalendar = Calendar.getInstance().apply {
                     time = meetingDate
-                    set(java.util.Calendar.HOUR_OF_DAY, hour)
-                    set(java.util.Calendar.MINUTE, minute)
+                    set(Calendar.HOUR_OF_DAY, hour)
+                    set(Calendar.MINUTE, minute)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
                 }
                 
-                meetingCalendar.timeInMillis - today.timeInMillis
-            } catch (e: Exception) {
-                android.util.Log.e(TAG, "회의 날짜 파싱 오류", e)
-                Long.MAX_VALUE // 오류 발생 시 가장 뒤로 정렬
-            }
-        }.firstOrNull { meeting ->
-            try {
-                // 현재 시간 이후의 회의만 고려
-                val meetingDate = formatter.parse(meeting.date) ?: return@firstOrNull false
-                val timeComponents = meeting.startTime.split(":")
-                val hour = timeComponents[0].toIntOrNull() ?: 0
-                val minute = timeComponents[1].toIntOrNull() ?: 0
-                
-                val meetingCalendar = java.util.Calendar.getInstance().apply {
-                    time = meetingDate
-                    set(java.util.Calendar.HOUR_OF_DAY, hour)
-                    set(java.util.Calendar.MINUTE, minute)
+                // 현재 시간보다 미래인지 확인
+                if (meetingCalendar.timeInMillis <= now.timeInMillis) {
+                    Log.d(TAG, "과거 회의 제외: ${meeting.title} (${meeting.date} ${meeting.startTime})")
+                    return@mapNotNull null
                 }
                 
-                meetingCalendar.timeInMillis >= today.timeInMillis
+                // 회의와 현재 시간의 차이 계산 (밀리초 단위)
+                val timeDifference = meetingCalendar.timeInMillis - now.timeInMillis
+                
+                Log.d(TAG, "미래 회의 발견: ${meeting.title} (${meeting.date} ${meeting.startTime}), 차이: ${timeDifference}ms")
+                
+                Pair(meeting, timeDifference)
+                
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "회의 날짜 비교 오류", e)
-                false // 오류 발생 시 제외
+                Log.e(TAG, "회의 시간 처리 오류: ${meeting.title}", e)
+                null
             }
+        }.sortedBy { it.second } // 시간 차이로 정렬 (가장 가까운 것부터)
+        
+        Log.d(TAG, "미래 회의 ${futureMeetings.size}개 발견")
+        
+        // 2. 가장 가까운 회의 반환
+        val nearestMeeting = futureMeetings.firstOrNull()?.first
+        
+        if (nearestMeeting != null) {
+            Log.d(TAG, "가장 가까운 회의 결정: ${nearestMeeting.title} (${nearestMeeting.date} ${nearestMeeting.startTime})")
+        } else {
+            Log.d(TAG, "미래 회의가 없습니다.")
         }
+        
+        return nearestMeeting
     }
 
     /**
@@ -253,8 +333,10 @@ class HomeViewModel(private val proposalRepository: ProposalRepository? = null) 
                             // 회의방 ID를 저장하여 ListFragment에서 바로 해당 방으로 이동하기 위한 데이터
                             _navigateToRoomId.value = proposal.roomId
                         } else {
-                            // 회의 목록 다시 가져오기
-                            loadNearestMeeting()
+                            // 회의 목록 다시 가져오기 (지연 시간 증가)
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                loadNearestMeeting()
+                            }, 1000) // 1초 대기 후 새로고침
                         }
                     }.onFailure { e ->
                         Log.e(TAG, "제안 수락 실패", e)
