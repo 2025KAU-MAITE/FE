@@ -69,19 +69,10 @@ class HomeFragment : Fragment() {
         val userId = preferencesUtil.getUserId()
 
         if (userId != null) {
-            // 서버에서 시간표 로드
+            // 서버에서 시간표 로드 (한 번만)
             lifecycleScope.launch {
                 profileViewModel.loadTimetableFromServer(userId)
             }
-
-            // 5초 후에도 시간표가 비어있으면 다시 로드 시도
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (viewModel.timetableEntries.value?.isEmpty() == true) {
-                    lifecycleScope.launch {
-                        profileViewModel.loadTimetableFromServer(userId)
-                    }
-                }
-            }, 5000)
         } else {
 
             // 사용자 ID가 없는 경우 로그인 필요 안내
@@ -283,7 +274,6 @@ class HomeFragment : Fragment() {
         
         // 초기 회의 목록 로드 (HomeViewModel 초기화 후)
         viewModel.loadNearestMeeting()
-        Log.d("HomeFragment", "초기 회의 목록 로드 시작")
 
         // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
         viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->
@@ -322,9 +312,10 @@ class HomeFragment : Fragment() {
             }
         }
 
-        // 로딩 상태 관찰
+        // 로딩 상태 관찰 (성능 최적화: 홈화면에서는 프로그레스바 비활성화)
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            // 홈화면 성능 향상을 위해 프로그레스바 숨김
+            binding.progressBar.visibility = View.GONE
         }
 
         // 오류 메시지 관찰
@@ -587,7 +578,6 @@ class HomeFragment : Fragment() {
                         // 잠시 대기 후 서버에서 업데이트 된 회의 목록을 가져오기
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             viewModel.loadNearestMeeting()
-                            Log.d("HomeFragment", "회의 목록 새로 가져오기 완료")
                         }, 500) // 0.5초 대기 후 새로고침
 
                         // 성공 메시지 표시
@@ -643,7 +633,6 @@ class HomeFragment : Fragment() {
                         // 회의 목록 새로고침 (대기 시간 증가)
                         Handler(Looper.getMainLooper()).postDelayed({
                             viewModel.loadNearestMeeting()
-                            Log.d("HomeFragment", "NotificationViewModel을 통한 회의 목록 새로고침 완료")
                         }, 1500) // 1.5초로 증가
                     }
                     NotificationType.ROOM_INVITE -> {

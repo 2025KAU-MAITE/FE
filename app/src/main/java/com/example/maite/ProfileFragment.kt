@@ -247,121 +247,53 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
             .commit()
     }
 
-    // 프로필 이미지 업데이트 콜백
+    // 프로필 이미지 업데이트 콜백 (성능 최적화)
     override fun onProfileImageUpdated() {
-        try {
-            val preferencesUtil = PreferencesUtil(requireContext())
-            
-            // 1. Glide 캐시 완전히 초기화 (매우 중요 - 이미지 수정 후 반드시 새로고침되도록)
-            try {
-                // 메인 스레드에서 메모리 캐시 초기화
-                Glide.get(requireContext()).clearMemory()
-                
-                // 백그라운드 스레드에서 디스크 캐시 초기화 
-                Thread {
-                    try {
-                        Glide.get(requireContext()).clearDiskCache()
-                    } catch (e: Exception) {
-                        // 디스크 캐시 초기화 실패 시 무시
-                    }
-                }.start()
-            } catch (e: Exception) {
-                // Glide 캐시 초기화 실패 시 무시
-            }
-            
-            // 2. 임시 URI 확인 및 처리 (바텀시트에서 임시 저장한 값)
-            val tempImageUri = preferencesUtil.getString("user_profile_image_uri_temp")
-            if (!tempImageUri.isNullOrEmpty()) {
-                // 임시 URI를 정식 URI로 복사 (PreferencesUtil 메소드 사용)
-                preferencesUtil.saveProfileImageUri(tempImageUri)
-                preferencesUtil.removeString("user_profile_image_uri_temp")
-            }
-            
-            // 3. 현재 URI 또는 URL 상태 확인
-            val currentUri = preferencesUtil.getProfileImageUri()
-            val currentUrl = preferencesUtil.getProfileImageUrl()
-            
-            // 4. URI로 이미지 로드 시도
-            if (!currentUri.isNullOrEmpty()) {
-                try {
-                    val uri = Uri.parse(currentUri)
-                    
-                    // 캐시 사용 안 함 + 서명 추가로 강제 새로고침
-                    Glide.with(this)
-                        .load(uri)
-                        .circleCrop()
-                        .skipMemoryCache(true)
-                        .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                        .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis()))
-                        .placeholder(R.drawable.img_profile_default)
-                        .error(R.drawable.img_profile_default)
-                        .into(binding.ivProfile)
-                    
-                    return
-                } catch (e: Exception) {
-                    // URI 이미지 로드 실패 시 차선책으로 URL 시도
-                }
-            }
-            
-            // 5. URL로 이미지 로드 시도
-            if (!currentUrl.isNullOrEmpty()) {
-                try {
-                    // 캐시 사용 안 함 + 서명 추가로 강제 새로고침
-                    Glide.with(this)
-                        .load(currentUrl)
-                        .circleCrop()
-                        .skipMemoryCache(true)
-                        .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                        .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis()))
-                        .placeholder(R.drawable.img_profile_default)
-                        .error(R.drawable.img_profile_default)
-                        .into(binding.ivProfile)
-                        
-                    return
-                } catch (e: Exception) {
-                    // URL 이미지 로드 실패 시 서버에서 새로고침
-                }
-            }
-            
-            // 6. 모든 시도 실패 시 서버에서 정보 새로고침
-            val userId = preferencesUtil.getUserId()
-            if (userId != null && userId != 0L) {
-                viewModel.loadUserInfo(userId)
-            } else {
-                // 테스트 사용자 ID로 정보 불러오기
-                val testUserId = 1L
-                viewModel.loadUserInfo(testUserId)
-            }
-        } catch (e: Exception) {
-            // 프로필 이미지 업데이트 실패 시 무시
+    try {
+    val preferencesUtil = PreferencesUtil(requireContext())
+    
+    // 임시 URI 확인 및 처리
+    val tempImageUri = preferencesUtil.getString("user_profile_image_uri_temp")
+    if (!tempImageUri.isNullOrEmpty()) {
+    preferencesUtil.saveProfileImageUri(tempImageUri)
+    preferencesUtil.removeString("user_profile_image_uri_temp")
+    }
+    
+    // 현재 URI 또는 URL로 이미지 로드
+    val currentUri = preferencesUtil.getProfileImageUri()
+    val currentUrl = preferencesUtil.getProfileImageUrl()
+    
+    if (!currentUri.isNullOrEmpty()) {
+    try {
+            val uri = Uri.parse(currentUri)
+        Glide.with(this)
+                .load(uri)
+                .circleCrop()
+                .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis()))
+                .placeholder(R.drawable.img_profile_default)
+                .error(R.drawable.img_profile_default)
+            .into(binding.ivProfile)
+        return
+    } catch (e: Exception) {
+            // URI 로드 실패 시 URL 시도
         }
+    }
+    
+    if (!currentUrl.isNullOrEmpty()) {
+        loadProfileImageFromUrl(currentUrl)
+    }
+    } catch (e: Exception) {
+    // 프로필 이미지 업데이트 실패 시 무시
+    }
     }
 
     override fun onResume() {
         super.onResume()
         
-        // Glide 캐시 초기화 (중요 - 프로필 이미지 재로드 위해)
-        try {
-            // 메모리 캐시는 메인 스레드에서 처리
-            Glide.get(requireContext()).clearMemory()
-            
-            // 디스크 캐시는 백그라운드 스레드에서 처리
-            Thread {
-                try {
-                    Glide.get(requireContext()).clearDiskCache()
-                } catch (e: Exception) {
-                    // 디스크 캐시 지우기 실패 시 무시
-                }
-            }.start()
-        } catch (e: Exception) {
-            // Glide 캐시 지우기 실패 시 무시
-        }
-        
-        // 프로필 이미지 정보 가져오기
+        // 성능 최적화: 프로필 이미지만 간단하게 새로고침
         val preferencesUtil = PreferencesUtil(requireContext())
-        val userId = preferencesUtil.getUserId()
         
-        // 먼저 로컬 URI 확인 (최우선)
+        // 로컬 URI가 있으면 우선 사용
         val localImageUri = preferencesUtil.getProfileImageUri()
         if (!localImageUri.isNullOrEmpty()) {
             try {
@@ -369,40 +301,15 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                 Glide.with(this)
                     .load(uri)
                     .circleCrop()
-                    .skipMemoryCache(true)
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                    .signature(com.bumptech.glide.signature.ObjectKey(System.currentTimeMillis()))
                     .placeholder(R.drawable.img_profile_default)
                     .error(R.drawable.img_profile_default)
                     .into(binding.ivProfile)
-                
             } catch (e: Exception) {
-                // 로딩 실패 시 URL 사용 시도
-            }
-        } 
-        
-        // 로컬 URI가 없거나 로드 실패한 경우 URL 사용
-        val cachedImageUrl = preferencesUtil.getProfileImageUrl()
-        if (!cachedImageUrl.isNullOrEmpty()) {
-            loadProfileImageFromUrl(cachedImageUrl)
-        }
-        
-        // 서버에서 사용자 정보 업데이트
-        if (userId != null && userId != 0L) {
-            // 사용자 정보 로딩 (프로필 이미지 URL 포함)
-            viewModel.loadUserInfo(userId)
-            
-            // 시간표 로딩
-            lifecycleScope.launch {
-                viewModel.loadTimetableFromServer(userId)
-            }
-        } else {
-            // 테스트 사용자 ID를 사용
-            val testUserId = 1L
-            viewModel.loadUserInfo(testUserId)
-            
-            lifecycleScope.launch {
-                viewModel.loadTimetableFromServer(testUserId)
+                // 로딩 실패 시 캐시된 URL 사용
+                val cachedImageUrl = preferencesUtil.getProfileImageUrl()
+                if (!cachedImageUrl.isNullOrEmpty()) {
+                    loadProfileImageFromUrl(cachedImageUrl)
+                }
             }
         }
     }
