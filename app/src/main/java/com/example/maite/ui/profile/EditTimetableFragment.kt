@@ -2,7 +2,7 @@ package com.example.maite.ui.profile
 
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
+
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -281,11 +281,8 @@ class EditTimetableFragment : Fragment() {
                         Toast.makeText(requireContext(), event.message, Toast.LENGTH_LONG).show()
                     }
                     is ProfileViewModel.TimetableEvent.SyncCompleted -> {
-                        // 동기화 완료
-                        if (event.success) {
-                            Log.d("EditTimetableFragment", "서버 동기화 성공: ${event.message}")
-                        } else {
-                            Log.e("EditTimetableFragment", "서버 동기화 실패: ${event.message}")
+                        // 동기화 완료 (성능 최적화: 로그 제거)
+                        if (!event.success) {
                             Toast.makeText(requireContext(), "동기화 오류: ${event.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -621,8 +618,7 @@ class EditTimetableFragment : Fragment() {
                 )
             }
         } catch (e: Exception) {
-            Log.e("EditTimetableFragment", "동적 높이 조정 중 오류 발생", e)
-            // 기본 높이 사용
+            // 동적 높이 조정 실패 시 기본 높이 사용
             tableLayout.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
