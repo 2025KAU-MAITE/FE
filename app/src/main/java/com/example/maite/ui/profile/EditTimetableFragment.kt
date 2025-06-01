@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import androidx.core.widget.addTextChangedListener
 import com.example.maite.R
 import com.example.maite.databinding.FragmentEditTimetableBinding
 import com.example.maite.model.TimetableEntry
@@ -57,7 +58,7 @@ class EditTimetableFragment : Fragment() {
     private var selectedEndHour = 10
     private var selectedEndMinute = 0
 
-    // 선택된 시간표 항목 (취소 기능용)
+    // 선택된 시간표 항목 (삭제 기능용)
     private var selectedEntry: TimetableEntry? = null
 
     // 색상은 일관되게 유지
@@ -65,6 +66,9 @@ class EditTimetableFragment : Fragment() {
 
     // 임시 시간표 리스트 (서버 데이터와 동기화)
     private val temporaryEntries = mutableListOf<TimetableEntry>()
+
+    // 삭제 모드 플래그
+    private var isDeleteMode = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -98,11 +102,6 @@ class EditTimetableFragment : Fragment() {
         
         // 초기 상태에서는 변경사항 없음으로 설정
         hasChanges = false
-        // 저장 버튼은 항상 활성화 (실시간 방식에서는 닫기 기능)
-        binding.btnSave.isEnabled = true
-        binding.btnSave.text = "완료"
-        binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
-        binding.btnSave.alpha = 1.0f
 
         setupUI()
         setupTimeSelectionObservers()
@@ -110,6 +109,9 @@ class EditTimetableFragment : Fragment() {
 
         // 초기 시간표 미리보기 표시
         updateTimetablePreview()
+        
+        // 초기 버튼 상태 설정
+        updateSaveButtonState()
     }
 
     private fun setupUI() {
@@ -117,38 +119,42 @@ class EditTimetableFragment : Fragment() {
         binding.btnDaySelect.text = dayOptions[selectedDayIndex]
 
         // 요일 선택 버튼 클릭 리스너
-        binding.btnDaySelect.setOnClickListener {
+        binding.dayCardView.setOnClickListener {
             showDaySelectionDialog()
         }
 
         // 시작 시간 선택 버튼 - 바텀 시트 사용
-        binding.btnStartTime.setOnClickListener {
+        binding.time1CardView.setOnClickListener {
             showTimePickerBottomSheet(true)
         }
 
         // 종료 시간 선택 버튼 - 바텀 시트 사용
-        binding.btnEndTime.setOnClickListener {
+        binding.time2CardView.setOnClickListener {
             showTimePickerBottomSheet(false)
         }
 
         // 기본 시간 표시 업데이트
         updateTimeDisplay()
 
-        // 일정 추가 버튼 - 실시간 서버 저장
-        binding.btnAddEntry.setOnClickListener {
-            addTimetableEntryRealtime()
-        }
-
-        // 저장 버튼 - 단순 화면 전환
+        // 저장하기 버튼 클릭 리스너
         binding.btnSave.setOnClickListener {
-            // 변경사항이 있으면 메시지 표시 후 이전 화면으로 돌아가기
-            if (hasChanges) {
-                Toast.makeText(requireContext(), "변경사항이 저장되었습니다.", Toast.LENGTH_SHORT).show()
+            if (isDeleteMode && selectedEntry != null) {
+                // 삭제 모드일 때
+                viewModel.removeTimetableEntryFromServer(selectedEntry!!)
+                selectedEntry = null
+                isDeleteMode = false
+                updateSaveButtonState()
+            } else {
+                // 저장 모드일 때
+                if (areAllFieldsFilled()) {
+                    addTimetableEntryRealtime()
+                } else {
+                    Toast.makeText(requireContext(), "모든 필드를 입력해주세요.", Toast.LENGTH_SHORT).show()
+                }
             }
-            parentFragmentManager.popBackStack()
         }
 
-        // 초기화 버튼 - 실시간 서버 초기화
+        // 초기화 버튼 - 오른쪽 상단으로 이동
         binding.btnClear.setOnClickListener {
             showClearConfirmationDialogRealtime()
         }
@@ -159,7 +165,58 @@ class EditTimetableFragment : Fragment() {
             parentFragmentManager.popBackStack()
         }
 
+        // 텍스트 변경 리스너 추가
+        binding.etTitle.addTextChangedListener {
+            updateSaveButtonState()
+        }
+
+        binding.etLocation.addTextChangedListener {
+            updateSaveButtonState()
+        }
+
         // 초기 요일 선택은 생성자에서 이미 설정됨 (selectedDayIndex = 0)
+    }
+
+    // 입력 완성도 확인
+    private fun areAllFieldsFilled(): Boolean {
+        val title = binding.etTitle.text?.toString()?.trim() ?: ""
+        val location = binding.etLocation.text?.toString()?.trim() ?: ""
+        return title.isNotEmpty() && location.isNotEmpty()
+    }
+
+    // 저장하기 버튼 상태 업데이트 - 회의 제안 바텀시트 스타일로 변경
+    private fun updateSaveButtonState() {
+        val context = context ?: return
+        
+        if (isDeleteMode) {
+            // 삭제 모드
+            binding.btnText.text = "삭제하기"
+            binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.red_color))
+            binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
+            binding.btnSave.isEnabled = true
+            binding.btnSave.isClickable = true
+            binding.btnSave.alpha = 1.0f
+        } else {
+            // 저장 모드
+            binding.btnText.text = "저장하기"
+            val isValid = areAllFieldsFilled()
+            
+            if (isValid) {
+                // 활성화 상태
+                binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.mainColor))
+                binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.white))
+                binding.btnSave.isEnabled = true
+                binding.btnSave.isClickable = true
+                binding.btnSave.alpha = 1.0f
+            } else {
+                // 비활성화 상태
+                binding.btnBg.setColorFilter(ContextCompat.getColor(context, R.color.btn_inactive))
+                binding.btnText.setTextColor(ContextCompat.getColor(context, R.color.black))
+                binding.btnSave.isEnabled = false
+                binding.btnSave.isClickable = false
+                binding.btnSave.alpha = 0.5f
+            }
+        }
     }
 
     // TimeSelectionViewModel 관찰
@@ -200,12 +257,20 @@ class EditTimetableFragment : Fragment() {
                         Toast.makeText(requireContext(), "${event.entry.title} 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
                         // 시간표 UI 즉시 갱신
                         updateTimetableFromServer()
+                        // 삭제 모드 해제
+                        isDeleteMode = false
+                        selectedEntry = null
+                        updateSaveButtonState()
                     }
                     is ProfileViewModel.TimetableEvent.Cleared -> {
                         // 실시간 시간표 초기화 성공
                         Toast.makeText(requireContext(), "시간표가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
                         // 시간표 UI 즉시 갱신
                         updateTimetableFromServer()
+                        // 삭제 모드 해제
+                        isDeleteMode = false
+                        selectedEntry = null
+                        updateSaveButtonState()
                     }
                     is ProfileViewModel.TimetableEvent.Conflict -> {
                         // 일정 충돌 발생
@@ -273,23 +338,6 @@ class EditTimetableFragment : Fragment() {
         
         // 성공 메시지는 observeEvents에서 처리됨
         clearInputFields()
-    }
-
-    // 시간 충돌 여부 확인 (분 단위)
-    private fun isTimeConflict(
-        entryStart: Int,
-        entryEnd: Int,
-        existingStart: Int,
-        existingEnd: Int
-    ): Boolean {
-        return (
-                // 새 일정이 기존 일정과 겹치는지 확인
-                (entryStart < existingEnd && entryEnd > existingStart) ||
-                        // 기존 일정이 새 일정을 포함하는지 확인
-                        (existingStart <= entryStart && existingEnd >= entryEnd) ||
-                        // 새 일정이 기존 일정을 포함하는지 확인
-                        (entryStart <= existingStart && entryEnd >= existingEnd)
-                )
     }
 
     // 바텀 시트 방식 시간 선택
@@ -490,8 +538,19 @@ class EditTimetableFragment : Fragment() {
                         gravity = Gravity.CENTER
                         orientation = LinearLayout.VERTICAL  // 수직 방향으로 설정
 
-                        // 순수한 색상만 사용 - 테두리 제거
-                        setBackgroundColor(Color.parseColor(entry.colorHex))
+                        // 선택된 항목인지 확인해서 강조 표시
+                        val isSelected = selectedEntry == entry
+                        val backgroundColor = if (isSelected) {
+                            // 선택된 상태: 더 진한 색상
+                            val originalColor = Color.parseColor(entry.colorHex)
+                            Color.argb(255, 
+                                (Color.red(originalColor) * 0.8).toInt(),
+                                (Color.green(originalColor) * 0.8).toInt(), 
+                                (Color.blue(originalColor) * 0.8).toInt())
+                        } else {
+                            Color.parseColor(entry.colorHex)
+                        }
+                        setBackgroundColor(backgroundColor)
 
                         // 텍스트 표시 - 시작 시간에만 제목 표시, 끝 시간에 장소 표시 (시간 제거)
                         if (isStartHour) {
@@ -519,41 +578,26 @@ class EditTimetableFragment : Fragment() {
                             })
                         }
 
-                        // 선택 및 취소 가능하도록 설정
+                        // 선택 및 삭제 모드 전환
                         setOnClickListener {
-                            // 이전에 선택된 항목이 있으면 강조 해제
-                            selectedEntry?.let { prevEntry ->
-                                // 모든 셀을 찾아서 강조 해제
-                                val childCount = tableLayout.childCount
-                                for (i in 0 until childCount) {
-                                    val tableRow = tableLayout.getChildAt(i) as? TableRow
-                                    tableRow?.let { r ->
-                                        val cellIndex = prevEntry.dayOfWeek
-                                        if (cellIndex < r.childCount) {
-                                            // 셀이 일정에 해당하면 알파값 원복
-                                            val cell = r.getChildAt(cellIndex)
-                                            if (cell is LinearLayout && cell.background != null) {
-                                                cell.alpha = 0.85f
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            if (selectedEntry == entry) {
+                                // 이미 선택된 항목 클릭 시 선택 해제
+                                selectedEntry = null
+                                isDeleteMode = false
+                                Toast.makeText(context, "선택 해제됨", Toast.LENGTH_SHORT).show()
+                            } else {
+                                // 새 항목 선택
+                                selectedEntry = entry
+                                isDeleteMode = true
 
-                            // 새 항목 선택 및 강조
-                            selectedEntry = entry
-                            alpha = 1.0f
-                            Toast.makeText(context, "${entry.title} 선택됨", Toast.LENGTH_SHORT).show()
+                            }
+                            updateSaveButtonState()
+                            // 시간표 재갱신해서 선택 상태 반영
+                            updateTimetablePreview()
                         }
                         
-                        // 길게 누르면 삭제 기능 - 실시간 서버 삭제
-                        setOnLongClickListener {
-                            // 실시간 서버에서 삭제
-                            viewModel.removeTimetableEntryFromServer(entry)
-                            selectedEntry = null
-                            // 성공 메시지는 observeEvents에서 처리됨
-                            true
-                        }
+                        // 기본 알파값 설정
+                        alpha = if (isSelected) 1.0f else 0.85f
                     }
 
                     row.addView(cell)
@@ -633,6 +677,8 @@ class EditTimetableFragment : Fragment() {
                 // 로컬 색상 매핑 초기화
                 colorManager.clearColorMappings()
                 selectedEntry = null
+                isDeleteMode = false
+                updateSaveButtonState()
                 
                 // 성공 메시지는 observeEvents에서 처리됨
             }
@@ -654,25 +700,17 @@ class EditTimetableFragment : Fragment() {
                 val selectedDate = today.with(java.time.DayOfWeek.of(dayIndex))
                 timeSelectionViewModel.updateSelectedDate(selectedDate)
                 
+                updateSaveButtonState()
                 dialog.dismiss()
             }
             .setNegativeButton("취소", null)
             .show()
     }
-    
-    // 변경사항 플래그 설정 (실시간 방식에서는 저장 버튼 항상 활성화)
-    private fun setChangesFlag(hasChanges: Boolean) {
-        this.hasChanges = hasChanges
-        // 실시간 방식에서는 저장 버튼이 완료 기능이므로 항상 활성화
-        binding.btnSave.isEnabled = true
-        binding.btnSave.text = "완료"
-        binding.btnSave.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.mainColor))
-        binding.btnSave.alpha = 1.0f
-    }
 
     private fun clearInputFields() {
         binding.etTitle.setText("")
         binding.etLocation.setText("")
+        updateSaveButtonState()
     }
 
     override fun onDestroyView() {

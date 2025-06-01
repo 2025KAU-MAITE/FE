@@ -32,17 +32,34 @@
             app:layout_constraintTop_toTopOf="@id/btn_back"
             app:layout_constraintBottom_toBottomOf="@id/btn_back" />
 
-        <!-- 시간표 미리보기 (09~24시) -->
+        <!-- 초기화 버튼 - 오른쪽 상단으로 이동 -->
+        <TextView
+            android:id="@+id/btn_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:text="초기화"
+            android:textSize="16sp"
+            android:textColor="#FF5252"
+            android:textStyle="bold"
+            android:padding="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/btn_back"
+            app:layout_constraintBottom_toBottomOf="@id/btn_back" />
+
+        <!-- 시간표 미리보기 -->
+
+        <!-- 입력 영역 - 회의 제안 바텀시트 스타일 적용 -->
+
         <ScrollView
             android:id="@+id/scroll_timetable"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="330dp"
             android:layout_marginStart="8dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="8dp"
-            app:layout_constraintBottom_toTopOf="@+id/card_input"
+            android:layout_marginTop="24dp"
+            android:layout_marginEnd="4dp"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_header">
 
@@ -52,203 +69,272 @@
                 android:layout_height="wrap_content" />
         </ScrollView>
 
-        <!-- 입력 영역 -->
         <androidx.cardview.widget.CardView
             android:id="@+id/card_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="6dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="2dp"
-            app:layout_constraintBottom_toTopOf="@id/btn_layout_1"
+            app:layout_constraintBottom_toTopOf="@id/btn_save"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/scroll_timetable">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
+                android:layout_height="240dp"
+                android:padding="16dp">
 
-                <!-- 제목 입력 -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_title"
-                    android:layout_width="match_parent"
+                <!-- 제목 -->
+
+                <TextView
+                    android:id="@+id/tv_title_label"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:hint="제목">
+                    android:layout_marginTop="24dp"
+                    android:text="제목"
+                    android:textSize="16dp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
-                    <com.google.android.material.textfield.TextInputEditText
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/titleCardView"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_title_label"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/tv_title_label"
+                    app:layout_constraintTop_toTopOf="@+id/tv_title_label">
+
+                    <EditText
                         android:id="@+id/et_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="#EFEFF0"
+                        android:hint="제목을 입력하세요"
                         android:inputType="text"
-                        android:maxLines="1" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:maxLines="1"
+                        android:paddingStart="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="6dp"
+                        android:textColorHint="@color/black"
+                        android:textSize="16dp" />
+                </androidx.cardview.widget.CardView>
 
-                <!-- 장소 입력 -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_location"
-                    android:layout_width="match_parent"
+                <!-- 요일 -->
+                <TextView
+                    android:id="@+id/tv_day_label"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="장소">
+                    android:layout_marginTop="20dp"
+                    android:text="요일"
+                    android:textSize="16dp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/titleCardView" />
 
-                    <com.google.android.material.textfield.TextInputEditText
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/dayCardView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_day_label"
+                    app:layout_constraintStart_toEndOf="@+id/tv_day_label"
+                    app:layout_constraintTop_toTopOf="@+id/tv_day_label">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#EFEFF0">
+
+                        <TextView
+                            android:id="@+id/btn_day_select"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginBottom="6dp"
+                            android:text="월요일"
+                            android:textSize="16dp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- 시간 -->
+                <TextView
+                    android:id="@+id/tv_time_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="시간"
+                    android:textSize="16dp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/tv_day_label" />
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/time1CardView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_time_label"
+                    app:layout_constraintStart_toEndOf="@+id/tv_time_label"
+                    app:layout_constraintTop_toTopOf="@+id/tv_time_label">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#EFEFF0">
+
+                        <TextView
+                            android:id="@+id/btn_start_time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginBottom="6dp"
+                            android:text="09:00"
+                            android:textSize="16dp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.cardview.widget.CardView>
+
+                <TextView
+                    android:id="@+id/tv_time_separator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="~"
+                    android:textSize="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/time1CardView"
+                    app:layout_constraintStart_toEndOf="@+id/time1CardView"
+                    app:layout_constraintTop_toTopOf="@+id/time1CardView" />
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/time2CardView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_time_separator"
+                    app:layout_constraintStart_toEndOf="@+id/tv_time_separator"
+                    app:layout_constraintTop_toTopOf="@+id/tv_time_separator">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#EFEFF0">
+
+                        <TextView
+                            android:id="@+id/btn_end_time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginBottom="6dp"
+                            android:text="10:00"
+                            android:textSize="16dp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- 장소 -->
+
+                <TextView
+                    android:id="@+id/tv_location_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
+                    android:text="장소"
+                    android:textSize="16dp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/tv_time_label" />
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/locationCardView"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_location_label"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/tv_location_label"
+                    app:layout_constraintTop_toTopOf="@+id/tv_location_label">
+
+                    <EditText
                         android:id="@+id/et_location"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="#EFEFF0"
+                        android:hint="장소를 입력하세요"
                         android:inputType="text"
-                        android:maxLines="1" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:maxLines="1"
+                        android:paddingStart="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="6dp"
+                        android:textColorHint="@color/black"
+                        android:textSize="16dp" />
+                </androidx.cardview.widget.CardView>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <!-- 요일 선택 -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tv_day_label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="요일"
-                            android:textColor="#333333"
-                            android:textStyle="bold" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_day_select"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:text="월요일"
-                            android:textColor="@color/mainColor"
-                            android:textSize="12sp"
-                            app:cornerRadius="4dp"
-                            app:strokeColor="@color/mainColor" />
-                    </LinearLayout>
-
-                    <!-- 시간 선택 -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tv_time_label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="시간"
-                            android:textColor="#333333"
-                            android:textStyle="bold" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:orientation="horizontal">
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_start_time"
-                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="48dp"
-                                android:layout_weight="1"
-                                android:text="09:00"
-                                android:textColor="@color/mainColor"
-                                android:textSize="12sp"
-                                app:strokeColor="@color/mainColor" />
-
-                            <TextView
-                                android:id="@+id/tv_time_separator"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="center_vertical"
-                                android:layout_marginStart="4dp"
-                                android:layout_marginEnd="4dp"
-                                android:text="~"
-                                android:textColor="#333333"
-                                android:textSize="12sp" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_end_time"
-                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="48dp"
-                                android:layout_weight="1"
-                                android:text="10:00"
-                                android:textColor="@color/mainColor"
-                                android:textSize="12sp"
-                                app:strokeColor="@color/mainColor" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- 버튼 그룹 1 (초기화, 추가) -->
-        <LinearLayout
-            android:id="@+id/btn_layout_1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="8dp"
-            app:layout_constraintBottom_toTopOf="@id/btn_save"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_clear"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_margin="4dp"
-                android:layout_weight="1"
-                android:text="초기화"
-                android:textSize="13sp"
-                android:textColor="#FF5252"
-                app:strokeColor="#FF5252" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_add_entry"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_margin="4dp"
-                android:layout_weight="1"
-                android:text="추가"
-                android:textSize="13sp"
-                android:textColor="@color/white"
-                android:backgroundTint="@color/mainColor" />
-        </LinearLayout>
-
-        <!-- 저장 버튼 -->
-        <com.google.android.material.button.MaterialButton
+        <!-- 저장하기 버튼 - 회의 제안 바텀시트와 동일한 스타일로 변경 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/btn_save"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
-            android:text="저장"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/mainColor"
-            app:cornerRadius="28dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <ImageView
+                android:id="@+id/btnBg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/btn_bottom" />
+
+            <TextView
+                android:id="@+id/btnText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="저장하기"
+                android:textColor="@color/white"
+                android:textSize="16dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="@+id/btnBg"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/btnBg" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
