@@ -22,12 +22,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.signature.ObjectKey // Added for Glide signature
 import com.example.maite.databinding.FragmentListDetailBinding
 import com.example.maite.model.InviteUserRequest
 import com.example.maite.model.MaiteListItem
 import com.example.maite.model.MeetingDataManager
 // Assuming MeetingResponse is defined in your model package and has a meetingId field
 import com.example.maite.model.MeetingResponse
+// Assuming UserResult is defined for the searchUsers API response
+// e.g., in UserResponse.kt or a similar model file
+import com.example.maite.UserResult // Make sure this import is correct
 import com.example.maite.viewmodel.InviteListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,7 +63,7 @@ class ListDetailFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentListDetailBinding.inflate(inflater, container, false)
-        apiService = MaiteRetrofitClient.getInstance(requireContext())
+        apiService = MaiteRetrofitClient.getInstance(requireContext()) // Ensure apiService is initialized
         meetingDataManager = MeetingDataManager(requireContext())
         return binding.root
     }
@@ -80,7 +84,7 @@ class ListDetailFragment : Fragment() {
         participantEmails = maiteListItem?.participantEmails ?: emptyList()
         Log.d("ListDetailFragment", "참가자 이메일 목록: $participantEmails")
 
-        updateParticipantProfiles()
+        updateParticipantProfiles() // Initial call
 
         binding.backBtn.setOnClickListener {
             parentFragmentManager.popBackStack()
@@ -116,9 +120,9 @@ class ListDetailFragment : Fragment() {
                 Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
 
-            participantEmails = selectedEmails
-            updateParticipantProfiles()
-            loadTimetableData()
+            participantEmails = ArrayList(selectedEmails) // Ensure it's a new list if needed for observers
+            updateParticipantProfiles() // Update profiles after selection
+            loadTimetableData() // Reload timetable with new participants
         }
 
         binding.timetableLayout.setOnClickListener {
@@ -216,24 +220,21 @@ class ListDetailFragment : Fragment() {
                     binding.meetPlace.text = latestPastMeeting.place
                     binding.cardView3.visibility = View.VISIBLE
 
-                    // Click listener for cardView3
                     binding.cardView3.setOnClickListener {
-                        // Ensure MeetingResponse has meetingId. Let's assume it's non-null for simplicity.
-                        // If meetingId can be null or absent, add appropriate checks.
                         val meetingId = latestPastMeeting.meetingId
                         val meetDetailFragment = MeetDetailFragment.newInstance(meetingId)
                         parentFragmentManager.beginTransaction()
-                            .replace(R.id.main_frm, meetDetailFragment) // Make sure R.id.main_frm is correct
+                            .replace(R.id.main_frm, meetDetailFragment)
                             .addToBackStack(null)
                             .commit()
                     }
                 } else {
                     binding.cardView3.visibility = View.GONE
-                    binding.cardView3.setOnClickListener(null) // Remove listener
+                    binding.cardView3.setOnClickListener(null)
                 }
             } else {
                 binding.cardView3.visibility = View.GONE
-                binding.cardView3.setOnClickListener(null) // Remove listener
+                binding.cardView3.setOnClickListener(null)
             }
 
             // 가장 가까운 미래 회의 (cardView2)
@@ -267,7 +268,7 @@ class ListDetailFragment : Fragment() {
                             binding.statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.black))
                             binding.statusText.text = "거절됨"
                         }
-                        else -> { // PENDING or other
+                        else -> {
                             binding.acceptBtn.visibility = View.VISIBLE
                             binding.rejectBtn.visibility = View.VISIBLE
                             binding.status.visibility = View.GONE
@@ -276,25 +277,22 @@ class ListDetailFragment : Fragment() {
                         }
                     }
                     binding.cardView2.visibility = View.VISIBLE
-
-                    // Click listener for cardView2
                     binding.cardView2.setOnClickListener {
-                        // Ensure MeetingResponse has meetingId.
                         val meetingId = earliestFutureMeeting.meetingId
                         val meetDetailFragment = MeetDetailFragment.newInstance(meetingId)
                         parentFragmentManager.beginTransaction()
-                            .replace(R.id.main_frm, meetDetailFragment) // Make sure R.id.main_frm is correct
+                            .replace(R.id.main_frm, meetDetailFragment)
                             .addToBackStack(null)
                             .commit()
                     }
 
                 } else {
                     binding.cardView2.visibility = View.GONE
-                    binding.cardView2.setOnClickListener(null) // Remove listener
+                    binding.cardView2.setOnClickListener(null)
                 }
             } else {
                 binding.cardView2.visibility = View.GONE
-                binding.cardView2.setOnClickListener(null) // Remove listener
+                binding.cardView2.setOnClickListener(null)
             }
         } catch (e: Exception) {
             Log.e("ListDetailFragment", "회의 데이터 UI 업데이트 중 오류", e)
@@ -442,33 +440,69 @@ class ListDetailFragment : Fragment() {
 
     private fun updateParticipantProfiles() {
         val participantsLayout = binding.invitedUsersLayout
+        // Remove only ImageViews that are not the addBtn
         val childrenToRemove = mutableListOf<View>()
         for (i in 0 until participantsLayout.childCount) {
             val child = participantsLayout.getChildAt(i)
-            if (child is ImageView && child.id != R.id.addBtn) {
+            // Check if the child is an ImageView and NOT the addBtn (which might be an ImageButton or ImageView with a specific ID)
+            if (child is ImageView && child.id != R.id.addBtn) { // Assuming addBtn has this ID if it's an ImageView too
                 childrenToRemove.add(child)
             }
         }
         childrenToRemove.forEach { participantsLayout.removeView(it) }
 
         val imageSize = resources.getDimensionPixelSize(R.dimen.invited_profile_img_size)
-        val imageMarginEnd = (8 * resources.displayMetrics.density).toInt() // 8dp margin
+        val imageMarginEnd = (8 * resources.displayMetrics.density).toInt()
 
         for ((index, email) in participantEmails.withIndex()) {
             val imageView = ImageView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(imageSize, imageSize).apply { marginEnd = imageMarginEnd }
                 scaleType = ImageView.ScaleType.CENTER_CROP
-                tag = email
+                tag = email // Store email in tag for potential future use
                 setOnClickListener { Toast.makeText(requireContext(), "참가자: $email", Toast.LENGTH_SHORT).show() }
             }
-            Glide.with(requireContext())
-                .load(R.drawable.img_profile_default)
-                .apply(RequestOptions.circleCropTransform())
-                .into(imageView)
-            participantsLayout.addView(imageView, index)
+            // Add the ImageView to the layout first, so it's there while loading
+            participantsLayout.addView(imageView, index) // Add before the addBtn
+
+            // Launch a coroutine for each image to load it
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val response = withContext(Dispatchers.IO) {
+                        apiService.searchUsers(email) // Assumes this API endpoint exists and returns UserResponse
+                    }
+                    if (response.isSuccessful && response.body()?.isSuccess == true) {
+                        val userList: List<UserResult>? = response.body()?.result
+                        val userInfo: UserResult? = userList?.firstOrNull { it.email == email } ?: userList?.firstOrNull()
+                        val profileImageUrl = userInfo?.profileImageUrl
+
+                        if (!profileImageUrl.isNullOrBlank()) {
+                            Glide.with(this@ListDetailFragment) // Use fragment's context
+                                .load(profileImageUrl)
+                                .apply(RequestOptions.circleCropTransform())
+                                .skipMemoryCache(true)
+                                .signature(ObjectKey(System.currentTimeMillis().toString()))
+                                .placeholder(R.drawable.img_profile_default)
+                                .error(R.drawable.img_profile_default)
+                                .into(imageView)
+                        } else {
+                            imageView.setImageResource(R.drawable.img_profile_default)
+                        }
+                    } else {
+                        imageView.setImageResource(R.drawable.img_profile_default)
+                        Log.e("ListDetailFragment", "Failed to fetch profile for $email: ${response.code()} - ${response.message()}")
+                    }
+                } catch (e: Exception) {
+                    imageView.setImageResource(R.drawable.img_profile_default)
+                    Log.e("ListDetailFragment", "Exception loading profile for $email", e)
+                }
+            }
         }
+        // Ensure the add button is at the end if it's part of this layout and managed separately
+        // Or adjust the loop/add logic if addBtn is always the last child.
+        // For now, assuming addBtn is handled separately or is not an ImageView being cleared.
         binding.invitedUsersScrollView.post { binding.invitedUsersScrollView.fullScroll(View.FOCUS_RIGHT) }
     }
+
 
     private fun createTimetable() {
         val tableLayout = binding.root.findViewById<TableLayout>(R.id.timetableLayout)
