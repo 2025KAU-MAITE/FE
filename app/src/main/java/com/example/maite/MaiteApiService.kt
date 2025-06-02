@@ -2,6 +2,7 @@ package com.example.maite
 
 import com.example.maite.model.ApiResponse
 import com.example.maite.model.ChatListApiResponse
+import com.example.maite.model.ClovaSummaryResponse
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
@@ -22,6 +23,14 @@ interface MaiteApiService {
         @Query("topic") topic: String,
         @Part file: MultipartBody.Part
     ): Response<ResponseBody>
+
+    @Multipart
+    @POST("api/AI/summary-clova")
+    suspend fun uploadAudioSummaryClova(
+        @Query("topic") topic: String,
+        @Query("meeting") meetingId: Long,
+        @Part file: MultipartBody.Part
+    ): Response<ClovaSummaryResponse>
 
     @GET("rooms")
     suspend fun getMyRooms(): Response<List<RoomItem>>
