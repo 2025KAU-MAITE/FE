@@ -1,14 +1,14 @@
-package com.example.maite.view
+package com.example.maite.view // 실제 패키지명으로
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat // ContextCompat import 추가
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.maite.R
-import com.example.maite.databinding.ItemPropMeetBinding
+import com.example.maite.R // R 클래스 import 추가
+import com.example.maite.databinding.ItemPropMeetBinding // 실제 바인딩 클래스명으로
 import com.example.maite.model.PropMeetItem
 
 interface PropMeetClickListener {
@@ -16,67 +16,69 @@ interface PropMeetClickListener {
     fun onRejectClick(item: PropMeetItem)
 }
 
-class PropMeetAdapter(private val clickListener: PropMeetClickListener) :
-    ListAdapter<PropMeetItem, PropMeetAdapter.PropMeetViewHolder>(DiffCallback) {
+class PropMeetAdapter(
+    private val buttonClickListener: PropMeetClickListener, // 수락/거절 버튼 리스너
+    private val itemClickListener: (PropMeetItem) -> Unit // 아이템 전체 클릭 리스너
+) : ListAdapter<PropMeetItem, PropMeetAdapter.ViewHolder>(DiffCallback) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PropMeetViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemPropMeetBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return PropMeetViewHolder(binding, clickListener)
+        return ViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: PropMeetViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
-        holder.bind(item)
+        holder.bind(item, buttonClickListener, itemClickListener)
     }
 
-    class PropMeetViewHolder(
-        private val binding: ItemPropMeetBinding,
-        private val clickListener: PropMeetClickListener
-    ) : RecyclerView.ViewHolder(binding.root) {
-
-        fun bind(item: PropMeetItem) {
+    class ViewHolder(private val binding: ItemPropMeetBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(
+            item: PropMeetItem,
+            buttonClickListener: PropMeetClickListener,
+            itemClickListener: (PropMeetItem) -> Unit
+        ) {
             binding.propTitle.text = item.title
             binding.propDate.text = item.date
-            binding.propTime.text = item.time
-            binding.propPlace.text = item.place
+            binding.propTime.text = item.time // propTime 바인딩 추가 (XML에 해당 ID가 있다고 가정)
+            binding.propPlace.text = item.place // propPlace 바인딩 추가 (XML에 해당 ID가 있다고 가정)
 
-            // acceptance 상태에 따른 UI 처리 추가
-            when (item.acceptance.uppercase()) {
+
+            // 아이템 전체 뷰에 대한 클릭 리스너 설정
+            binding.root.setOnClickListener {
+                itemClickListener(item)
+            }
+
+            // acceptance 상태에 따른 UI 처리 (ListDetailFragment와 동일하게)
+            val acceptanceStatus = item.acceptance?.uppercase() ?: "PENDING" // Null-safe uppercase
+
+            when (acceptanceStatus) {
                 "ACCEPTED" -> {
-                    // 수락된 회의: 수락/거절 버튼 숨김, 상태 표시
                     binding.acceptBtn.visibility = View.GONE
                     binding.rejectBtn.visibility = View.GONE
-
-                    // 상태 카드 표시
                     binding.status.visibility = View.VISIBLE
-                    binding.statusBackground.setBackgroundResource(R.color.mainColor)
+                    binding.statusBackground.setBackgroundResource(R.color.mainColor) // mainColor가 colors.xml에 정의되어 있어야 함
                     binding.statusText.setTextColor(ContextCompat.getColor(binding.root.context, R.color.white))
                     binding.statusText.text = "수락됨"
                 }
                 "REJECTED" -> {
-                    // 거절된 회의: 수락/거절 버튼 숨김, 상태 표시
                     binding.acceptBtn.visibility = View.GONE
                     binding.rejectBtn.visibility = View.GONE
-
-                    // 상태 카드 표시
                     binding.status.visibility = View.VISIBLE
-                    binding.statusBackground.setBackgroundResource(R.color.light_gray)
+                    binding.statusBackground.setBackgroundResource(R.color.light_gray) // light_gray가 colors.xml에 정의되어 있어야 함
                     binding.statusText.setTextColor(ContextCompat.getColor(binding.root.context, R.color.black))
                     binding.statusText.text = "거절됨"
                 }
-                else -> {
-                    // PENDING 또는 다른 상태: 수락/거절 버튼 표시, 상태 숨김
+                else -> { // "PENDING" 또는 기타 상태
                     binding.acceptBtn.visibility = View.VISIBLE
                     binding.rejectBtn.visibility = View.VISIBLE
                     binding.status.visibility = View.GONE
 
                     // 버튼 클릭 리스너 설정
                     binding.acceptBtn.setOnClickListener {
-                        clickListener.onAcceptClick(item)
+                        buttonClickListener.onAcceptClick(item)
                     }
-
                     binding.rejectBtn.setOnClickListener {
-                        clickListener.onRejectClick(item)
+                        buttonClickListener.onRejectClick(item)
                     }
                 }
             }
@@ -85,7 +87,7 @@ class PropMeetAdapter(private val clickListener: PropMeetClickListener) :
 
     companion object DiffCallback : DiffUtil.ItemCallback<PropMeetItem>() {
         override fun areItemsTheSame(oldItem: PropMeetItem, newItem: PropMeetItem): Boolean {
-            return oldItem.title == newItem.title && oldItem.date == newItem.date
+            return oldItem.meetingId == newItem.meetingId
         }
 
         override fun areContentsTheSame(oldItem: PropMeetItem, newItem: PropMeetItem): Boolean {
