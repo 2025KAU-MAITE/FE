@@ -16,8 +16,17 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.signature.ObjectKey // Added for signature
 import com.example.maite.databinding.FragmentMeetDetailBinding
 import com.example.maite.model.MeetingDetailResponse
+// UserResponse.kt is assumed to be in the same package or properly imported
+// For example, if UserResponse.kt is in com.example.maite.model:
+// import com.example.maite.model.UserResponse
+// import com.example.maite.model.UserResult
+// If UserResponse.kt is in com.example.maite:
+import com.example.maite.UserResult // Make sure UserResult is correctly imported based on its file location
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -198,91 +207,97 @@ class MeetDetailFragment : Fragment() {
 
             Log.d(TAG, "Updating participant images. Count: ${detail.participantEmails.size}")
 
-            // participantsLayout은 HorizontalScrollView 내의 LinearLayout 입니다.
-            // XML에 정적으로 정의된 @+id/profileImg 외에 동적으로 추가된 뷰들을 먼저 제거합니다.
-            while (participantsLayout.childCount > 1) { // @+id/profileImg (첫번째 자식) 외에 다른 것이 있다면 제거
+            while (participantsLayout.childCount > 1) {
                 participantsLayout.removeViewAt(participantsLayout.childCount - 1)
             }
 
             if (detail.participantEmails.isEmpty()) {
                 Log.d(TAG, "No participants found.")
-                profileImg.visibility = View.GONE // XML에 정의된 @+id/profileImg 숨기기
-                // 필요시 "참여자 없음" 텍스트를 participantsLayout에 추가할 수 있습니다.
-                // val noParticipantsTextView = TextView(requireContext()).apply { text = "참여자 없음" }
-                // participantsLayout.addView(noParticipantsTextView) // 이렇게 하면 profileImg 다음에 추가됨
+                profileImg.visibility = View.GONE
             } else {
                 Log.d(TAG, "Participants found: ${detail.participantEmails}")
-                profileImg.visibility = View.VISIBLE // XML에 정의된 @+id/profileImg 보이기
+                profileImg.visibility = View.VISIBLE
 
-                // 1. 첫 번째 참여자 데이터를 정적 @+id/profileImg 에 설정
                 val firstEmail = detail.participantEmails[0]
-                Log.d(TAG, "Setting first participant to static ImageView: $firstEmail")
-                try {
-                    // 테스트를 위해 안드로이드 시스템 기본 아이콘 사용
-                    profileImg.setImageResource(R.drawable.img_profile_default)
-                    // 만약 원래의 PNG나 Vector Drawable을 사용하려면 아래 주석 해제
-                    // profileImg.setImageResource(R.drawable.img_profile_dummy) // PNG 사용 시
-                    // profileImg.setImageResource(R.drawable.img_profile_default) // Vector Drawable 사용 시
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to set image resource for profileImg", e)
-                    profileImg.setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
-                }
-                profileImg.setOnClickListener {
-                    Toast.makeText(requireContext(), "참여자: $firstEmail", Toast.LENGTH_SHORT).show()
-                }
-                // 하드웨어 가속 비활성화 (HWUI 오류 시 테스트용)
-                // profileImg.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+                loadProfileImage(firstEmail, profileImg)
 
-
-                // 2. 나머지 참여자들을 동적으로 생성하여 participantsLayout에 추가 (profileImg 다음부터)
                 if (detail.participantEmails.size > 1) {
                     for (i in 1 until detail.participantEmails.size) {
                         val email = detail.participantEmails[i]
                         Log.d(TAG, "Adding dynamic ImageView for participant ${i + 1}: $email")
                         val imageView = ImageView(requireContext())
-
-                        // LayoutParams 설정 (XML의 profileImg와 유사하게)
-                        val imageSizeInPx = (30 * resources.displayMetrics.density).toInt() // 50dp
-                        val marginEndInPx = (8 * resources.displayMetrics.density).toInt()  // 8dp
-
-                        val layoutParams = LinearLayout.LayoutParams(imageSizeInPx, imageSizeInPx)
-                        // 모든 동적 이미지에 오른쪽 마진 적용 (ListDetailFragment의 profileImg처럼)
-                        layoutParams.marginEnd = marginEndInPx
-                        imageView.layoutParams = layoutParams
-
-                        try {
-                            // 테스트를 위해 안드로이드 시스템 기본 아이콘 사용
-                            imageView.setImageResource(R.drawable.img_profile_default)
-                            // 만약 원래의 PNG나 Vector Drawable을 사용하려면 아래 주석 해제
-                            // imageView.setImageResource(R.drawable.img_profile_dummy) // PNG 사용 시
-                            // imageView.setImageResource(R.drawable.img_profile_default) // Vector Drawable 사용 시
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to set image resource for dynamic ImageView", e)
-                            imageView.setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
+                        val imageSizeInPx = (30 * resources.displayMetrics.density).toInt()
+                        val marginEndInPx = (8 * resources.displayMetrics.density).toInt()
+                        val layoutParams = LinearLayout.LayoutParams(imageSizeInPx, imageSizeInPx).apply {
+                            this.marginEnd = marginEndInPx
                         }
-                        // 하드웨어 가속 비활성화 (HWUI 오류 시 테스트용)
-                        // imageView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+                        imageView.layoutParams = layoutParams
+                        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+
+                        loadProfileImage(email, imageView)
 
                         imageView.setOnClickListener {
                             Toast.makeText(requireContext(), "참여자: $email", Toast.LENGTH_SHORT).show()
                         }
-                        participantsLayout.addView(imageView) // profileImg 다음에 추가됨
+                        participantsLayout.addView(imageView)
                         Log.d(TAG, "Dynamic ImageView added for $email. Child count: ${participantsLayout.childCount}")
                     }
                 }
             }
-            participantsLayout.requestLayout() // 레이아웃 변경사항 즉시 반영 요청
+            participantsLayout.requestLayout()
 
-            // 회의록 요약 표시 로직
             if (!detail.textSum.isNullOrBlank()) {
                 showSummaryView(detail.textSum)
             } else if (!detail.recordText.isNullOrBlank()) {
                 showSummaryView(detail.recordText)
             } else {
-                showInitialViewMinutes() // 회의록 부분만 초기화
+                showInitialViewMinutes()
             }
         } ?: Log.e(TAG, "Binding is null in updateUiWithMeetingDetails, cannot update UI.")
     }
+
+    private fun loadProfileImage(email: String, imageView: ImageView) {
+        lifecycleScope.launch {
+            try {
+                // Attempt to get user info (which includes profileImageUrl) from API
+                val response = withContext(Dispatchers.IO) {
+                    apiService.searchUsers(email) // This should return Response<UserResponse>
+                }
+
+                if (response.isSuccessful && response.body()?.isSuccess == true) {
+                    val userList: List<UserResult>? = response.body()?.result
+                    val userInfo: UserResult? = userList?.firstOrNull { it.email == email }
+                        ?: userList?.firstOrNull() // Fallback to first if no exact email match
+
+                    val profileImageUrl = userInfo?.profileImageUrl
+
+                    if (!profileImageUrl.isNullOrBlank()) {
+                        Glide.with(this@MeetDetailFragment)
+                            .load(profileImageUrl)
+                            .apply(RequestOptions.circleCropTransform()) // Apply circle crop
+                            .skipMemoryCache(true) // Similar to ProfileFragment
+                            .signature(ObjectKey(System.currentTimeMillis().toString())) // Similar to ProfileFragment for cache busting
+                            .placeholder(R.drawable.img_profile_default)
+                            .error(R.drawable.img_profile_default)
+                            .into(imageView)
+                    } else {
+                        // URL is blank or user not found, set default image
+                        imageView.setImageResource(R.drawable.img_profile_default)
+                        Log.d(TAG, "Profile image URL is null or blank for $email (or user not found), using default.")
+                    }
+                } else {
+                    // API call failed or was not successful
+                    imageView.setImageResource(R.drawable.img_profile_default)
+                    Log.e(TAG, "Failed to fetch user details for $email or API error: ${response.code()} - ${response.message()}")
+                }
+            } catch (e: Exception) {
+                // Exception during the process (e.g., network error)
+                imageView.setImageResource(R.drawable.img_profile_default)
+                Log.e(TAG, "Exception loading profile image for $email: ${e.message}", e)
+            }
+        }
+    }
+
 
     private fun showAiButtonTooltip() {
         _binding?.aiButtonTooltip?.apply {
@@ -366,28 +381,20 @@ class MeetDetailFragment : Fragment() {
         }
     }
 
-    // 전체 화면 초기화 (회의 정보 로드 실패 시 등)
     private fun showInitialView() {
         _binding?.apply {
-            // 회의 정보 관련 UI 초기화
             meetTitle.text = "회의 정보 로드 실패"
             meetDate.text = ""
             meetTime.text = ""
             meetPlace.text = ""
-
-            // 참여자 정보 초기화
             profileImg.visibility = View.GONE
             while (participantsLayout.childCount > 1) {
                 participantsLayout.removeViewAt(participantsLayout.childCount - 1)
             }
-            // 필요시 participantsLayout에 "참여자 정보 없음" 표시
-
-            // 회의록 부분 초기화
             showInitialViewMinutes()
         }
     }
 
-    // 회의록 부분만 초기화하는 함수
     private fun showInitialViewMinutes() {
         _binding?.apply {
             textViewMinutesPlaceholder.visibility = View.VISIBLE
@@ -423,7 +430,7 @@ class MeetDetailFragment : Fragment() {
         mediaRecorder = null
         aiDialog?.dismiss()
         aiDialog = null
-        _binding = null // 메모리 누수 방지를 위해 _binding을 null로 설정
+        _binding = null
     }
 
     companion object {

@@ -75,4 +75,7 @@ interface MaiteApiService {
     suspend fun getMeetingDetail(
         @Path("meetingId") meetingId: Long
     ): Response<MeetingDetailResponse>
+
+    @GET("api/mates/search")
+    suspend fun searchUsers(@Query("query") email: String): Response<UserResponse>
 }
