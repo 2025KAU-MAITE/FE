@@ -190,9 +190,22 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                 }
 
                 Log.d(TAG, "API 호출 시작 (코루틴 내부)")
-                val response: Response<ResponseBody> = withContext(Dispatchers.IO) {
-                    // apiService가 초기화되었으므로 안전하게 사용 가능
-                    apiService.uploadAudioSummary(finalTopic, filePart)
+                // 구독 상태 확인
+                val preferencesUtil = PreferencesUtil(requireContext())
+                val isSubscribed = preferencesUtil.isSubscribed()
+                
+                // 구독 상태에 따라 다른 API 호출
+                val response = withContext(Dispatchers.IO) {
+                    if (isSubscribed) {
+                        // 프리미엄 사용자는 Clova API 사용
+                        Log.d(TAG, "프리미엄 사용자: Clova API 호출")
+                        val meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
+                        apiService.uploadAudioSummaryClova(finalTopic, meetingId, filePart)
+                    } else {
+                        // 일반 사용자는 기본 API 사용
+                        Log.d(TAG, "일반 사용자: 기본 API 호출")
+                        apiService.uploadAudioSummary(finalTopic, filePart)
+                    }
                 }
 
                 if (!isActive) {
@@ -204,12 +217,12 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                 if (response.isSuccessful) {
                     uploadSuccess = true
                     // response.body()는 null일 수 있으므로 안전 호출 사용
-                    responseMessage = response.body()?.string()
+                    responseMessage = response.body()?.toString() ?: "업로드 성공"
                     Log.d(TAG, "업로드 성공: ${response.code()}")
                     // Fragment Result API 사용 시 key, bundle 확인
                     setFragmentResult(REQUEST_KEY_UPLOAD, bundleOf(BUNDLE_KEY_SUCCESS to true, BUNDLE_KEY_RESPONSE to responseMessage))
                 } else {
-                    val errorBody = response.errorBody()?.string() ?: "알 수 없는 오류"
+                    val errorBody = response.errorBody()?.toString() ?: "알 수 없는 오류"
                     Log.e(TAG, "업로드 실패: ${response.code()}, 오류: $errorBody")
                     errorMessage = "업로드 실패: ${response.message()}"
                 }
@@ -350,15 +363,17 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
     companion object {
         const val TAG = "UploadBottomSheet"
         private const val ARG_DEFAULT_TOPIC = "default_topic"
+        private const val ARG_MEETING_ID = "meeting_id"
         const val REQUEST_KEY_UPLOAD = "uploadResultRequest"
         const val BUNDLE_KEY_SUCCESS = "uploadSuccess"
         const val BUNDLE_KEY_RESPONSE = "uploadResponse"
 
-        fun newInstance(defaultTopic: String?): UploadBottomSheet {
+        fun newInstance(defaultTopic: String?, meetingId: Long = -1): UploadBottomSheet {
             val fragment = UploadBottomSheet()
             val args = Bundle()
             // defaultTopic이 null일 수도 있으므로 putString 사용
             args.putString(ARG_DEFAULT_TOPIC, defaultTopic)
+            args.putLong(ARG_MEETING_ID, meetingId)
             fragment.arguments = args
             return fragment
         }

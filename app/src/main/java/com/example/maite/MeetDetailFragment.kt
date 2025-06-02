@@ -12,10 +12,23 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-// import androidx.fragment.app.setFragmentResultListener // 이 import는 제거해도 됩니다.
+import androidx.lifecycle.lifecycleScope
 import com.example.maite.databinding.FragmentMeetDetailBinding
+import com.example.maite.model.ClovaSummaryResponse
 import com.example.maite.model.MeetListItem
+import com.google.android.material.tabs.TabLayout
 import java.io.IOException
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.create
+import okhttp3.ResponseBody
+import retrofit2.Response
 
 private const val ARG_MEET_ITEM = "meet_item"
 
@@ -37,6 +50,15 @@ class MeetDetailFragment : Fragment() {
 
     // AI 다이얼로그
     private var aiDialog: AiDialog? = null
+    
+    // API 서비스
+    private lateinit var apiService: MaiteApiService
+    
+    // 구독 상태
+    private var isSubscribed = false
+    
+    // 현재 선택된 탭 (0: 요약본, 1: 회의록)
+    private var currentTabPosition = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,12 +91,21 @@ class MeetDetailFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMeetDetailBinding.inflate(inflater, container, false)
+        
+        // API 서비스 초기화
+        apiService = MaiteRetrofitClient.getInstance(requireContext())
+        
         return _binding!!.root
     }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // 구독 상태 확인
+        val preferencesUtil = PreferencesUtil(requireContext())
+        isSubscribed = preferencesUtil.isSubscribed()
+        Log.d(TAG, "구독 상태: $isSubscribed")
 
         // AI 다이얼로그 초기화
         aiDialog = AiDialog(requireContext())
@@ -94,7 +125,14 @@ class MeetDetailFragment : Fragment() {
                 b.meetPlace.text = it.place
             }
 
-            showInitialView()
+            // 구독 상태에 따라 UI 초기화
+            if (isSubscribed) {
+                // 구독자는 탭 레이아웃 표시
+                setupSubscribedUI()
+            } else {
+                // 비구독자는 기본 UI 표시
+                showInitialView()
+            }
 
             b.backBtn.setOnClickListener {
                 parentFragmentManager.popBackStack()
@@ -119,7 +157,8 @@ class MeetDetailFragment : Fragment() {
             b.uploadBtn.setOnClickListener {
                 Log.d(TAG, "회의록 첨부하기 버튼 클릭됨 - BottomSheet 표시")
                 val currentTitle = b.meetTitle.text.toString()
-                val uploadBottomSheet = UploadBottomSheet.newInstance(currentTitle)
+                val meetingId = meetItem?.meetingId ?: -1L
+                val uploadBottomSheet = UploadBottomSheet.newInstance(currentTitle, meetingId)
                 // 여기서 childFragmentManager를 사용했으므로, 리스너도 childFragmentManager에 등록해야 함
                 uploadBottomSheet.show(childFragmentManager, UploadBottomSheet.TAG)
             }
@@ -145,7 +184,163 @@ class MeetDetailFragment : Fragment() {
                 hideAiButtonTooltip()
             }, 5000)
         } ?: Log.e(TAG, "onViewCreated에서 binding이 null입니다.")
+    }
 
+    // 구독자용 UI 설정
+    private fun setupSubscribedUI() {
+        binding?.apply {
+            // 기본 무료 사용자 UI 숨기기
+            textViewMinutesPlaceholder.visibility = View.GONE
+            recordBtn.visibility = View.GONE
+            uploadBtn.visibility = View.GONE
+            
+            // 탭 레이아웃 표시
+            tabLayout.visibility = View.VISIBLE
+            
+            // 탭 선택 리스너 설정
+            tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    tab?.let {
+                        currentTabPosition = it.position
+                        updateUiForTabSelection(currentTabPosition)
+                    }
+                }
+                
+                override fun onTabUnselected(tab: TabLayout.Tab?) {}
+                
+                override fun onTabReselected(tab: TabLayout.Tab?) {}
+            })
+            
+            // 초기 탭 상태에 따라 UI 업데이트
+            updateUiForTabSelection(currentTabPosition)
+            
+            // 첫번째 로드 시 클로바 API 호출
+            loadClovaMeetingData()
+        }
+    }
+    
+    // 일반 API 응답 처리
+    private fun handleStandardApiResponse(response: Response<ResponseBody>) {
+        if (response.isSuccessful) {
+            try {
+                val responseBody = response.body()?.string() ?: "응답 내용이 없습니다."
+                Log.d(TAG, "기본 API 응답: $responseBody")
+                
+                // 만약 일반 사용자 UI를 사용 중이라면 요약 뷰로 전환
+                showSummaryView(responseBody)
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "응답 처리 중 오류", e)
+                Toast.makeText(requireContext(), "응답 처리 중 오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Log.e(TAG, "API 호출 실패: ${response.code()}")
+            Toast.makeText(requireContext(), "API 호출 실패: ${response.message()}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Clova API 응답 처리
+    private fun handleClovaApiResponse(response: Response<ClovaSummaryResponse>) {
+        if (response.isSuccessful) {
+            val clovaResponse = response.body()
+            if (clovaResponse != null && clovaResponse.isSuccess) {
+                Log.d(TAG, "클로바 API 응답 성공: ${clovaResponse.result}")
+                
+                // 탭 포지션에 따라 적절한 뷰 업데이트
+                binding?.apply {
+                    summaryTextView.text = clovaResponse.result?.result ?: "요약 내용이 없습니다."
+                    // Transcript is in the ClovaSummaryResult object
+                    transcriptTextView.text = clovaResponse.result?.transcript ?: "회의록 내용이 없습니다."
+                    
+                    // 현재 선택된 탭에 맞는 뷰 표시
+                    updateUiForTabSelection(currentTabPosition)
+                }
+                
+            } else {
+                Log.e(TAG, "클로바 API 응답 내용 없음 또는 실패: ${clovaResponse?.message}")
+                showApiErrorMessage("응답 오류: ${clovaResponse?.message ?: "내용 없음"}")
+            }
+        } else {
+            Log.e(TAG, "클로바 API 호출 실패: ${response.code()}")
+            showApiErrorMessage("API 호출 실패: ${response.message()}")
+        }
+    }
+    
+    // 탭 선택에 따른 UI 업데이트
+    private fun updateUiForTabSelection(position: Int) {
+        binding?.apply {
+            when (position) {
+                0 -> { // 요약본 탭
+                    summaryScrollView.visibility = View.VISIBLE
+                    transcriptScrollView.visibility = View.GONE
+                }
+                1 -> { // 회의록 탭
+                    summaryScrollView.visibility = View.GONE
+                    transcriptScrollView.visibility = View.VISIBLE
+                }
+            }
+        }
+    }
+    
+    // Clova API 호출하여 회의록 및 요약본 가져오기
+    private fun loadClovaMeetingData() {
+        // meetItem에서 필요한 정보 추출
+        val meetingId = meetItem?.meetingId ?: 1L
+        val topic = meetItem?.title ?: "회의"
+        
+        lifecycleScope.launch {
+            try {
+                // 로딩 표시 
+                binding?.apply {
+                    summaryTextView.text = "요약본을 불러오는 중..."
+                    transcriptTextView.text = "회의록을 불러오는 중..."
+                }
+                
+                // 빈 파일 생성하여 API 요청 (Clova API는 파일이 필요함)
+                val emptyFile = File(requireContext().cacheDir, "empty_request_${System.currentTimeMillis()}.txt")
+                emptyFile.createNewFile()
+                
+                val requestFile = emptyFile.asRequestBody("text/plain".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", emptyFile.name, requestFile)
+                
+                // API 호출
+                val response = withContext(Dispatchers.IO) {
+                    apiService.uploadAudioSummaryClova(topic, meetingId, filePart)
+                }
+                
+                // 임시 파일 삭제
+                emptyFile.delete()
+                
+                if (response.isSuccessful) {
+                    val result = response.body()?.result
+                    if (result != null) {
+                        binding?.apply {
+                            summaryTextView.text = result.result ?: "요약 내용이 없습니다."
+                            transcriptTextView.text = result.transcript ?: "회의록 내용이 없습니다."
+                        }
+                        Log.d(TAG, "클로바 API 호출 성공: $result")
+                    } else {
+                        Log.e(TAG, "클로바 API 응답 내용 없음")
+                        showApiErrorMessage("응답 내용이 없습니다.")
+                    }
+                } else {
+                    Log.e(TAG, "클로바 API 호출 실패: ${response.code()}")
+                    showApiErrorMessage("API 호출 실패: ${response.message()}")
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "클로바 API 호출 중 오류", e)
+                showApiErrorMessage("오류: ${e.message}")
+            }
+        }
+    }
+    
+    private fun showApiErrorMessage(message: String) {
+        binding?.apply {
+            summaryTextView.text = "요약본을 불러올 수 없습니다. $message"
+            transcriptTextView.text = "회의록을 불러올 수 없습니다. $message"
+        }
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     private fun showAiButtonTooltip() {
@@ -241,6 +436,59 @@ class MeetDetailFragment : Fragment() {
     private fun processRecordedAudio(filePath: String?) {
         filePath?.let {
             Log.d(TAG, "녹음 파일 처리 중: $it")
+            
+            // 녹음 파일을 API에 업로드
+            uploadAudioFile(it)
+        }
+    }
+    
+    private fun uploadAudioFile(filePath: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(filePath)
+                if (!file.exists()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "파일이 존재하지 않습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                // 제목 가져오기
+                val topic = binding?.meetTitle?.text?.toString() ?: "무제"
+                
+                // 파일을 MultipartBody.Part로 변환
+                val requestFile = file.asRequestBody("audio/*".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
+                
+                // 구독 상태에 따라 다른 API 사용
+                val response = if (isSubscribed) {
+                    // 프리미엄 사용자는 Clova API 사용
+                    val meetingId = meetItem?.meetingId ?: -1L
+                    Log.d(TAG, "프리미엄 사용자: Clova API 호출 (topic: $topic, meetingId: $meetingId)")
+                    apiService.uploadAudioSummaryClova(topic, meetingId, filePart)
+                } else {
+                    // 일반 사용자는 기본 API 사용
+                    Log.d(TAG, "일반 사용자: 기본 API 호출 (topic: $topic)")
+                    apiService.uploadAudioSummary(topic, filePart)
+                }
+                
+                withContext(Dispatchers.Main) {
+                    if (isSubscribed) {                    // 프리미엄 사용자 응답 처리
+                    @Suppress("UNCHECKED_CAST")
+                    handleClovaApiResponse(response as Response<ClovaSummaryResponse>)
+                } else {
+                    // 일반 사용자 응답 처리
+                    @Suppress("UNCHECKED_CAST")
+                    handleStandardApiResponse(response as Response<ResponseBody>)
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "파일 업로드 중 오류 발생", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "음성 파일 업로드 중 오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
