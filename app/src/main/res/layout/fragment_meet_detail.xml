@@ -136,7 +136,7 @@
                 android:textSize="18dp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/meetPlace" />
+                app:layout_constraintTop_toBottomOf="@+id/textView23" />
 
             <TextView
                 android:id="@+id/meetDate"
@@ -145,7 +145,7 @@
                 android:layout_marginStart="16dp"
                 android:text="2025.03.02"
                 app:layout_constraintBottom_toBottomOf="@+id/textView21"
-                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintStart_toEndOf="@+id/textView21"
                 app:layout_constraintTop_toTopOf="@+id/textView21"
                 android:textSize="18dp"/>
 
@@ -156,19 +156,23 @@
                 android:layout_marginStart="16dp"
                 android:text="08:00 ~ 10:00"
                 app:layout_constraintBottom_toBottomOf="@+id/textView22"
-                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintStart_toEndOf="@+id/textView22"
                 app:layout_constraintTop_toTopOf="@+id/textView22"
                 android:textSize="18dp"/>
 
             <TextView
                 android:id="@+id/meetPlace"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
                 android:text="경기도 성남시 어쩌구 저쩌구"
-                app:layout_constraintStart_toEndOf="@+id/textView24"
+                android:textSize="18dp"
+                app:layout_constraintBottom_toBottomOf="@+id/textView23"
+                app:layout_constraintStart_toEndOf="@+id/textView23"
                 app:layout_constraintTop_toTopOf="@+id/textView23"
-                android:textSize="18dp"/>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0" />
 
             <ImageView
                 android:id="@+id/imageView10"
@@ -205,11 +209,13 @@
                     <com.google.android.material.tabs.TabLayout
                         android:id="@+id/tabLayout"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:tabSelectedTextColor="#4C7EED"
+                        android:layout_height="48dp"
+                        app:tabSelectedTextColor="#000000"
                         app:tabTextColor="#666666"
-                        app:tabIndicatorColor="#4C7EED"
-                        app:tabBackground="@color/mainColor_20"
+                        app:tabIndicatorColor="@android:color/transparent"
+                        app:tabRippleColor="@android:color/transparent"
+                        android:background="#FFFFFF"
+                        app:tabTextAppearance="@style/TabTextAppearance"
                         android:visibility="gone"
                         app:layout_constraintTop_toTopOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
@@ -241,7 +247,7 @@
                             android:id="@+id/summaryTextView"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="요약 내용이 여기에 표시됩니다."
+                            android:text="등록된 요약본이 없어요"
                             android:textSize="16sp" />
                     </ScrollView>
                     
@@ -260,7 +266,7 @@
                             android:id="@+id/transcriptTextView"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="회의록 내용이 여기에 표시됩니다."
+                            android:text="등록된 회의록이 없어요"
                             android:textSize="16sp" />
                     </ScrollView>
 
@@ -269,7 +275,7 @@
                         android:id="@+id/textViewMinutesPlaceholder"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="등록된 회의록이 없어요"
+                        android:text="등록된 요약본이 없어요"
                         android:layout_marginTop="16dp"
                         app:layout_constraintBottom_toTopOf="@+id/recordBtn"
                         app:layout_constraintEnd_toEndOf="parent"

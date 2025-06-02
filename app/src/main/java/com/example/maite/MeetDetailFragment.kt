@@ -189,13 +189,18 @@ class MeetDetailFragment : Fragment() {
     // 구독자용 UI 설정
     private fun setupSubscribedUI() {
         binding?.apply {
-            // 기본 무료 사용자 UI 숨기기
-            textViewMinutesPlaceholder.visibility = View.GONE
-            recordBtn.visibility = View.GONE
-            uploadBtn.visibility = View.GONE
+            // 무료 사용자 UI 유지 - 스크린샷처럼 기본 UI를 그대로 두고 탭만 추가
+            textViewMinutesPlaceholder.visibility = View.VISIBLE
+            recordBtn.visibility = View.VISIBLE
+            uploadBtn.visibility = View.VISIBLE
             
             // 탭 레이아웃 표시
             tabLayout.visibility = View.VISIBLE
+            
+            // 첫 번째 탭 선택 및 배경색 설정
+            val firstTab = tabLayout.getTabAt(0)
+            firstTab?.select()
+            firstTab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
             
             // 탭 선택 리스너 설정
             tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -203,10 +208,14 @@ class MeetDetailFragment : Fragment() {
                     tab?.let {
                         currentTabPosition = it.position
                         updateUiForTabSelection(currentTabPosition)
+                        // 탭 배경색 설정
+                        tab.view.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
                     }
                 }
                 
-                override fun onTabUnselected(tab: TabLayout.Tab?) {}
+                override fun onTabUnselected(tab: TabLayout.Tab?) {
+                    tab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
+                }
                 
                 override fun onTabReselected(tab: TabLayout.Tab?) {}
             })
@@ -271,10 +280,24 @@ class MeetDetailFragment : Fragment() {
         binding?.apply {
             when (position) {
                 0 -> { // 요약본 탭
+                    // 요약본 탭에서는 기본 UI(녹음, 첨부 버튼) 표시
+                    textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
+                    textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    recordBtn.visibility = View.VISIBLE
+                    uploadBtn.visibility = View.VISIBLE
+                    
+                    // 프리미엄 컨텐츠 영역 설정
                     summaryScrollView.visibility = View.VISIBLE
                     transcriptScrollView.visibility = View.GONE
                 }
                 1 -> { // 회의록 탭
+                    // 회의록 탭에서는 기본 UI(녹음, 첨부 버튼) 표시
+                    textViewMinutesPlaceholder.text = "등록된 회의록이 없어요"
+                    textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    recordBtn.visibility = View.VISIBLE
+                    uploadBtn.visibility = View.VISIBLE
+                    
+                    // 프리미엄 컨텐츠 영역 설정
                     summaryScrollView.visibility = View.GONE
                     transcriptScrollView.visibility = View.VISIBLE
                 }
@@ -539,10 +562,12 @@ class MeetDetailFragment : Fragment() {
         // requireActivity()를 사용하여 Activity의 runOnUiThread 호출
         requireActivity().runOnUiThread {
             binding?.apply {
-                textViewMinutesPlaceholder.visibility = View.GONE
-                recordBtn.visibility = View.GONE
-                uploadBtn.visibility = View.GONE
+                // 기존 UI 요소 유지 (녹음, 첨부 버튼)
+                textViewMinutesPlaceholder.visibility = View.VISIBLE
+                recordBtn.visibility = View.VISIBLE
+                uploadBtn.visibility = View.VISIBLE
 
+                // 요약 텍스트 표시
                 summerizedText.visibility = View.VISIBLE
                 summerizedText.text = summaryText
                 Log.d(TAG, "요약 뷰 표시됨 (on UI thread): $summaryText")
