@@ -44,16 +44,16 @@ class MeetListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        // 어댑터 초기화 (아이템 클릭 시 MeetDetailFragment로 전환)
         meetAdapter = MeetListAdapter { meetItem ->
-            // MeetDetailFragment로 전환하는 로직
-            val detailFragment = MeetDetailFragment.newInstance(meetItem)
+            val meetingIdToPass: Long = meetItem.meetingId
+
+            val detailFragment = MeetDetailFragment.newInstance(meetingIdToPass)
             parentFragmentManager.beginTransaction()
                 .replace(R.id.main_frm, detailFragment)
                 .addToBackStack(null)
                 .commit()
 
-            Log.d("MeetListFragment", "회의 아이템 클릭됨: ${meetItem.title}, ${meetItem.date}")
+            Log.d("MeetListFragment", "회의 아이템 클릭됨: ${meetItem.title}, ID: $meetingIdToPass")
         }
 
         binding.meetListRV.apply {

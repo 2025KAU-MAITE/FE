@@ -6,6 +6,7 @@ import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
 import com.example.maite.model.InviteUserRequest
+import com.example.maite.model.MeetingDetailResponse
 import com.example.maite.model.MeetingResponse
 import com.example.maite.model.MessageApiResponse
 import com.example.maite.model.ServerMateItem
@@ -69,4 +70,12 @@ interface MaiteApiService {
     suspend fun rejectMeetingInvite(
         @Path("meetingId") meetingId: Long
     ): Response<Void>
+
+    @GET("meetings/{meetingId}")
+    suspend fun getMeetingDetail(
+        @Path("meetingId") meetingId: Long
+    ): Response<MeetingDetailResponse>
+
+    @GET("api/mates/search")
+    suspend fun searchUsers(@Query("query") email: String): Response<UserResponse>
 }

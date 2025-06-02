@@ -2,4 +2,6 @@
     <dimen name="timetable_cell_height">30dp</dimen>
     <dimen name="invited_profile_img_size">50dp</dimen>
     <dimen name="invited_profile_img_margin_end">100dp</dimen>
+    <dimen name="participant_profile_image_size">25dp</dimen>
+    <dimen name="participant_profile_image_margin_end">4dp</dimen>
 </resources>
