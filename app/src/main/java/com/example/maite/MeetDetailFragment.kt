@@ -227,8 +227,8 @@ class MeetDetailFragment : Fragment() {
             // 초기 탭 상태에 따라 UI 업데이트
             updateUiForTabSelection(currentTabPosition)
             
-            // 첫번째 로드 시 클로바 API 호출
-            loadClovaMeetingData()
+            // 회의 상세 정보 로드
+            loadMeetingDetail()
         }
     }
     
@@ -340,6 +340,57 @@ class MeetDetailFragment : Fragment() {
                         textViewMinutesPlaceholder.visibility = View.VISIBLE
                     }
                 }
+            }
+        }
+    }
+    
+    // 회의 상세 정보 API 호출
+    private fun loadMeetingDetail() {
+        // meetItem에서 필요한 정보 추출
+        val meetingId = meetItem?.meetingId ?: 1L
+        
+        lifecycleScope.launch {
+            try {
+                // 로딩 표시 
+                binding?.apply {
+                    summaryTextView.text = "요약본을 불러오는 중..."
+                    transcriptTextView.text = "회의록을 불러오는 중..."
+                }
+                
+                // 회의 상세 API 호출
+                val response = withContext(Dispatchers.IO) {
+                    apiService.getMeetingDetail(meetingId)
+                }
+                
+                if (response.isSuccessful) {
+                    val meetingDetail = response.body()
+                    if (meetingDetail != null) {
+                        // record 필드 확인하여 내용이 있는지 검사
+                        val hasRecord = !meetingDetail.record.isNullOrBlank()
+                        val hasValidSummary = !meetingDetail.textSum.isNullOrBlank()
+                        val hasTranscript = !meetingDetail.recordText.isNullOrBlank()
+                        
+                        binding?.apply {
+                            // 요약본과 회의록 설정
+                            summaryTextView.text = meetingDetail.textSum ?: "요약 내용이 없습니다."
+                            transcriptTextView.text = meetingDetail.recordText ?: "회의록 내용이 없습니다."
+                            
+                            // 현재 선택된 탭에 맞는 뷰 표시
+                            updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
+                        }
+                        Log.d(TAG, "회의 상세 API 호출 성공: record=${hasRecord}, textSum=${hasValidSummary}, recordText=${hasTranscript}")
+                    } else {
+                        Log.e(TAG, "회의 상세 API 응답 내용 없음")
+                        showApiErrorMessage("응답 내용이 없습니다.")
+                    }
+                } else {
+                    Log.e(TAG, "회의 상세 API 호출 실패: ${response.code()}")
+                    showApiErrorMessage("API 호출 실패: ${response.message()}")
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "회의 상세 API 호출 중 오류", e)
+                showApiErrorMessage("오류: ${e.message}")
             }
         }
     }
@@ -543,13 +594,17 @@ class MeetDetailFragment : Fragment() {
                 }
                 
                 withContext(Dispatchers.Main) {
-                    if (isSubscribed) {                    // 프리미엄 사용자 응답 처리
-                    @Suppress("UNCHECKED_CAST")
-                    handleClovaApiResponse(response as Response<ClovaSummaryResponse>)
-                } else {
-                    // 일반 사용자 응답 처리
-                    @Suppress("UNCHECKED_CAST")
-                    handleStandardApiResponse(response as Response<ResponseBody>)
+                    if (isSubscribed) {
+                        // 프리미엄 사용자 응답 처리
+                        @Suppress("UNCHECKED_CAST")
+                        handleClovaApiResponse(response as Response<ClovaSummaryResponse>)
+                        
+                        // API 호출 성공 후 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
+                        loadMeetingDetail()
+                    } else {
+                        // 일반 사용자 응답 처리
+                        @Suppress("UNCHECKED_CAST")
+                        handleStandardApiResponse(response as Response<ResponseBody>)
                     }
                 }
                 

@@ -17,6 +17,11 @@ import retrofit2.http.*
 
 interface MaiteApiService {
 
+    @GET("/meetings/{meetingId}")
+    suspend fun getMeetingDetail(
+        @Path("meetingId") meetingId: Long
+    ): Response<MeetingDetailResponse>
+    
     @Multipart
     @POST("api/summary")
     suspend fun uploadAudioSummary(
