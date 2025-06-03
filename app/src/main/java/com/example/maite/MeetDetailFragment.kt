@@ -18,15 +18,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
-import com.bumptech.glide.signature.ObjectKey // Added for signature
+import com.bumptech.glide.signature.ObjectKey
 import com.example.maite.databinding.FragmentMeetDetailBinding
 import com.example.maite.model.MeetingDetailResponse
-// UserResponse.kt is assumed to be in the same package or properly imported
-// For example, if UserResponse.kt is in com.example.maite.model:
-// import com.example.maite.model.UserResponse
-// import com.example.maite.model.UserResult
-// If UserResponse.kt is in com.example.maite:
-import com.example.maite.UserResult // Make sure UserResult is correctly imported based on its file location
+import com.example.maite.UserResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,7 +38,7 @@ const val ARG_CURRENT_PLACE = "current_place"
 
 class MeetDetailFragment : Fragment() {
     private var _binding: FragmentMeetDetailBinding? = null
-    private val binding get() = _binding!! // onCreateView 이후 non-null 가정
+    private val binding get() = _binding!!
 
     private var meetingId: Long? = null
     private var meetingDetail: MeetingDetailResponse? = null
@@ -60,6 +55,7 @@ class MeetDetailFragment : Fragment() {
         arguments?.let {
             if (it.containsKey(ARG_MEETING_ID)) {
                 meetingId = it.getLong(ARG_MEETING_ID)
+                Log.d(TAG, "MeetDetailFragment 초기화: meetingId=$meetingId")
             }
         }
 
@@ -132,13 +128,26 @@ class MeetDetailFragment : Fragment() {
                 Toast.makeText(requireContext(), "녹음하기 기능 준비 중", Toast.LENGTH_SHORT).show()
             }
 
+            // uploadBtn 클릭 리스너 수정 - meetingId를 함께 전달
             b.uploadBtn.setOnClickListener {
                 val currentTitle = meetingDetail?.title ?: b.meetTitle.text.toString()
+                val currentMeetingId = meetingId
+
                 if (currentTitle.isBlank() && meetingDetail == null) {
                     Toast.makeText(requireContext(), "회의 제목을 불러오는 중입니다...", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
-                val uploadBottomSheet = UploadBottomSheet.newInstance(currentTitle)
+
+                if (currentMeetingId == null) {
+                    Toast.makeText(requireContext(), "회의 정보를 불러오는 중입니다...", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "uploadBtn 클릭 시 meetingId가 null")
+                    return@setOnClickListener
+                }
+
+                Log.d(TAG, "UploadBottomSheet 호출: title='$currentTitle', meetingId=$currentMeetingId")
+
+                // meetingId를 함께 전달하는 새로운 팩토리 메서드 사용
+                val uploadBottomSheet = UploadBottomSheet.newInstance(currentTitle, currentMeetingId)
                 uploadBottomSheet.show(childFragmentManager, UploadBottomSheet.TAG)
             }
 
@@ -161,12 +170,14 @@ class MeetDetailFragment : Fragment() {
     private fun loadMeetingDetails(id: Long) {
         lifecycleScope.launch {
             try {
+                Log.d(TAG, "회의 상세 정보 로드 시작: meetingId=$id")
                 val response = withContext(Dispatchers.IO) {
                     apiService.getMeetingDetail(id)
                 }
                 if (response.isSuccessful) {
                     meetingDetail = response.body()
                     meetingDetail?.let { detail ->
+                        Log.d(TAG, "회의 상세 정보 로드 성공: ${detail.title}")
                         updateUiWithMeetingDetails(detail)
                     } ?: run {
                         Log.e(TAG, "Meeting detail response body is null for ID: $id")
@@ -259,45 +270,40 @@ class MeetDetailFragment : Fragment() {
     private fun loadProfileImage(email: String, imageView: ImageView) {
         lifecycleScope.launch {
             try {
-                // Attempt to get user info (which includes profileImageUrl) from API
                 val response = withContext(Dispatchers.IO) {
-                    apiService.searchUsers(email) // This should return Response<UserResponse>
+                    apiService.searchUsers(email)
                 }
 
                 if (response.isSuccessful && response.body()?.isSuccess == true) {
                     val userList: List<UserResult>? = response.body()?.result
                     val userInfo: UserResult? = userList?.firstOrNull { it.email == email }
-                        ?: userList?.firstOrNull() // Fallback to first if no exact email match
+                        ?: userList?.firstOrNull()
 
                     val profileImageUrl = userInfo?.profileImageUrl
 
                     if (!profileImageUrl.isNullOrBlank()) {
                         Glide.with(this@MeetDetailFragment)
                             .load(profileImageUrl)
-                            .apply(RequestOptions.circleCropTransform()) // Apply circle crop
-                            .skipMemoryCache(true) // Similar to ProfileFragment
-                            .signature(ObjectKey(System.currentTimeMillis().toString())) // Similar to ProfileFragment for cache busting
+                            .apply(RequestOptions.circleCropTransform())
+                            .skipMemoryCache(true)
+                            .signature(ObjectKey(System.currentTimeMillis().toString()))
                             .placeholder(R.drawable.img_profile_default)
                             .error(R.drawable.img_profile_default)
                             .into(imageView)
                     } else {
-                        // URL is blank or user not found, set default image
                         imageView.setImageResource(R.drawable.img_profile_default)
                         Log.d(TAG, "Profile image URL is null or blank for $email (or user not found), using default.")
                     }
                 } else {
-                    // API call failed or was not successful
                     imageView.setImageResource(R.drawable.img_profile_default)
                     Log.e(TAG, "Failed to fetch user details for $email or API error: ${response.code()} - ${response.message()}")
                 }
             } catch (e: Exception) {
-                // Exception during the process (e.g., network error)
                 imageView.setImageResource(R.drawable.img_profile_default)
                 Log.e(TAG, "Exception loading profile image for $email: ${e.message}", e)
             }
         }
     }
-
 
     private fun showAiButtonTooltip() {
         _binding?.aiButtonTooltip?.apply {
