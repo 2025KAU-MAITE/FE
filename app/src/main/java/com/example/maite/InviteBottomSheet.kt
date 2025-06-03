@@ -80,7 +80,8 @@ class InviteBottomSheet : BottomSheetDialogFragment() {
                 selectionChanged = changed
                 updateButtonState(hasSelection, changed)
             },
-            isFromListDetail = isFromListDetail
+            isFromListDetail = isFromListDetail,
+            lifecycleOwner = viewLifecycleOwner // 라이프사이클 오너 전달 추가
         )
 
         // 사전 선택된 사용자 ID 목록 설정
