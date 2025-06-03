@@ -9,5 +9,6 @@ data class MeetListItem(
     val title: String,
     val date: String,
     val time: String,
+    val endTime: String,
     val place: String
 ) : Parcelable

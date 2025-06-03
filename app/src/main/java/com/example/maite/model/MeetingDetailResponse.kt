@@ -10,6 +10,7 @@ data class MeetingDetailResponse(
     val proposerName: String,
     val meetingDate: String,
     val meetingTime: String,
+    val meetingEndTime: String,
     val address: String,
     val participantEmails: List<String>,
     val record: String?,

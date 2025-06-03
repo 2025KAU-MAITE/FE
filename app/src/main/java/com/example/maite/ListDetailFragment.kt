@@ -216,7 +216,7 @@ class ListDetailFragment : Fragment() {
                 if (latestPastMeeting != null) {
                     binding.meetTitle.text = latestPastMeeting.title
                     binding.meetDate.text = formatDateForDisplay(latestPastMeeting.date)
-                    binding.meetTime.text = latestPastMeeting.time
+                    binding.meetTime.text = "${latestPastMeeting.time} - ${latestPastMeeting.endTime}"
                     binding.meetPlace.text = latestPastMeeting.place
                     binding.cardView3.visibility = View.VISIBLE
 
@@ -248,7 +248,7 @@ class ListDetailFragment : Fragment() {
                 if (earliestFutureMeeting != null) {
                     binding.propTitle.text = earliestFutureMeeting.title
                     binding.propDate.text = formatDateForDisplay(earliestFutureMeeting.date)
-                    binding.propTime.text = earliestFutureMeeting.time
+                    binding.propTime.text = "${earliestFutureMeeting.time} - ${earliestFutureMeeting.endTime}"
                     binding.propPlace.text = earliestFutureMeeting.place
 
                     when (earliestFutureMeeting.acceptance.uppercase()) {

@@ -29,7 +29,7 @@ class MeetListAdapter(private val onItemClicked: (MeetListItem) -> Unit) :
         fun bind(item: MeetListItem) {
             binding.meetTitle.text = item.title
             binding.meetDate.text = item.date
-            binding.meetTime.text = item.time
+            binding.meetTime.text = "${item.time} - ${item.endTime}"
             binding.meetPlace.text = item.place
 
             // 아이템 전체 클릭 리스너 설정 (필요하다면)

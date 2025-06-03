@@ -39,8 +39,8 @@ class PropMeetAdapter(
         ) {
             binding.propTitle.text = item.title
             binding.propDate.text = item.date
-            binding.propTime.text = item.time // propTime 바인딩 추가 (XML에 해당 ID가 있다고 가정)
-            binding.propPlace.text = item.place // propPlace 바인딩 추가 (XML에 해당 ID가 있다고 가정)
+            binding.propTime.text = "${item.time} - ${item.endTime}"
+            binding.propPlace.text = item.place
 
 
             // 아이템 전체 뷰에 대한 클릭 리스너 설정
