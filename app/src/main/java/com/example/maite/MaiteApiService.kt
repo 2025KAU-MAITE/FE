@@ -2,13 +2,16 @@ package com.example.maite
 
 import com.example.maite.model.ApiResponse
 import com.example.maite.model.ChatListApiResponse
+import com.example.maite.model.CreateMeetingRequest
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
 import com.example.maite.model.CreateRoomRequest
+import com.example.maite.model.CreatedMeetingResponse
 import com.example.maite.model.InviteUserRequest
 import com.example.maite.model.MeetingDetailResponse
 import com.example.maite.model.MeetingResponse
 import com.example.maite.model.MessageApiResponse
+import com.example.maite.model.SelectPlaceRequest
 import com.example.maite.model.ServerMateItem
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
@@ -85,4 +88,16 @@ interface MaiteApiService {
 
     @GET("api/mates/search")
     suspend fun searchUsers(@Query("query") email: String): Response<UserResponse>
+
+    @POST("meetings/rooms/{roomId}")
+    suspend fun createMeetingInRoom(
+        @Path("roomId") roomId: Long,
+        @Body request: CreateMeetingRequest
+    ): Response<CreatedMeetingResponse>
+
+    @PATCH("meetings/{meetingId}/select-place")
+    suspend fun selectMeetingPlace(
+        @Path("meetingId") meetingId: Long,
+        @Body request: SelectPlaceRequest
+    ): Response<Void>
 }
