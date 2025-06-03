@@ -53,16 +53,23 @@
                 android:layout_height="match_parent"
                 android:background="#EFEFEF">
 
-                <TextView
-                    android:id="@+id/textView7"
-                    android:layout_width="wrap_content"
+                <EditText
+                    android:id="@+id/searchEditText"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_marginTop="8dp"
+                    android:layout_marginEnd="8dp"
                     android:layout_marginBottom="8dp"
-                    android:text="이름을 입력하세요"
-                    android:textColor="#BFBFBF"
+                    android:background="@android:color/transparent"
+                    android:hint="이름을 입력하세요"
+                    android:textColorHint="#BFBFBF"
+                    android:textSize="16sp"
+                    android:maxLines="1"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
                     app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
             </androidx.constraintlayout.widget.ConstraintLayout>
