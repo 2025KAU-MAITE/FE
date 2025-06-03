@@ -204,7 +204,8 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                     } else {
                         // 일반 사용자는 기본 API 사용
                         Log.d(TAG, "일반 사용자: 기본 API 호출")
-                        apiService.uploadAudioSummary(finalTopic, filePart)
+                        val meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
+                        apiService.uploadAudioSummary(finalTopic, meetingId, filePart)
                     }
                 }
 

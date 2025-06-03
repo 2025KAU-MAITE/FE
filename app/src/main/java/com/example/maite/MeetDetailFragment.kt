@@ -582,7 +582,8 @@ class MeetDetailFragment : Fragment() {
                 } else {
                     // 일반 사용자는 기본 API 사용
                     Log.d(TAG, "일반 사용자: 기본 API 호출 (topic: $topic)")
-                    apiService.uploadAudioSummary(topic, filePart)
+                    val meetingId = meetItem?.meetingId ?: -1L
+                    apiService.uploadAudioSummary(topic, meetingId, filePart)
                 }
                 
                 withContext(Dispatchers.Main) {

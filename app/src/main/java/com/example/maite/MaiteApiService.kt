@@ -23,9 +23,10 @@ interface MaiteApiService {
     ): Response<MeetingDetailResponse>
     
     @Multipart
-    @POST("api/summary")
+    @POST("api/AI/summary")
     suspend fun uploadAudioSummary(
         @Query("topic") topic: String,
+        @Query("meeting") meetingId: Long,
         @Part file: MultipartBody.Part
     ): Response<ResponseBody>
 
