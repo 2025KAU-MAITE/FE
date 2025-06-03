@@ -59,6 +59,12 @@ class MeetDetailFragment : Fragment() {
     
     // 현재 선택된 탭 (0: 요약본, 1: 회의록)
     private var currentTabPosition = 0
+    
+    // 회의 콘텐츠 상태 저장 변수
+    private var hasSummary = false
+    private var hasTranscript = false
+    private var summaryContent: String? = null
+    private var transcriptContent: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,12 +79,14 @@ class MeetDetailFragment : Fragment() {
             val success = bundle.getBoolean(UploadBottomSheet.BUNDLE_KEY_SUCCESS)
             if (success) {
                 Log.d(TAG, "Upload 성공 결과 수신")
-                val responseBody = bundle.getString(UploadBottomSheet.BUNDLE_KEY_RESPONSE)
                 // UI 업데이트는 메인 스레드에서 실행되도록 보장
                 requireActivity().runOnUiThread {
-                    binding?.let { // Null-safe call
-                        showSummaryView(responseBody ?: "요약본이 생성되었습니다.")
-                    } ?: Log.e(TAG, "결과 수신 시 binding이 null입니다.")
+                    // 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
+                    val meetingId = meetItem?.meetingId
+                    if (meetingId != null) {
+                        Toast.makeText(requireContext(), "요약 생성 중입니다...", Toast.LENGTH_SHORT).show()
+                        loadMeetingDetail()
+                    }
                 }
             } else {
                 Log.d(TAG, "Upload 실패 결과 수신 (또는 결과 없음)")
@@ -211,7 +219,8 @@ class MeetDetailFragment : Fragment() {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let {
                         currentTabPosition = it.position
-                        updateUiForTabSelection(currentTabPosition)
+                        // 저장된 콘텐츠 상태를 전달하여 UI 업데이트
+                        updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
                         // 탭 배경색 설정
                         tab.view.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
                     }
@@ -224,11 +233,10 @@ class MeetDetailFragment : Fragment() {
                 override fun onTabReselected(tab: TabLayout.Tab?) {}
             })
             
-            // 초기 탭 상태에 따라 UI 업데이트
-            updateUiForTabSelection(currentTabPosition)
-            
-            // 회의 상세 정보 로드
+            // 회의 상세 정보 로드 (먼저 데이터를 가져온 후)
             loadMeetingDetail()
+            
+            // 데이터 로드 후 UI 업데이트는 loadMeetingDetail() 내에서 자동으로 처리됨
         }
     }
     
@@ -239,8 +247,14 @@ class MeetDetailFragment : Fragment() {
                 val responseBody = response.body()?.string() ?: "응답 내용이 없습니다."
                 Log.d(TAG, "기본 API 응답: $responseBody")
                 
-                // 만약 일반 사용자 UI를 사용 중이라면 요약 뷰로 전환
-                showSummaryView(responseBody)
+                // 사용자에게 처리 중임을 알림
+                Toast.makeText(requireContext(), "요약 생성 중입니다...", Toast.LENGTH_SHORT).show()
+                
+                // API 호출 성공 후 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
+                val meetingId = meetItem?.meetingId
+                if (meetingId != null) {
+                    loadMeetingDetail()
+                }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "응답 처리 중 오류", e)
@@ -252,47 +266,9 @@ class MeetDetailFragment : Fragment() {
         }
     }
     
-    // Clova API 응답 처리
+    // Clova API 응답 처리 (더 이상 직접 사용하지 않음 - 오류 처리용으로만 유지)
     private fun handleClovaApiResponse(response: Response<ClovaSummaryResponse>) {
-        if (response.isSuccessful) {
-            val clovaResponse = response.body()
-            if (clovaResponse != null && clovaResponse.isSuccess) {
-                Log.d(TAG, "클로바 API 응답 성공: ${clovaResponse.result}")
-                
-                // 요약 내용이 있는지 확인 (요약할 내용이 없다는 메시지가 아닌지)
-                val hasValidSummary = clovaResponse.result?.result?.contains("요약할 내용이 없습니다") == false
-                val hasTranscript = !clovaResponse.result?.transcript.isNullOrBlank()
-                
-                binding?.apply {
-                    if (hasValidSummary) {
-                        // 실제 요약 내용이 있을 때
-                        summaryTextView.text = clovaResponse.result?.result
-                        summaryScrollView.visibility = View.VISIBLE
-                    } else {
-                        // 요약할 내용이 없을 때
-                        summaryTextView.text = ""
-                        summaryScrollView.visibility = View.GONE
-                    }
-                    
-                    if (hasTranscript) {
-                        // 실제 회의록 내용이 있을 때
-                        transcriptTextView.text = clovaResponse.result?.transcript
-                        transcriptScrollView.visibility = View.VISIBLE
-                    } else {
-                        // 회의록 내용이 없을 때
-                        transcriptTextView.text = ""
-                        transcriptScrollView.visibility = View.GONE
-                    }
-                    
-                    // 현재 선택된 탭에 맞는 뷰 표시 - 내용이 있는지 여부 전달
-                    updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
-                }
-                
-            } else {
-                Log.e(TAG, "클로바 API 응답 내용 없음 또는 실패: ${clovaResponse?.message}")
-                showApiErrorMessage("응답 오류: ${clovaResponse?.message ?: "내용 없음"}")
-            }
-        } else {
+        if (!response.isSuccessful) {
             Log.e(TAG, "클로바 API 호출 실패: ${response.code()}")
             showApiErrorMessage("API 호출 실패: ${response.message()}")
         }
@@ -305,9 +281,16 @@ class MeetDetailFragment : Fragment() {
             summerizedText.text = ""
             summerizedText.visibility = View.GONE
             
-            // 녹음 및 업로드 버튼은 항상 표시
-            recordBtn.visibility = View.VISIBLE
-            uploadBtn.visibility = View.VISIBLE
+            // 녹음 및 업로드 버튼은 콘텐츠 유무에 따라 표시 여부 결정
+            val hasContent = when (position) {
+                0 -> hasValidSummary  // 요약본 탭에서는 요약본 유무에 따라 결정
+                1 -> hasTranscript    // 회의록 탭에서는 회의록 유무에 따라 결정
+                else -> false
+            }
+            
+            // 콘텐츠가 있으면 버튼 숨김, 없으면 표시
+            recordBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
+            uploadBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
             
             when (position) {
                 0 -> { // 요약본 탭
@@ -365,21 +348,23 @@ class MeetDetailFragment : Fragment() {
                 if (response.isSuccessful) {
                     val meetingDetail = response.body()
                     if (meetingDetail != null) {
-                        // record 필드 확인하여 내용이 있는지 검사
-                        val hasRecord = !meetingDetail.record.isNullOrBlank()
-                        // record가 null이면 요약본과 회의록도 없는 것으로 처리
-                        val hasValidSummary = hasRecord && !meetingDetail.textSum.isNullOrBlank()
-                        val hasTranscript = hasRecord && !meetingDetail.recordText.isNullOrBlank()
+                        // 요약본과 회의록이 있는지 직접 textSum과 recordText 필드로 확인 - record 필드 확인 안함
+                        hasSummary = !meetingDetail.textSum.isNullOrBlank()
+                        hasTranscript = !meetingDetail.recordText.isNullOrBlank()
+                        
+                        // 내용 저장 (탭 전환 시 복원을 위해)
+                        summaryContent = meetingDetail.textSum
+                        transcriptContent = meetingDetail.recordText
                         
                         binding?.apply {
                             // 요약본과 회의록 설정
-                            summaryTextView.text = if (hasValidSummary) meetingDetail.textSum else "요약 내용이 없습니다."
-                            transcriptTextView.text = if (hasTranscript) meetingDetail.recordText else "회의록 내용이 없습니다."
+                            summaryTextView.text = summaryContent ?: "요약 내용이 없습니다."
+                            transcriptTextView.text = transcriptContent ?: "회의록 내용이 없습니다."
                             
                             // 현재 선택된 탭에 맞는 뷰 표시
-                            updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
+                            updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
                         }
-                        Log.d(TAG, "회의 상세 API 호출 성공: record=${hasRecord}, textSum=${hasValidSummary}, recordText=${hasTranscript}")
+                        Log.d(TAG, "회의 상세 API 호출 성공: textSum=${hasSummary}, recordText=${hasTranscript}")
                     } else {
                         Log.e(TAG, "회의 상세 API 응답 내용 없음")
                         showApiErrorMessage("응답 내용이 없습니다.")
@@ -431,14 +416,20 @@ class MeetDetailFragment : Fragment() {
                         // 요약 내용이 있는지 확인 (요약할 내용이 없다는 메시지가 아닌지)
                         val result = clovaResponse.result
                         val hasValidSummary = result.result?.contains("요약할 내용이 없습니다") == false
-                        val hasTranscript = !result.transcript.isNullOrBlank()
+                        val transcriptExists = !result.transcript.isNullOrBlank()
+                        
+                        // 내용 저장 (탭 전환 시 복원을 위해)
+                        hasSummary = hasValidSummary
+                        hasTranscript = transcriptExists
+                        summaryContent = result.result
+                        transcriptContent = result.transcript
                         
                         binding?.apply {
-                            summaryTextView.text = result.result ?: "요약 내용이 없습니다."
-                            transcriptTextView.text = result.transcript ?: "회의록 내용이 없습니다."
+                            summaryTextView.text = summaryContent ?: "요약 내용이 없습니다."
+                            transcriptTextView.text = transcriptContent ?: "회의록 내용이 없습니다."
                             
                             // 현재 선택된 탭에 맞는 뷰 표시
-                            updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
+                            updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
                         }
                         Log.d(TAG, "클로바 API 호출 성공: $result")
                     } else {
@@ -595,15 +586,22 @@ class MeetDetailFragment : Fragment() {
                 }
                 
                 withContext(Dispatchers.Main) {
+                    // 처리 중임을 알림
+                    Toast.makeText(requireContext(), "요약 생성 중입니다...", Toast.LENGTH_SHORT).show()
+                    
                     if (isSubscribed) {
-                        // 프리미엄 사용자 응답 처리
+                        // 프리미엄 사용자 응답 처리 - 오류 확인만 하고 API 결과는 표시하지 않음
                         @Suppress("UNCHECKED_CAST")
-                        handleClovaApiResponse(response as Response<ClovaSummaryResponse>)
+                        val clovaResponse = (response as Response<ClovaSummaryResponse>).body()
+                        if (clovaResponse == null || !clovaResponse.isSuccess) {
+                            // 오류가 있는 경우에만 메시지 표시
+                            Toast.makeText(requireContext(), "API 처리 중 오류: ${clovaResponse?.message ?: "응답이 없습니다"}", Toast.LENGTH_SHORT).show()
+                        }
                         
                         // API 호출 성공 후 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
                         loadMeetingDetail()
                     } else {
-                        // 일반 사용자 응답 처리
+                        // 일반 사용자 응답 처리 - API 결과는 표시하지 않음
                         @Suppress("UNCHECKED_CAST")
                         handleStandardApiResponse(response as Response<ResponseBody>)
                     }
@@ -652,11 +650,11 @@ class MeetDetailFragment : Fragment() {
     // 초기 상태 UI
     private fun showInitialView() {
         binding?.apply {
-            // 요약본 메시지만 표시하고 다른 텍스트 표시하지 않음
-            textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
+            // 로딩 중 메시지 표시
+            textViewMinutesPlaceholder.text = "데이터를 불러오는 중입니다..."
             textViewMinutesPlaceholder.visibility = View.VISIBLE
             
-            // 녹음 및 업로드 버튼 표시
+            // 녹음 및 업로드 버튼 표시 (데이터 로드 전에는 일단 표시)
             recordBtn.visibility = View.VISIBLE
             uploadBtn.visibility = View.VISIBLE
             
@@ -664,39 +662,25 @@ class MeetDetailFragment : Fragment() {
             summerizedText.text = ""
             summerizedText.visibility = View.GONE
             
-            Log.d(TAG, "초기 뷰 상태 설정됨")
+            Log.d(TAG, "초기 뷰 상태 설정 및 데이터 로드 시작")
+            
+            // 회의 상세 정보 로드 - 내용이 있으면 버튼이 자동으로 숨겨짐
+            loadMeetingDetail()
         }
     }
 
-    // 업로드 성공 후 UI
+    // 업로드 성공 후 UI (비구독 사용자용 플레이스홀더 UI)
+    // 이 메서드는 비구독 사용자에게만 사용됩니다. 구독자는 항상 loadMeetingDetail()로 실제 데이터를 표시합니다.
     private fun showSummaryView(summaryText: String) {
         // requireActivity()를 사용하여 Activity의 runOnUiThread 호출
         requireActivity().runOnUiThread {
             binding?.apply {
-                // 기존 UI 요소 유지 (녹음, 첨부 버튼)
+                // 비구독 사용자 UI에서 요약 생성 중임을 표시
+                textViewMinutesPlaceholder.text = "요약이 생성되는 중입니다..."
                 textViewMinutesPlaceholder.visibility = View.VISIBLE
-                recordBtn.visibility = View.VISIBLE
-                uploadBtn.visibility = View.VISIBLE
+                summerizedText.visibility = View.GONE
                 
-                // 모든 불필요한 텍스트 제거 - API에서 반환된 내용만 보여줌
-                val processedText = summaryText.takeIf { 
-                    it.isNotBlank() && !it.contains("회의는 아직 시작되지 않았습니다") 
-                } ?: "등록된 요약본이 없어요"
-                
-                // 요약 텍스트가 의미 있는 내용일 때만 표시
-                if (processedText != "등록된 요약본이 없어요") {
-                    summerizedText.text = processedText
-                    summerizedText.visibility = View.VISIBLE
-                    // placeholder는 숨김
-                    textViewMinutesPlaceholder.visibility = View.GONE
-                } else {
-                    // 의미 있는 내용이 없으면 placeholder만 표시
-                    summerizedText.text = ""
-                    summerizedText.visibility = View.GONE
-                    textViewMinutesPlaceholder.text = processedText
-                }
-                
-                Log.d(TAG, "요약 뷰 표시됨 (on UI thread): $processedText")
+                Log.d(TAG, "비구독 사용자 요약 생성 중 UI 표시됨")
             } ?: Log.e(TAG, "showSummaryView 호출 시 binding이 null입니다. (on UI thread)")
         }
     }
