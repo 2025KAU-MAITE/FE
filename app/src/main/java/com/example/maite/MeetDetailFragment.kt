@@ -367,13 +367,14 @@ class MeetDetailFragment : Fragment() {
                     if (meetingDetail != null) {
                         // record 필드 확인하여 내용이 있는지 검사
                         val hasRecord = !meetingDetail.record.isNullOrBlank()
-                        val hasValidSummary = !meetingDetail.textSum.isNullOrBlank()
-                        val hasTranscript = !meetingDetail.recordText.isNullOrBlank()
+                        // record가 null이면 요약본과 회의록도 없는 것으로 처리
+                        val hasValidSummary = hasRecord && !meetingDetail.textSum.isNullOrBlank()
+                        val hasTranscript = hasRecord && !meetingDetail.recordText.isNullOrBlank()
                         
                         binding?.apply {
                             // 요약본과 회의록 설정
-                            summaryTextView.text = meetingDetail.textSum ?: "요약 내용이 없습니다."
-                            transcriptTextView.text = meetingDetail.recordText ?: "회의록 내용이 없습니다."
+                            summaryTextView.text = if (hasValidSummary) meetingDetail.textSum else "요약 내용이 없습니다."
+                            transcriptTextView.text = if (hasTranscript) meetingDetail.recordText else "회의록 내용이 없습니다."
                             
                             // 현재 선택된 탭에 맞는 뷰 표시
                             updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
