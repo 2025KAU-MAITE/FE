@@ -194,6 +194,10 @@ class MeetDetailFragment : Fragment() {
             recordBtn.visibility = View.VISIBLE
             uploadBtn.visibility = View.VISIBLE
             
+            // 요약 텍스트 숨기기
+            summerizedText.text = ""
+            summerizedText.visibility = View.GONE
+            
             // 탭 레이아웃 표시
             tabLayout.visibility = View.VISIBLE
             
@@ -255,14 +259,33 @@ class MeetDetailFragment : Fragment() {
             if (clovaResponse != null && clovaResponse.isSuccess) {
                 Log.d(TAG, "클로바 API 응답 성공: ${clovaResponse.result}")
                 
-                // 탭 포지션에 따라 적절한 뷰 업데이트
+                // 요약 내용이 있는지 확인 (요약할 내용이 없다는 메시지가 아닌지)
+                val hasValidSummary = clovaResponse.result?.result?.contains("요약할 내용이 없습니다") == false
+                val hasTranscript = !clovaResponse.result?.transcript.isNullOrBlank()
+                
                 binding?.apply {
-                    summaryTextView.text = clovaResponse.result?.result ?: "요약 내용이 없습니다."
-                    // Transcript is in the ClovaSummaryResult object
-                    transcriptTextView.text = clovaResponse.result?.transcript ?: "회의록 내용이 없습니다."
+                    if (hasValidSummary) {
+                        // 실제 요약 내용이 있을 때
+                        summaryTextView.text = clovaResponse.result?.result
+                        summaryScrollView.visibility = View.VISIBLE
+                    } else {
+                        // 요약할 내용이 없을 때
+                        summaryTextView.text = ""
+                        summaryScrollView.visibility = View.GONE
+                    }
                     
-                    // 현재 선택된 탭에 맞는 뷰 표시
-                    updateUiForTabSelection(currentTabPosition)
+                    if (hasTranscript) {
+                        // 실제 회의록 내용이 있을 때
+                        transcriptTextView.text = clovaResponse.result?.transcript
+                        transcriptScrollView.visibility = View.VISIBLE
+                    } else {
+                        // 회의록 내용이 없을 때
+                        transcriptTextView.text = ""
+                        transcriptScrollView.visibility = View.GONE
+                    }
+                    
+                    // 현재 선택된 탭에 맞는 뷰 표시 - 내용이 있는지 여부 전달
+                    updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
                 }
                 
             } else {
@@ -276,30 +299,46 @@ class MeetDetailFragment : Fragment() {
     }
     
     // 탭 선택에 따른 UI 업데이트
-    private fun updateUiForTabSelection(position: Int) {
+    private fun updateUiForTabSelection(position: Int, hasValidSummary: Boolean = false, hasTranscript: Boolean = false) {
         binding?.apply {
+            // 요약 텍스트는 항상 숨김 및 초기화
+            summerizedText.text = ""
+            summerizedText.visibility = View.GONE
+            
+            // 녹음 및 업로드 버튼은 항상 표시
+            recordBtn.visibility = View.VISIBLE
+            uploadBtn.visibility = View.VISIBLE
+            
             when (position) {
                 0 -> { // 요약본 탭
-                    // 요약본 탭에서는 기본 UI(녹음, 첨부 버튼) 표시
-                    textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
-                    textViewMinutesPlaceholder.visibility = View.VISIBLE
-                    recordBtn.visibility = View.VISIBLE
-                    uploadBtn.visibility = View.VISIBLE
-                    
-                    // 프리미엄 컨텐츠 영역 설정
-                    summaryScrollView.visibility = View.VISIBLE
+                    // 회의록 영역은 항상 숨김
                     transcriptScrollView.visibility = View.GONE
+                    
+                    if (hasValidSummary) {
+                        // 요약 내용이 있으면 표시
+                        summaryScrollView.visibility = View.VISIBLE
+                        textViewMinutesPlaceholder.visibility = View.GONE
+                    } else {
+                        // 요약 내용이 없으면 안내 메시지 표시
+                        summaryScrollView.visibility = View.GONE
+                        textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
+                        textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    }
                 }
                 1 -> { // 회의록 탭
-                    // 회의록 탭에서는 기본 UI(녹음, 첨부 버튼) 표시
-                    textViewMinutesPlaceholder.text = "등록된 회의록이 없어요"
-                    textViewMinutesPlaceholder.visibility = View.VISIBLE
-                    recordBtn.visibility = View.VISIBLE
-                    uploadBtn.visibility = View.VISIBLE
-                    
-                    // 프리미엄 컨텐츠 영역 설정
+                    // 요약 영역은 항상 숨김
                     summaryScrollView.visibility = View.GONE
-                    transcriptScrollView.visibility = View.VISIBLE
+                    
+                    if (hasTranscript) {
+                        // 회의록 내용이 있으면 표시
+                        transcriptScrollView.visibility = View.VISIBLE
+                        textViewMinutesPlaceholder.visibility = View.GONE
+                    } else {
+                        // 회의록 내용이 없으면 안내 메시지 표시
+                        transcriptScrollView.visibility = View.GONE
+                        textViewMinutesPlaceholder.text = "등록된 회의록이 없어요"
+                        textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    }
                 }
             }
         }
@@ -335,11 +374,19 @@ class MeetDetailFragment : Fragment() {
                 emptyFile.delete()
                 
                 if (response.isSuccessful) {
-                    val result = response.body()?.result
-                    if (result != null) {
+                    val clovaResponse = response.body()
+                    if (clovaResponse != null && clovaResponse.isSuccess && clovaResponse.result != null) {
+                        // 요약 내용이 있는지 확인 (요약할 내용이 없다는 메시지가 아닌지)
+                        val result = clovaResponse.result
+                        val hasValidSummary = result.result?.contains("요약할 내용이 없습니다") == false
+                        val hasTranscript = !result.transcript.isNullOrBlank()
+                        
                         binding?.apply {
                             summaryTextView.text = result.result ?: "요약 내용이 없습니다."
                             transcriptTextView.text = result.transcript ?: "회의록 내용이 없습니다."
+                            
+                            // 현재 선택된 탭에 맞는 뷰 표시
+                            updateUiForTabSelection(currentTabPosition, hasValidSummary, hasTranscript)
                         }
                         Log.d(TAG, "클로바 API 호출 성공: $result")
                     } else {
@@ -549,10 +596,18 @@ class MeetDetailFragment : Fragment() {
     // 초기 상태 UI
     private fun showInitialView() {
         binding?.apply {
+            // 요약본 메시지만 표시하고 다른 텍스트 표시하지 않음
+            textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
             textViewMinutesPlaceholder.visibility = View.VISIBLE
+            
+            // 녹음 및 업로드 버튼 표시
             recordBtn.visibility = View.VISIBLE
             uploadBtn.visibility = View.VISIBLE
+            
+            // 요약 텍스트는 숨김 처리 및 초기화
+            summerizedText.text = ""
             summerizedText.visibility = View.GONE
+            
             Log.d(TAG, "초기 뷰 상태 설정됨")
         }
     }
@@ -566,11 +621,26 @@ class MeetDetailFragment : Fragment() {
                 textViewMinutesPlaceholder.visibility = View.VISIBLE
                 recordBtn.visibility = View.VISIBLE
                 uploadBtn.visibility = View.VISIBLE
-
-                // 요약 텍스트 표시
-                summerizedText.visibility = View.VISIBLE
-                summerizedText.text = summaryText
-                Log.d(TAG, "요약 뷰 표시됨 (on UI thread): $summaryText")
+                
+                // 모든 불필요한 텍스트 제거 - API에서 반환된 내용만 보여줌
+                val processedText = summaryText.takeIf { 
+                    it.isNotBlank() && !it.contains("회의는 아직 시작되지 않았습니다") 
+                } ?: "등록된 요약본이 없어요"
+                
+                // 요약 텍스트가 의미 있는 내용일 때만 표시
+                if (processedText != "등록된 요약본이 없어요") {
+                    summerizedText.text = processedText
+                    summerizedText.visibility = View.VISIBLE
+                    // placeholder는 숨김
+                    textViewMinutesPlaceholder.visibility = View.GONE
+                } else {
+                    // 의미 있는 내용이 없으면 placeholder만 표시
+                    summerizedText.text = ""
+                    summerizedText.visibility = View.GONE
+                    textViewMinutesPlaceholder.text = processedText
+                }
+                
+                Log.d(TAG, "요약 뷰 표시됨 (on UI thread): $processedText")
             } ?: Log.e(TAG, "showSummaryView 호출 시 binding이 null입니다. (on UI thread)")
         }
     }
