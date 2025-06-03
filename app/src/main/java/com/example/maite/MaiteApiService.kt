@@ -25,6 +25,12 @@ interface MaiteApiService {
         @Part file: MultipartBody.Part
     ): Response<ResponseBody>
 
+    @Multipart
+    @POST("api/AI/reply")
+    suspend fun getAiReply(
+        @Part file: MultipartBody.Part
+    ): Response<ResponseBody>
+
     @GET("rooms")
     suspend fun getMyRooms(): Response<List<RoomItem>>
 

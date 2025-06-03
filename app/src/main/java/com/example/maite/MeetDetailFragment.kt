@@ -2,9 +2,12 @@ package com.example.maite
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -25,6 +28,10 @@ import com.example.maite.UserResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -47,6 +54,10 @@ class MeetDetailFragment : Fragment() {
     private var isRecording = false
     private var audioFilePath: String? = null
     private var aiDialog: AiDialog? = null
+
+    // 음성 응답 재생용 MediaPlayer
+    private var responseMediaPlayer: MediaPlayer? = null
+    private var currentResponseAudioPath: String? = null
 
     private lateinit var apiService: MaiteApiService
 
@@ -85,8 +96,9 @@ class MeetDetailFragment : Fragment() {
         aiDialog = AiDialog(requireContext()).apply {
             onAiCardViewClick = {
                 if (isRecording) {
+                    // 녹음 중지하고 로딩 상태로 전환 (dialog는 유지)
                     stopRecording()
-                    this.dismiss()
+                    this.startProcessing() // 로딩 애니메이션 시작
                 }
             }
         }
@@ -351,8 +363,10 @@ class MeetDetailFragment : Fragment() {
             mediaRecorder?.apply { stop(); reset(); release() }
             mediaRecorder = null
             isRecording = false
-            Toast.makeText(requireContext(), "녹음이 저장되었습니다: $audioFilePath", Toast.LENGTH_LONG).show()
+            Toast.makeText(requireContext(), "녹음이 완료되었습니다.", Toast.LENGTH_SHORT).show()
             updateRecordingUI(false)
+
+            // 녹음 완료 후 즉시 AI API로 전송
             processRecordedAudio(audioFilePath)
         } catch (e: Exception) {
             Log.e(TAG, "녹음 중지 실패: ${e.message}")
@@ -363,8 +377,196 @@ class MeetDetailFragment : Fragment() {
         // UI 업데이트 (예: 버튼 아이콘 변경 등)
     }
 
+    // 녹음 완료 후 AI API로 파일 전송하는 메서드
     private fun processRecordedAudio(filePath: String?) {
-        filePath?.let { Log.d(TAG, "녹음 파일 처리 중: $it") }
+        filePath?.let { path ->
+            Log.d(TAG, "녹음 파일 처리 시작: $path")
+
+            lifecycleScope.launch {
+                try {
+                    // 로딩 표시 (이미 startProcessing()으로 시작됨)
+
+                    val file = File(path)
+                    if (!file.exists()) {
+                        Log.e(TAG, "녹음 파일이 존재하지 않습니다: $path")
+                        Toast.makeText(requireContext(), "녹음 파일을 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                        aiDialog?.dismiss() // 에러 시 dialog 닫기
+                        return@launch
+                    }
+
+                    val requestFile = file.asRequestBody("audio/mp3".toMediaTypeOrNull())
+                    val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
+
+                    val response = withContext(Dispatchers.IO) {
+                        apiService.getAiReply(body)
+                    }
+
+                    if (response.isSuccessful) {
+                        val responseBody = response.body()
+                        if (responseBody != null) {
+                            // 바이너리 데이터를 음성 파일로 저장
+                            val audioBytes = responseBody.bytes()
+                            Log.d(TAG, "AI 응답 수신 완료: ${audioBytes.size} bytes")
+
+                            // 응답 음성 파일 저장 및 자동 재생
+                            saveAndAutoPlayAudioResponse(audioBytes)
+                        } else {
+                            Toast.makeText(requireContext(), "AI 응답이 비어있습니다.", Toast.LENGTH_SHORT).show()
+                            aiDialog?.dismiss()
+                        }
+                    } else {
+                        Log.e(TAG, "AI API 호출 실패: ${response.code()} - ${response.errorBody()?.string()}")
+                        Toast.makeText(requireContext(), "AI 분석에 실패했습니다: ${response.message()}", Toast.LENGTH_SHORT).show()
+                        aiDialog?.dismiss()
+                    }
+
+                    // 원본 파일 정리
+                    file.delete()
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "AI API 호출 중 오류: ${e.message}", e)
+                    Toast.makeText(requireContext(), "AI 분석 중 오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                    aiDialog?.dismiss()
+                }
+            }
+        }
+    }
+
+
+    // 로딩 상태 표시
+    private fun showLoadingState() {
+        _binding?.apply {
+            Toast.makeText(requireContext(), "AI가 음성을 분석하고 있습니다...", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 로딩 상태 숨김
+    private fun hideLoadingState() {
+        _binding?.apply {
+            // 로딩 상태 해제
+        }
+    }
+
+    // 음성 응답 저장 및 자동 재생
+    private fun saveAndAutoPlayAudioResponse(audioBytes: ByteArray) {
+        try {
+            // 응답 오디오 파일 경로 생성
+            val responseAudioPath = "${requireActivity().externalCacheDir?.absolutePath}/ai_response_${System.currentTimeMillis()}.mp3"
+            val responseFile = File(responseAudioPath)
+
+            // 바이너리 데이터를 파일로 저장
+            responseFile.writeBytes(audioBytes)
+
+            Log.d(TAG, "AI 응답 음성 파일 저장 완료: $responseAudioPath")
+            currentResponseAudioPath = responseAudioPath
+
+            // UI 업데이트 제거 - 기존 텍스트 유지
+            // showAudioResponseUI() // 이 줄을 주석 처리하거나 삭제
+
+            // 자동으로 음성 재생 시작
+            autoPlayAudioResponse(responseAudioPath)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "음성 응답 저장 실패: ${e.message}", e)
+            Toast.makeText(requireContext(), "음성 응답 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 자동 음성 재생
+    private fun autoPlayAudioResponse(audioPath: String) {
+        try {
+            // 기존 재생 중인 것이 있다면 정지
+            stopAudioResponse()
+
+            responseMediaPlayer = MediaPlayer().apply {
+                setDataSource(audioPath)
+                prepareAsync()
+                setOnPreparedListener { mediaPlayer ->
+                    mediaPlayer.start()
+                    Log.d(TAG, "AI 응답 음성 자동 재생 시작")
+                    Toast.makeText(requireContext(), "🔊 AI 응답", Toast.LENGTH_SHORT).show()
+
+                    // AI 응답 시작을 AiDialog에 알림
+                    aiDialog?.startAiResponse(mediaPlayer)
+
+                    // 재생 완료 리스너
+                    setOnCompletionListener {
+                        Log.d(TAG, "AI 응답 음성 재생 완료")
+
+                        // AI 응답 완료를 AiDialog에 알림
+                        aiDialog?.stopAiResponse()
+
+                        // 재생 완료 후 파일 정리 및 dialog 닫기
+                        cleanupResponseAudio()
+
+                        // 조금 지연 후 dialog 닫기
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            aiDialog?.dismiss()
+                        }, 500)
+                    }
+                }
+                setOnErrorListener { _, what, extra ->
+                    Log.e(TAG, "음성 재생 오류: what=$what, extra=$extra")
+                    Toast.makeText(requireContext(), "음성 재생에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    aiDialog?.stopAiResponse()
+                    aiDialog?.dismiss()
+                    true
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "음성 재생 실패: ${e.message}", e)
+            Toast.makeText(requireContext(), "음성 재생에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            aiDialog?.dismiss()
+        }
+    }
+
+    // 음성 재생 정지
+    private fun stopAudioResponse() {
+        responseMediaPlayer?.apply {
+            try {
+                if (isPlaying) {
+                    stop()
+                }
+                reset()
+                release()
+            } catch (e: Exception) {
+                Log.e(TAG, "MediaPlayer 정리 중 오류: ${e.message}")
+            }
+        }
+        responseMediaPlayer = null
+
+        // AI 응답 중지를 AiDialog에 알림
+        aiDialog?.stopAiResponse()
+    }
+
+    // 응답 음성 파일 정리
+    private fun cleanupResponseAudio() {
+        currentResponseAudioPath?.let { path ->
+            try {
+                File(path).delete()
+                Log.d(TAG, "응답 음성 파일 삭제 완료: $path")
+            } catch (e: Exception) {
+                Log.e(TAG, "응답 음성 파일 삭제 실패: ${e.message}")
+            }
+        }
+        currentResponseAudioPath = null
+    }
+
+    // AI 응답 UI 표시 (버튼 없이)
+    private fun showAudioResponseUI() {
+        requireActivity().runOnUiThread {
+            _binding?.apply {
+                // 요약 뷰에 음성 응답 안내 표시
+                val responseText = """
+                    🤖 AI 음성 응답
+                    
+                    🔊 자동으로 재생됩니다...
+                """.trimIndent()
+
+                showSummaryView(responseText)
+            }
+        }
     }
 
     private fun checkRecordingPermission(): Boolean {
@@ -428,12 +630,22 @@ class MeetDetailFragment : Fragment() {
             stopRecording()
             aiDialog?.dismiss()
         }
+
+        // 음성 재생 정지
+        stopAudioResponse()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         mediaRecorder?.release()
         mediaRecorder = null
+
+        // 응답 음성 재생기 정리
+        stopAudioResponse()
+
+        // 임시 음성 파일들 정리
+        cleanupResponseAudio()
+
         aiDialog?.dismiss()
         aiDialog = null
         _binding = null
