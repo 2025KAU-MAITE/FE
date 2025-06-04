@@ -5,13 +5,13 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.databinding.FragmentMeetListBinding
 import com.example.maite.view.MeetListAdapter
 import com.example.maite.viewmodel.MeetListViewModel
 import com.example.maite.model.MeetListRepository
-import android.util.Log
 
 class MeetListFragment : Fragment() {
     private var _binding: FragmentMeetListBinding? = null
@@ -25,15 +25,14 @@ class MeetListFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMeetListBinding.inflate(inflater, container, false)
+        binding.root.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 디버깅 목적: 저장소에서 직접 데이터 확인
         val repoData = MeetListRepository.getInstance().getMeetList()
-        Log.d("MeetListFragment", "저장소 직접 접근 데이터: ${repoData.size}개 항목")
 
         setupRecyclerView()
         observeViewModel()
@@ -48,12 +47,18 @@ class MeetListFragment : Fragment() {
             val meetingIdToPass: Long = meetItem.meetingId
 
             val detailFragment = MeetDetailFragment.newInstance(meetingIdToPass)
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.main_frm, detailFragment)
-                .addToBackStack(null)
-                .commit()
+            val fragmentTag = MeetDetailFragment::class.java.name
 
-            Log.d("MeetListFragment", "회의 아이템 클릭됨: ${meetItem.title}, ID: $meetingIdToPass")
+            parentFragmentManager.beginTransaction()
+                .setCustomAnimations(
+                    R.anim.slide_in_right,
+                    0,
+                    0,
+                    R.anim.slide_out_right
+                )
+                .add(R.id.main_frm, detailFragment, fragmentTag)
+                .addToBackStack(fragmentTag)
+                .commit()
         }
 
         binding.meetListRV.apply {
@@ -64,9 +69,7 @@ class MeetListFragment : Fragment() {
 
     private fun observeViewModel() {
         viewModel.meetList.observe(viewLifecycleOwner) { list ->
-            Log.d("MeetListFragment", "회의 목록 업데이트됨: ${list.size}개 항목")
             meetAdapter.submitList(list)
-
         }
     }
 
