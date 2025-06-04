@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -274,23 +275,16 @@ class MeetDetailFragment : Fragment() {
                 }
                 if (response.isSuccessful) {
                     meetingDetail = response.body()
+                    Log.d("MeetDetail", "API Response: ${meetingDetail?.title}, ${meetingDetail?.meetingDate}")
+
                     meetingDetail?.let { detail ->
+                        // 구독 상태와 관계없이 기본 정보는 항상 업데이트
+                        updateUiWithMeetingDetails(detail)
 
-                        hasSummary = !detail.textSum.isNullOrBlank()
-                        hasTranscript = !detail.recordText.isNullOrBlank()
-
-                        summaryContent = detail.textSum
-                        transcriptContent = detail.recordText
-
+                        // 구독 상태에 따른 추가 UI 업데이트
                         if (isSubscribed) {
-                            binding.apply {
-                                summaryTextView.text = summaryContent ?: "요약 내용이 없습니다."
-                                transcriptTextView.text = transcriptContent ?: "회의록 내용이 없습니다."
-
-                                updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
-                            }
-                        } else {
-                            updateUiWithMeetingDetails(detail)
+                            // 구독자용 추가 기능 업데이트
+                            updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
                         }
                     } ?: run {
                         showInitialView()
@@ -344,10 +338,11 @@ class MeetDetailFragment : Fragment() {
     }
 
     private fun updateUiWithMeetingDetails(detail: MeetingDetailResponse) {
+        Log.d("MeetDetail", "Updating UI with: ${detail.title}, ${detail.meetingDate}, ${detail.meetingTime}")
         _binding?.apply {
             meetTitle.text = detail.title
             meetDate.text = formatDateForDisplay(detail.meetingDate)
-            meetTime.text = detail.meetingTime
+            meetTime.text = "${detail.meetingTime} - ${detail.meetingEndTime}"
             meetPlace.text = detail.address ?: "장소가 정해지지 않았습니다."
 
             while (participantsLayout.childCount > 1) {
