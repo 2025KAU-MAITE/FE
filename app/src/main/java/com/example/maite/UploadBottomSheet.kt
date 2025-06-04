@@ -195,24 +195,10 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                     return@launch
                 }
 
-                Log.d(TAG, "API 호출 시작 (코루틴 내부)")
-                // 구독 상태 확인
-                val preferencesUtil = PreferencesUtil(requireContext())
-                val isSubscribed = preferencesUtil.isSubscribed()
-                
-                // 구독 상태에 따라 다른 API 호출
-                val response = withContext(Dispatchers.IO) {
-                    if (isSubscribed) {
-                        // 프리미엄 사용자는 Clova API 사용
-                        Log.d(TAG, "프리미엄 사용자: Clova API 호출")
-                        val meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
-                        apiService.uploadAudioSummaryClova(finalTopic, meetingId, filePart)
-                    } else {
-                        // 일반 사용자는 기본 API 사용
-                        Log.d(TAG, "일반 사용자: 기본 API 호출")
-                        val meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
-                        apiService.uploadAudioSummary(finalTopic, meetingId, filePart)
-                    }
+                Log.d(TAG, "API 호출 시작: api/AI/summary")
+                val response: Response<ResponseBody> = withContext(Dispatchers.IO) {
+                    // 새로운 API 시그니처 사용 (meetingId 추가)
+                    apiService.uploadAudioSummary(finalTopic, currentMeetingId, filePart)
                 }
 
                 if (!isActive) {
@@ -223,8 +209,7 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
 
                 if (response.isSuccessful) {
                     uploadSuccess = true
-                    // response.body()는 null일 수 있으므로 안전 호출 사용
-                    responseMessage = response.body()?.toString() ?: "업로드 성공"
+                    responseMessage = response.body()?.string()
                     Log.d(TAG, "업로드 성공: ${response.code()}")
                     setFragmentResult(REQUEST_KEY_UPLOAD, bundleOf(
                         BUNDLE_KEY_SUCCESS to true,
@@ -371,16 +356,16 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
     companion object {
         const val TAG = "UploadBottomSheet"
         private const val ARG_DEFAULT_TOPIC = "default_topic"
-        private const val ARG_MEETING_ID = "meeting_id"
+        private const val ARG_MEETING_ID = "meeting_id"  // 새로 추가된 상수
         const val REQUEST_KEY_UPLOAD = "uploadResultRequest"
         const val BUNDLE_KEY_SUCCESS = "uploadSuccess"
         const val BUNDLE_KEY_RESPONSE = "uploadResponse"
 
-        fun newInstance(defaultTopic: String?, meetingId: Long = -1): UploadBottomSheet {
+        // 기존 팩토리 메서드 (하위 호환성)
+        fun newInstance(defaultTopic: String?): UploadBottomSheet {
             val fragment = UploadBottomSheet()
             val args = Bundle()
             args.putString(ARG_DEFAULT_TOPIC, defaultTopic)
-            args.putLong(ARG_MEETING_ID, meetingId)
             fragment.arguments = args
             return fragment
         }
