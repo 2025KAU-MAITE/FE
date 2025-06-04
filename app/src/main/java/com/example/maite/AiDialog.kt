@@ -337,7 +337,7 @@ class AiDialog(private val context: Context) {
                 // try-catch로 AudioRecord 생성 감싸기
                 try {
                     audioRecord = AudioRecord(
-                        MediaRecorder.AudioSource.MIC,
+                        MediaRecorder.AudioSource.VOICE_RECOGNITION,
                         audioSampleRate,
                         AudioFormat.CHANNEL_IN_MONO,
                         AudioFormat.ENCODING_PCM_16BIT,
@@ -422,8 +422,10 @@ class AiDialog(private val context: Context) {
         }
         val average = sum / read
 
+        val amplified = average * 2.0
+
         // 볼륨 레벨을 0~1 범위로 정규화 (적절한 값으로 조정이 필요할 수 있음)
-        val normalized = min(1.0, average / 5000.0).toFloat()
+        val normalized = min(1.0, average / 2000.0).toFloat()
 
         return normalized
     }
@@ -459,7 +461,7 @@ class AiDialog(private val context: Context) {
         contentViewBinding.aiCardView.animate().cancel() // 이전 애니메이션 취소
 
         // 볼륨이 일정 임계값 이상일 때만 애니메이션 적용
-        val threshold = if (isResponding) 0.1f else 0.05f // AI 응답 중일 때는 더 민감하게
+        val threshold = if (isResponding) 0.1f else 0.02f // AI 응답 중일 때는 더 민감하게
         if (amplitude > threshold) {
             contentViewBinding.aiCardView.animate()
                 .scaleX(targetScale)
