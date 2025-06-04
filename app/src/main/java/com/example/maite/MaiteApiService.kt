@@ -2,6 +2,7 @@ package com.example.maite
 
 import com.example.maite.model.ApiResponse
 import com.example.maite.model.ChatListApiResponse
+import com.example.maite.model.ClovaSummaryResponse
 import com.example.maite.model.CreateMeetingRequest
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
@@ -20,6 +21,11 @@ import retrofit2.http.*
 
 interface MaiteApiService {
 
+    @GET("/meetings/{meetingId}")
+    suspend fun getMeetingDetail(
+        @Path("meetingId") meetingId: Long
+    ): Response<MeetingDetailResponse>
+    
     @Multipart
     @POST("api/AI/summary")
     suspend fun uploadAudioSummary(
@@ -33,6 +39,14 @@ interface MaiteApiService {
     suspend fun getAiReply(
         @Part file: MultipartBody.Part
     ): Response<ResponseBody>
+
+    @Multipart
+    @POST("api/AI/summary-clova")
+    suspend fun uploadAudioSummaryClova(
+        @Query("topic") topic: String,
+        @Query("meeting") meetingId: Long,
+        @Part file: MultipartBody.Part
+    ): Response<ClovaSummaryResponse>
 
     @GET("rooms")
     suspend fun getMyRooms(): Response<List<RoomItem>>
