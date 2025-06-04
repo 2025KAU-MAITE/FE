@@ -54,6 +54,7 @@ class MeetingDataManager(private val context: Context) {
                             val title = meeting.title.orEmpty()
                             val date = meeting.meetingDate.orEmpty()
                             val time = meeting.meetingTime.orEmpty()
+                            val endTime = meeting.meetingEndTime.orEmpty() // 새 필드 추가
                             // place 필드가 null인 경우 기본값 설정
                             val place = meeting.address ?: "장소가 정해지지 않았습니다."
 
@@ -66,6 +67,7 @@ class MeetingDataManager(private val context: Context) {
                                         title = title,
                                         date = date,
                                         time = time,
+                                        endTime = endTime, // 새 필드 추가
                                         place = place
                                     ))
                                 } else {
@@ -76,6 +78,7 @@ class MeetingDataManager(private val context: Context) {
                                         title = title,
                                         date = date,
                                         time = time,
+                                        endTime = endTime, // 새 필드 추가
                                         place = place,
                                         acceptance = meeting.acceptance ?: "PENDING"
                                     ))
