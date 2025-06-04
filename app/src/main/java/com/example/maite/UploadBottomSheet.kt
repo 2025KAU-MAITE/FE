@@ -195,10 +195,24 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
                     return@launch
                 }
 
-                Log.d(TAG, "API 호출 시작: api/AI/summary")
-                val response: Response<ResponseBody> = withContext(Dispatchers.IO) {
-                    // 새로운 API 시그니처 사용 (meetingId 추가)
-                    apiService.uploadAudioSummary(finalTopic, currentMeetingId, filePart)
+                Log.d(TAG, "API 호출 시작 (코루틴 내부)")
+                // 구독 상태 확인
+                val preferencesUtil = PreferencesUtil(requireContext())
+                val isSubscribed = preferencesUtil.isSubscribed()
+
+                // 구독 상태에 따라 다른 API 호출
+                val response = withContext(Dispatchers.IO) {
+                    if (isSubscribed) {
+                        // 프리미엄 사용자는 Clova API 사용
+                        Log.d(TAG, "프리미엄 사용자: Clova API 호출")
+                        val meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
+                        apiService.uploadAudioSummaryClova(finalTopic, meetingId, filePart)
+                    } else {
+                        // 일반 사용자는 기본 API 사용
+                        Log.d(TAG, "일반 사용자: 기본 API 호출")
+                        val meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
+                        apiService.uploadAudioSummary(finalTopic, meetingId, filePart)
+                    }
                 }
 
                 if (!isActive) {
@@ -209,7 +223,7 @@ class UploadBottomSheet : BottomSheetDialogFragment() {
 
                 if (response.isSuccessful) {
                     uploadSuccess = true
-                    responseMessage = response.body()?.string()
+                    responseMessage = response.body()?.toString() ?: "업로드 성공"
                     Log.d(TAG, "업로드 성공: ${response.code()}")
                     setFragmentResult(REQUEST_KEY_UPLOAD, bundleOf(
                         BUNDLE_KEY_SUCCESS to true,

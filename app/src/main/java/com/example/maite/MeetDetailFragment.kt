@@ -23,14 +23,18 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.signature.ObjectKey
 import com.example.maite.databinding.FragmentMeetDetailBinding
+import com.example.maite.model.ClovaSummaryResponse
 import com.example.maite.model.MeetingDetailResponse
 import com.example.maite.UserResult
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -59,7 +63,20 @@ class MeetDetailFragment : Fragment() {
     private var responseMediaPlayer: MediaPlayer? = null
     private var currentResponseAudioPath: String? = null
 
+    // API 서비스
     private lateinit var apiService: MaiteApiService
+
+    // 구독 상태
+    private var isSubscribed = false
+
+    // 현재 선택된 탭 (0: 요약본, 1: 회의록)
+    private var currentTabPosition = 0
+
+    // 회의 콘텐츠 상태 저장 변수
+    private var hasSummary = false
+    private var hasTranscript = false
+    private var summaryContent: String? = null
+    private var transcriptContent: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,6 +90,15 @@ class MeetDetailFragment : Fragment() {
         childFragmentManager.setFragmentResultListener(UploadBottomSheet.REQUEST_KEY_UPLOAD, this) { _, bundle ->
             val success = bundle.getBoolean(UploadBottomSheet.BUNDLE_KEY_SUCCESS)
             if (success) {
+                Log.d(TAG, "Upload 성공 결과 수신")
+                // UI 업데이트는 메인 스레드에서 실행되도록 보장
+                requireActivity().runOnUiThread {
+                    // 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
+                    meetingId?.let { id ->
+                        Toast.makeText(requireContext(), "요약 생성 중입니다...", Toast.LENGTH_SHORT).show()
+                        loadMeetingDetails(id)
+                    }
+                }
                 val responseBody = bundle.getString(UploadBottomSheet.BUNDLE_KEY_RESPONSE)
                 requireActivity().runOnUiThread {
                     _binding?.let { bindingNonNull -> showSummaryView(responseBody ?: "요약본이 생성되었습니다.") }
@@ -92,6 +118,11 @@ class MeetDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // 구독 상태 확인
+        val preferencesUtil = PreferencesUtil(requireContext())
+        isSubscribed = preferencesUtil.isSubscribed()
+        Log.d(TAG, "구독 상태: $isSubscribed")
 
         aiDialog = AiDialog(requireContext()).apply {
             onAiCardViewClick = {
@@ -115,6 +146,15 @@ class MeetDetailFragment : Fragment() {
             } ?: run {
                 Log.e(TAG, "Meeting ID not provided to MeetDetailFragment.")
                 Toast.makeText(requireContext(), "회의 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                showInitialView()
+            }
+
+            // 구독 상태에 따라 UI 초기화
+            if (isSubscribed) {
+                // 구독자는 탭 레이아웃 표시
+                setupSubscribedUI()
+            } else {
+                // 비구독자는 기본 UI 표시
                 showInitialView()
             }
 
@@ -179,6 +219,102 @@ class MeetDetailFragment : Fragment() {
         } ?: Log.e(TAG, "Binding is null in onViewCreated.")
     }
 
+    // 구독자용 UI 설정
+    private fun setupSubscribedUI() {
+        binding.apply {
+            // 무료 사용자 UI 유지 - 스크린샷처럼 기본 UI를 그대로 두고 탭만 추가
+            textViewMinutesPlaceholder.visibility = View.VISIBLE
+            recordBtn.visibility = View.VISIBLE
+            uploadBtn.visibility = View.VISIBLE
+
+            // 요약 텍스트 숨기기
+            summerizedText.text = ""
+            summerizedText.visibility = View.GONE
+
+            // 탭 레이아웃 표시
+            tabLayout.visibility = View.VISIBLE
+
+            // 첫 번째 탭 선택 및 배경색 설정
+            val firstTab = tabLayout.getTabAt(0)
+            firstTab?.select()
+            firstTab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
+
+            // 탭 선택 리스너 설정
+            tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    tab?.let {
+                        currentTabPosition = it.position
+                        // 저장된 콘텐츠 상태를 전달하여 UI 업데이트
+                        updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
+                        // 탭 배경색 설정
+                        tab.view.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
+                    }
+                }
+
+                override fun onTabUnselected(tab: TabLayout.Tab?) {
+                    tab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
+                }
+
+                override fun onTabReselected(tab: TabLayout.Tab?) {}
+            })
+
+            // 회의 상세 정보 로드는 외부에서 이미 호출됨
+        }
+    }
+
+    // 탭 선택에 따른 UI 업데이트
+    private fun updateUiForTabSelection(position: Int, hasValidSummary: Boolean = false, hasValidTranscript: Boolean = false) {
+        binding.apply {
+            // 요약 텍스트는 항상 숨김 및 초기화
+            summerizedText.text = ""
+            summerizedText.visibility = View.GONE
+
+            // 녹음 및 업로드 버튼은 콘텐츠 유무에 따라 표시 여부 결정
+            val hasContent = when (position) {
+                0 -> hasValidSummary  // 요약본 탭에서는 요약본 유무에 따라 결정
+                1 -> hasValidTranscript    // 회의록 탭에서는 회의록 유무에 따라 결정
+                else -> false
+            }
+
+            // 콘텐츠가 있으면 버튼 숨김, 없으면 표시
+            recordBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
+            uploadBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
+
+            when (position) {
+                0 -> { // 요약본 탭
+                    // 회의록 영역은 항상 숨김
+                    transcriptScrollView.visibility = View.GONE
+
+                    if (hasValidSummary) {
+                        // 요약 내용이 있으면 표시
+                        summaryScrollView.visibility = View.VISIBLE
+                        textViewMinutesPlaceholder.visibility = View.GONE
+                    } else {
+                        // 요약 내용이 없으면 안내 메시지 표시
+                        summaryScrollView.visibility = View.GONE
+                        textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
+                        textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    }
+                }
+                1 -> { // 회의록 탭
+                    // 요약 영역은 항상 숨김
+                    summaryScrollView.visibility = View.GONE
+
+                    if (hasValidTranscript) {
+                        // 회의록 내용이 있으면 표시
+                        transcriptScrollView.visibility = View.VISIBLE
+                        textViewMinutesPlaceholder.visibility = View.GONE
+                    } else {
+                        // 회의록 내용이 없으면 안내 메시지 표시
+                        transcriptScrollView.visibility = View.GONE
+                        textViewMinutesPlaceholder.text = "등록된 회의록이 없어요"
+                        textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+    }
+
     private fun loadMeetingDetails(id: Long) {
         lifecycleScope.launch {
             try {
@@ -190,7 +326,29 @@ class MeetDetailFragment : Fragment() {
                     meetingDetail = response.body()
                     meetingDetail?.let { detail ->
                         Log.d(TAG, "회의 상세 정보 로드 성공: ${detail.title}")
-                        updateUiWithMeetingDetails(detail)
+
+                        // 요약본과 회의록이 있는지 확인
+                        hasSummary = !detail.textSum.isNullOrBlank()
+                        hasTranscript = !detail.recordText.isNullOrBlank()
+
+                        // 내용 저장 (탭 전환 시 복원을 위해)
+                        summaryContent = detail.textSum
+                        transcriptContent = detail.recordText
+
+                        // 구독 상태에 따라 다른 UI 업데이트
+                        if (isSubscribed) {
+                            binding.apply {
+                                // 요약본과 회의록 설정
+                                summaryTextView.text = summaryContent ?: "요약 내용이 없습니다."
+                                transcriptTextView.text = transcriptContent ?: "회의록 내용이 없습니다."
+
+                                // 현재 선택된 탭에 맞는 뷰 표시
+                                updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
+                            }
+                        } else {
+                            // 비구독자 UI 업데이트
+                            updateUiWithMeetingDetails(detail)
+                        }
                     } ?: run {
                         Log.e(TAG, "Meeting detail response body is null for ID: $id")
                         Toast.makeText(requireContext(), "회의 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
@@ -207,6 +365,47 @@ class MeetDetailFragment : Fragment() {
                 showInitialView()
             }
         }
+    }
+
+    // 일반 API 응답 처리
+    private fun handleStandardApiResponse(response: Response<ResponseBody>) {
+        if (response.isSuccessful) {
+            try {
+                val responseBody = response.body()?.string() ?: "응답 내용이 없습니다."
+                Log.d(TAG, "기본 API 응답: $responseBody")
+
+                // 사용자에게 처리 중임을 알림
+                Toast.makeText(requireContext(), "요약 생성 중입니다...", Toast.LENGTH_SHORT).show()
+
+                // API 호출 성공 후 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
+                meetingId?.let { id ->
+                    loadMeetingDetails(id)
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "응답 처리 중 오류", e)
+                Toast.makeText(requireContext(), "응답 처리 중 오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Log.e(TAG, "API 호출 실패: ${response.code()}")
+            Toast.makeText(requireContext(), "API 호출 실패: ${response.message()}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Clova API 응답 처리
+    private fun handleClovaApiResponse(response: Response<ClovaSummaryResponse>) {
+        if (!response.isSuccessful) {
+            Log.e(TAG, "클로바 API 호출 실패: ${response.code()}")
+            showApiErrorMessage("API 호출 실패: ${response.message()}")
+        }
+    }
+
+    private fun showApiErrorMessage(message: String) {
+        binding.apply {
+            summaryTextView.text = "요약본을 불러올 수 없습니다. $message"
+            transcriptTextView.text = "회의록을 불러올 수 없습니다. $message"
+        }
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     private fun formatDateForDisplay(dateString: String): String {
@@ -432,7 +631,6 @@ class MeetDetailFragment : Fragment() {
         }
     }
 
-
     // 로딩 상태 표시
     private fun showLoadingState() {
         _binding?.apply {
@@ -459,9 +657,6 @@ class MeetDetailFragment : Fragment() {
 
             Log.d(TAG, "AI 응답 음성 파일 저장 완료: $responseAudioPath")
             currentResponseAudioPath = responseAudioPath
-
-            // UI 업데이트 제거 - 기존 텍스트 유지
-            // showAudioResponseUI() // 이 줄을 주석 처리하거나 삭제
 
             // 자동으로 음성 재생 시작
             autoPlayAudioResponse(responseAudioPath)
@@ -553,18 +748,51 @@ class MeetDetailFragment : Fragment() {
         currentResponseAudioPath = null
     }
 
-    // AI 응답 UI 표시 (버튼 없이)
-    private fun showAudioResponseUI() {
-        requireActivity().runOnUiThread {
-            _binding?.apply {
-                // 요약 뷰에 음성 응답 안내 표시
-                val responseText = """
-                    🤖 AI 음성 응답
-                    
-                    🔊 자동으로 재생됩니다...
-                """.trimIndent()
+    // 구독자용 업로드 메서드 (Clova API 사용)
+    private fun uploadAudioFileForSubscriber(filePath: String, meetingId: Long, topic: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(filePath)
+                if (!file.exists()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "파일이 존재하지 않습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
 
-                showSummaryView(responseText)
+                // 파일을 MultipartBody.Part로 변환
+                val requestFile = file.asRequestBody("audio/*".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
+
+                // Clova API 호출
+                val response = apiService.uploadAudioSummaryClova(topic, meetingId, filePart)
+
+                withContext(Dispatchers.Main) {
+                    // 응답 처리
+                    if (response.isSuccessful) {
+                        val clovaResponse = response.body()
+                        if (clovaResponse != null && clovaResponse.isSuccess) {
+                            Toast.makeText(requireContext(), "요약 생성 중입니다...", Toast.LENGTH_SHORT).show()
+
+                            // API 호출 성공 후 회의 상세 정보를 다시 로드하여 최신 데이터를 가져옴
+                            loadMeetingDetails(meetingId)
+                        } else {
+                            Toast.makeText(
+                                requireContext(),
+                                "API 처리 중 오류: ${clovaResponse?.message ?: "응답이 없습니다"}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        handleClovaApiResponse(response)
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "파일 업로드 중 오류 발생", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "음성 파일 업로드 중 오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

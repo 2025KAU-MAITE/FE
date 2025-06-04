@@ -67,7 +67,7 @@ class UserRepository(private val context: Context) {
                     Log.d(TAG, "요금제 정보: subscribed=$subscribed")
                     
                     // 요금제 정보를 로컬에 저장
-                    preferencesUtil.setUserPremiumStatus(subscribed)
+                    preferencesUtil.saveSubscriptionStatus(subscribed)
                     
                     UserInfo(
                         name = response.result.name,
