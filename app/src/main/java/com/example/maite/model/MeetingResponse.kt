@@ -6,6 +6,7 @@ data class MeetingResponse(
     val proposerName: String?,
     val meetingDate: String?,
     val meetingTime: String?,
+    val meetingEndTime: String?,
     val address: String?,
     val acceptance: String?
 )

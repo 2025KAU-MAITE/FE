@@ -9,6 +9,7 @@ data class PropMeetItem(
     val title: String,
     val date: String,
     val time: String,
+    val endTime: String,
     val place: String,
     val acceptance: String
 ) : Parcelable

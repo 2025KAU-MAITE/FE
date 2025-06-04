@@ -7,41 +7,6 @@
     tools:context=".MeetDetailFragment"
     android:background="@color/white">
 
-    <!-- AI 버튼 툴팁 -->
-    <TextView
-        android:id="@+id/aiButtonTooltip"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:background="@drawable/tooltip_background"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="8dp"
-        android:text="이 버튼을 눌러 AI를 호출해보세요!"
-        android:textColor="#4C7EED"
-        android:textSize="14sp"
-        android:visibility="gone"
-        app:layout_constraintEnd_toStartOf="@+id/aiCardView"
-        app:layout_constraintTop_toTopOf="@+id/aiCardView" />
-
-    <!-- AI 버튼 CardView -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/aiCardView"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="24dp"
-        app:cardCornerRadius="25dp"
-        app:cardElevation="2dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <ImageView
-            android:id="@+id/btnAi"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:src="@drawable/btn_ai" />
-    </androidx.cardview.widget.CardView>
-
     <ImageView
         android:id="@+id/backBtn"
         android:layout_width="wrap_content"
@@ -56,15 +21,18 @@
 
     <TextView
         android:id="@+id/meetTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
         android:text="산학 프로젝트 회의"
-        android:textSize="24dp"
+        android:textSize="24sp"
         android:textStyle="bold"
+        android:textColor="@android:color/black"
         app:layout_constraintStart_toEndOf="@+id/backBtn"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/editBtn"/>
 
     <ImageView
         android:id="@+id/editBtn"
@@ -78,17 +46,19 @@
         app:tint="#727272" />
 
     <ScrollView
+        android:id="@+id/mainScrollView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/aiButtonTooltip"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/meetTitle">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" >
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp">
 
             <TextView
                 android:id="@+id/textView21"
@@ -97,10 +67,25 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="8dp"
                 android:text="날짜"
-                android:textSize="18dp"
+                android:textSize="18sp"
                 android:textStyle="bold"
+                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/meetDate"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="2025.03.02"
+                android:textSize="18sp"
+                android:textColor="@android:color/darker_gray"
+                app:layout_constraintBottom_toBottomOf="@+id/textView21"
+                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/textView21"/>
 
             <TextView
                 android:id="@+id/textView22"
@@ -109,10 +94,25 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:text="시간"
-                android:textSize="18dp"
+                android:textSize="18sp"
                 android:textStyle="bold"
+                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView21" />
+
+            <TextView
+                android:id="@+id/meetTime"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="08:00 ~ 10:00"
+                android:textSize="18sp"
+                android:textColor="@android:color/darker_gray"
+                app:layout_constraintBottom_toBottomOf="@+id/textView22"
+                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/textView22"/>
 
             <TextView
                 android:id="@+id/textView23"
@@ -121,10 +121,24 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:text="장소"
-                android:textSize="18dp"
+                android:textSize="18sp"
                 android:textStyle="bold"
+                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView22" />
+
+            <TextView
+                android:id="@+id/meetPlace"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="경기도 성남시 어쩌구 저쩌구"
+                android:textSize="18sp"
+                android:textColor="@android:color/darker_gray"
+                app:layout_constraintTop_toTopOf="@+id/textView23"
+                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintEnd_toEndOf="parent" />
 
             <TextView
                 android:id="@+id/textView24"
@@ -133,8 +147,9 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:text="참여자"
-                android:textSize="18dp"
+                android:textSize="18sp"
                 android:textStyle="bold"
+                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView23" />
 
@@ -149,9 +164,9 @@
                 app:layout_constraintTop_toTopOf="@+id/textView21"
                 android:textSize="18dp"/>
 
-            <TextView
-                android:id="@+id/meetTime"
-                android:layout_width="wrap_content"
+            <HorizontalScrollView
+                android:id="@+id/participantsScrollView"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="08:00 ~ 10:00"
@@ -173,28 +188,39 @@
                 app:layout_constraintTop_toTopOf="@+id/textView23"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.0" />
-
-            <ImageView
-                android:id="@+id/imageView10"
-                android:layout_width="25dp"
-                android:layout_height="25dp"
-                android:layout_marginStart="16dp"
-                android:src="@drawable/img_profile_default"
+                android:layout_marginEnd="16dp"
+                android:scrollbars="none"
                 app:layout_constraintBottom_toBottomOf="@+id/textView24"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/textView24"
-                app:layout_constraintTop_toTopOf="@+id/textView24" />
+                app:layout_constraintTop_toTopOf="@+id/textView24">
+
+                <LinearLayout
+                    android:id="@+id/participantsLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/profileImg"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:src="@drawable/img_profile_default" />
+
+                </LinearLayout>
+            </HorizontalScrollView>
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/contentCard"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="32dp"
                 android:layout_marginEnd="16dp"
-                android:layout_marginBottom="16dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView24">
@@ -316,13 +342,52 @@
                         android:layout_marginEnd="16dp"
                         android:text=""
                         android:visibility="gone"
+                        app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:visibility="visible" />
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
+
+    <TextView
+        android:id="@+id/aiButtonTooltip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/tooltip_background"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:text="이 버튼을 눌러 AI를 호출해보세요!"
+        android:textColor="#4C7EED"
+        android:textSize="14sp"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@+id/aiCardView"
+        app:layout_constraintEnd_toEndOf="@+id/aiCardView" />
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/aiCardView"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        app:cardCornerRadius="25dp"
+        app:cardElevation="2dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/btnAi"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/btn_ai"
+            android:scaleType="centerInside"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
