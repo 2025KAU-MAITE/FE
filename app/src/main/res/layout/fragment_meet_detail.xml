@@ -153,8 +153,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView23" />
 
-            <!-- fragment_list_detail.xml과 동일한 방식의 참여자 섹션 -->
-
             <HorizontalScrollView
                 android:id="@+id/participantsScrollView"
                 android:layout_width="0dp"
@@ -202,8 +200,72 @@
                     android:layout_height="match_parent"
                     android:background="#F5F5F7"
                     android:minHeight="200dp"
-                    android:paddingTop="16dp"
                     android:paddingBottom="32dp">
+
+                    <!-- 탭 레이아웃 (구독자만 볼 수 있음) -->
+                    <com.google.android.material.tabs.TabLayout
+                        android:id="@+id/tabLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        app:tabSelectedTextColor="#000000"
+                        app:tabTextColor="#666666"
+                        app:tabIndicatorColor="@android:color/transparent"
+                        app:tabRippleColor="@android:color/transparent"
+                        android:background="#FFFFFF"
+                        app:tabTextAppearance="@style/TabTextAppearance"
+                        android:visibility="gone"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent">
+
+                        <com.google.android.material.tabs.TabItem
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="요약본" />
+
+                        <com.google.android.material.tabs.TabItem
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="회의록" />
+                    </com.google.android.material.tabs.TabLayout>
+
+                    <!-- 요약본 컨텐츠 (구독자용) -->
+                    <ScrollView
+                        android:id="@+id/summaryScrollView"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="16dp"
+                        android:visibility="gone"
+                        app:layout_constraintTop_toBottomOf="@+id/tabLayout"
+                        app:layout_constraintBottom_toBottomOf="parent">
+
+                        <TextView
+                            android:id="@+id/summaryTextView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="등록된 요약본이 없어요"
+                            android:textSize="16sp" />
+                    </ScrollView>
+
+                    <!-- 회의록 컨텐츠 (구독자용) -->
+                    <ScrollView
+                        android:id="@+id/transcriptScrollView"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="16dp"
+                        android:visibility="gone"
+                        app:layout_constraintTop_toBottomOf="@+id/tabLayout"
+                        app:layout_constraintBottom_toBottomOf="parent">
+
+                        <TextView
+                            android:id="@+id/transcriptTextView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="등록된 회의록이 없어요"
+                            android:textSize="16sp" />
+                    </ScrollView>
 
                     <TextView
                         android:id="@+id/textViewMinutesPlaceholder"
@@ -211,6 +273,7 @@
                         android:layout_height="wrap_content"
                         android:text="등록된 회의록이 없어요"
                         android:textColor="@android:color/darker_gray"
+                        android:layout_marginTop="16dp"
                         app:layout_constraintBottom_toTopOf="@+id/recordBtn"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
