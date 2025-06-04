@@ -90,6 +90,12 @@ class ListFragment : Fragment() {
         val fragment = ListDetailFragment.newInstance(maiteListItem)
         // 명시적으로 트랜잭션을 제대로 설정
         parentFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_right,
+                R.anim.slide_out_left,
+                0,
+                R.anim.slide_out_right
+            )
             .replace(R.id.main_frm, fragment)
             .addToBackStack(null) // 뒤로가기를 위한 백스택 추가
             .commit()

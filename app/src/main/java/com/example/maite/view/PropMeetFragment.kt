@@ -1,16 +1,14 @@
 package com.example.maite
 
 import android.os.Bundle
-import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.maite.databinding.FragmentPropMeetBinding
-// import com.example.maite.model.MeetingDataManager // ViewModel을 사용하므로 주석 처리 또는 제거
 import com.example.maite.model.PropMeetItem
 import com.example.maite.view.PropMeetAdapter
 import com.example.maite.view.PropMeetClickListener
@@ -28,6 +26,7 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentPropMeetBinding.inflate(inflater, container, false)
+        binding.root.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
         return binding.root
     }
 
@@ -39,18 +38,22 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
             PropMeetViewModel.Factory(requireActivity().application)
         )[PropMeetViewModel::class.java]
 
-        // 어댑터 초기화 시 아이템 클릭 리스너 추가
         adapter = PropMeetAdapter(this) { clickedItem ->
-            // PropMeetItem의 meetingId 필드를 사용합니다.
             val meetingIdToPass: Long = clickedItem.meetingId
 
             val detailFragment = MeetDetailFragment.newInstance(meetingIdToPass)
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.main_frm, detailFragment) // R.id.main_frm은 실제 프래그먼트 컨테이너 ID여야 합니다.
-                .addToBackStack(null)
-                .commit()
+            val fragmentTag = MeetDetailFragment::class.java.name
 
-            Log.d("PropMeetFragment", "제안된 회의 아이템 클릭됨: ${clickedItem.title}, MeetingID: $meetingIdToPass, MeetDetailFragment로 이동")
+            parentFragmentManager.beginTransaction()
+                .setCustomAnimations(
+                    R.anim.slide_in_right,
+                    0,
+                    0,
+                    R.anim.slide_out_right
+                )
+                .add(R.id.main_frm, detailFragment, fragmentTag)
+                .addToBackStack(fragmentTag)
+                .commit()
         }
 
         binding.propRV.apply {
@@ -59,16 +62,13 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
         }
 
         viewModel.proposedMeetings.observe(viewLifecycleOwner) { meetings ->
-            Log.d("PropMeetFragment", "ViewModel data count: ${meetings.size}")
             adapter.submitList(meetings)
             meetings.forEach { item ->
-                Log.d("PropMeetFragment", "ViewModel Item: ${item.title}, date: ${item.date}, status: ${item.acceptance}, meetingId: ${item.meetingId}") // meetingId 로깅
             }
         }
 
         viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
             if (!errorMessage.isNullOrEmpty()) {
-                Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
             }
         }
 
@@ -86,19 +86,15 @@ class PropMeetFragment : Fragment(), PropMeetClickListener {
 
     override fun onAcceptClick(item: PropMeetItem) {
         if (item.acceptance != "PENDING") {
-            Toast.makeText(requireContext(), "이미 처리된 회의입니다", Toast.LENGTH_SHORT).show()
             return
         }
         viewModel.acceptMeeting(item)
-        Log.d("PropMeetFragment", "수락 클릭: ${item.title}, meetingId: ${item.meetingId}") // meetingId 로깅
     }
 
     override fun onRejectClick(item: PropMeetItem) {
         if (item.acceptance != "PENDING") {
-            Toast.makeText(requireContext(), "이미 처리된 회의입니다", Toast.LENGTH_SHORT).show()
             return
         }
         viewModel.rejectMeeting(item)
-        Log.d("PropMeetFragment", "거절 클릭: ${item.title}, meetingId: ${item.meetingId}") // meetingId 로깅
     }
 }

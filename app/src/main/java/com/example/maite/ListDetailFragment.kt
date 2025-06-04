@@ -3,7 +3,6 @@ package com.example.maite
 import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import android.util.TypedValue
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -15,23 +14,19 @@ import android.widget.TextView
 import android.widget.LinearLayout
 import android.view.Gravity
 import android.widget.ImageView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
-import com.bumptech.glide.signature.ObjectKey // Added for Glide signature
+import com.bumptech.glide.signature.ObjectKey
 import com.example.maite.databinding.FragmentListDetailBinding
 import com.example.maite.model.InviteUserRequest
 import com.example.maite.model.MaiteListItem
 import com.example.maite.model.MeetingDataManager
-// Assuming MeetingResponse is defined in your model package and has a meetingId field
 import com.example.maite.model.MeetingResponse
-// Assuming UserResult is defined for the searchUsers API response
-// e.g., in UserResponse.kt or a similar model file
-import com.example.maite.UserResult // Make sure this import is correct
+import com.example.maite.UserResult
 import com.example.maite.viewmodel.InviteListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,7 +58,7 @@ class ListDetailFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentListDetailBinding.inflate(inflater, container, false)
-        apiService = MaiteRetrofitClient.getInstance(requireContext()) // Ensure apiService is initialized
+        apiService = MaiteRetrofitClient.getInstance(requireContext())
         meetingDataManager = MeetingDataManager(requireContext())
         return binding.root
     }
@@ -73,7 +68,6 @@ class ListDetailFragment : Fragment() {
 
         inviteViewModel = ViewModelProvider(this)[InviteListViewModel::class.java]
         inviteViewModel.inviteList.observe(viewLifecycleOwner) { userList ->
-            Log.d("ListDetailFragment", "사용자 목록 로드됨: ${userList.size}명")
         }
 
         maiteListItem = arguments?.getParcelable<MaiteListItem>(ARG_MAITE_LIST_ITEM)
@@ -82,9 +76,8 @@ class ListDetailFragment : Fragment() {
         binding.intro.text = maiteListItem?.intro
 
         participantEmails = maiteListItem?.participantEmails ?: emptyList()
-        Log.d("ListDetailFragment", "참가자 이메일 목록: $participantEmails")
 
-        updateParticipantProfiles() // Initial call
+        updateParticipantProfiles()
 
         binding.backBtn.setOnClickListener {
             parentFragmentManager.popBackStack()
@@ -95,7 +88,6 @@ class ListDetailFragment : Fragment() {
             val selectedIds = userList
                 .filter { item -> participantEmails.contains(item.email) }
                 .map { it.id }
-            Log.d("ListDetailFragment", "이메일로 매칭된 사용자 ID 목록: $selectedIds")
             val bottomSheet = InviteBottomSheet.newInstance(selectedIds, true)
             bottomSheet.show(parentFragmentManager, bottomSheet.tag)
         }
@@ -107,8 +99,6 @@ class ListDetailFragment : Fragment() {
             val selectedCount = bundle.getInt(InviteBottomSheet.KEY_SELECTED_COUNT, 0)
             val selectedEmails = bundle.getStringArrayList(InviteBottomSheet.KEY_SELECTED_EMAILS) ?: arrayListOf()
 
-            Log.d("ListDetailFragment", "선택된 참가자 수: $selectedCount, 이메일: $selectedEmails")
-
             val roomId = maiteListItem?.roomId
             if (roomId != null) {
                 val newEmails = selectedEmails.filter { !participantEmails.contains(it) }
@@ -116,42 +106,34 @@ class ListDetailFragment : Fragment() {
                     inviteNewUsers(roomId, newEmails)
                 }
             } else {
-                Log.e("ListDetailFragment", "룸 ID가 null입니다.")
-                Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
 
-            participantEmails = ArrayList(selectedEmails) // Ensure it's a new list if needed for observers
-            updateParticipantProfiles() // Update profiles after selection
-            loadTimetableData() // Reload timetable with new participants
+            participantEmails = ArrayList(selectedEmails)
+            updateParticipantProfiles()
+            loadTimetableData()
         }
 
         binding.timetableLayout.setOnClickListener {
             if (!::availableDaysOfWeek.isInitialized || availableDaysOfWeek.isEmpty()) {
-                Log.d("ListDetailFragment", "SuggestBottomSheet: 사용 가능한 요일 정보가 아직 없거나 비어있습니다.")
                 val allDaysList = ArrayList((1..7).toList())
                 val roomId = maiteListItem?.roomId?.toInt() ?: -1
                 val inviteEmails = ArrayList(participantEmails)
                 if (roomId == -1) {
-                    Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 if (inviteEmails.isEmpty()) {
-                    Toast.makeText(requireContext(), "초대할 참가자가 없습니다.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 val suggestBottomSheet = SuggestBottomSheet.newInstance(allDaysList, roomId, inviteEmails)
                 suggestBottomSheet.show(parentFragmentManager, suggestBottomSheet.tag)
             } else {
                 val availableDaysList = ArrayList(availableDaysOfWeek)
-                Log.d("ListDetailFragment", "SuggestBottomSheet 생성, 전달 요일: $availableDaysList")
                 val roomId = maiteListItem?.roomId?.toInt() ?: -1
                 val inviteEmails = ArrayList(participantEmails)
                 if (roomId == -1) {
-                    Toast.makeText(requireContext(), "방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 if (inviteEmails.isEmpty()) {
-                    Toast.makeText(requireContext(), "초대할 참가자가 없습니다.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 val suggestBottomSheet = SuggestBottomSheet.newInstance(availableDaysList, roomId, inviteEmails)
@@ -159,18 +141,55 @@ class ListDetailFragment : Fragment() {
             }
         }
 
-        binding.recentHamberger.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.main_frm, MeetListFragment())
-                .addToBackStack(null)
-                .commit()
+        binding.propHamberger.setOnClickListener {
+            val fragmentTag = PropMeetFragment::class.java.name
+            val fragmentManager = parentFragmentManager
+            var propMeetFragment = fragmentManager.findFragmentByTag(fragmentTag)
+
+            val transaction = fragmentManager.beginTransaction()
+
+            // 애니메이션 설정
+            transaction.setCustomAnimations(
+                R.anim.slide_in_right,
+                0,
+                0,
+                R.anim.slide_out_right
+            )
+
+            if (propMeetFragment == null) {
+                propMeetFragment = PropMeetFragment()
+                transaction.add(R.id.main_frm, propMeetFragment, fragmentTag)
+            } else {
+                transaction.show(propMeetFragment)
+            }
+
+            transaction.addToBackStack(fragmentTag)
+            transaction.commit()
         }
 
-        binding.propHamberger.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.main_frm, PropMeetFragment())
-                .addToBackStack(null)
-                .commit()
+        binding.recentHamberger.setOnClickListener {
+            val fragmentTag = MeetListFragment::class.java.name
+            val fragmentManager = parentFragmentManager
+            var meetListFragment = fragmentManager.findFragmentByTag(fragmentTag)
+
+            val transaction = fragmentManager.beginTransaction()
+
+            transaction.setCustomAnimations(
+                R.anim.slide_in_right,
+                0,
+                0,
+                R.anim.slide_out_right
+            )
+
+            if (meetListFragment == null) {
+                meetListFragment = MeetListFragment()
+                transaction.add(R.id.main_frm, meetListFragment, fragmentTag)
+            } else {
+                transaction.show(meetListFragment)
+            }
+
+            transaction.addToBackStack(fragmentTag)
+            transaction.commit()
         }
 
         maiteListItem?.roomId?.let { roomId ->
@@ -185,14 +204,9 @@ class ListDetailFragment : Fragment() {
                 val success = meetingDataManager.fetchAndDistributeMeetings(roomId)
                 if (success) {
                     updateMeetingsUI()
-                    Log.d("ListDetailFragment", "회의 데이터 로드 성공")
                 } else {
-                    Log.e("ListDetailFragment", "회의 데이터 로드 실패")
-                    Toast.makeText(requireContext(), "회의 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("ListDetailFragment", "회의 데이터 로드 중 오류", e)
-                Toast.makeText(requireContext(), "회의 데이터 로드 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -201,11 +215,9 @@ class ListDetailFragment : Fragment() {
         val pastMeetings = meetingDataManager.getMeetListRepository().getMeetList()
         val futureMeetings = meetingDataManager.getPropMeetRepository().getProposedMeetings()
 
-        Log.d("ListDetailFragment", "과거 회의 수: ${pastMeetings.size}, 미래 회의 수: ${futureMeetings.size}")
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
         try {
-            // 가장 최근 과거 회의 (cardView3)
             if (pastMeetings.isNotEmpty()) {
                 val latestPastMeeting = pastMeetings
                     .sortedByDescending {
@@ -223,9 +235,16 @@ class ListDetailFragment : Fragment() {
                     binding.cardView3.setOnClickListener {
                         val meetingId = latestPastMeeting.meetingId
                         val meetDetailFragment = MeetDetailFragment.newInstance(meetingId)
+
                         parentFragmentManager.beginTransaction()
-                            .replace(R.id.main_frm, meetDetailFragment)
-                            .addToBackStack(null)
+                            .setCustomAnimations(
+                                R.anim.slide_in_right,
+                                0,
+                                0,
+                                R.anim.slide_out_right
+                            )
+                            .add(R.id.main_frm, meetDetailFragment, MeetDetailFragment::class.java.name)
+                            .addToBackStack(MeetDetailFragment::class.java.name)
                             .commit()
                     }
                 } else {
@@ -237,7 +256,6 @@ class ListDetailFragment : Fragment() {
                 binding.cardView3.setOnClickListener(null)
             }
 
-            // 가장 가까운 미래 회의 (cardView2)
             if (futureMeetings.isNotEmpty()) {
                 val earliestFutureMeeting = futureMeetings
                     .sortedBy {
@@ -280,9 +298,16 @@ class ListDetailFragment : Fragment() {
                     binding.cardView2.setOnClickListener {
                         val meetingId = earliestFutureMeeting.meetingId
                         val meetDetailFragment = MeetDetailFragment.newInstance(meetingId)
+
                         parentFragmentManager.beginTransaction()
-                            .replace(R.id.main_frm, meetDetailFragment)
-                            .addToBackStack(null)
+                            .setCustomAnimations(
+                                R.anim.slide_in_right,
+                                0,
+                                0,
+                                R.anim.slide_out_right
+                            )
+                            .add(R.id.main_frm, meetDetailFragment, MeetDetailFragment::class.java.name)
+                            .addToBackStack(MeetDetailFragment::class.java.name)
                             .commit()
                     }
 
@@ -295,7 +320,6 @@ class ListDetailFragment : Fragment() {
                 binding.cardView2.setOnClickListener(null)
             }
         } catch (e: Exception) {
-            Log.e("ListDetailFragment", "회의 데이터 UI 업데이트 중 오류", e)
             binding.cardView2.visibility = View.GONE
             binding.cardView3.visibility = View.GONE
             binding.cardView2.setOnClickListener(null)
@@ -310,15 +334,12 @@ class ListDetailFragment : Fragment() {
                 binding.rejectBtn.isEnabled = false
                 val response = withContext(Dispatchers.IO) { apiService.acceptMeetingInvite(meetingId) }
                 if (response.isSuccessful) {
-                    Toast.makeText(requireContext(), "회의를 수락했습니다.", Toast.LENGTH_SHORT).show()
                     maiteListItem?.roomId?.let { loadMeetingsData(it) }
                 } else {
-                    Toast.makeText(requireContext(), "회의 수락 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
                     binding.acceptBtn.isEnabled = true
                     binding.rejectBtn.isEnabled = true
                 }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "회의 수락 처리 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
                 binding.acceptBtn.isEnabled = true
                 binding.rejectBtn.isEnabled = true
             }
@@ -332,15 +353,12 @@ class ListDetailFragment : Fragment() {
                 binding.rejectBtn.isEnabled = false
                 val response = withContext(Dispatchers.IO) { apiService.rejectMeetingInvite(meetingId) }
                 if (response.isSuccessful) {
-                    Toast.makeText(requireContext(), "회의를 거절했습니다.", Toast.LENGTH_SHORT).show()
                     maiteListItem?.roomId?.let { loadMeetingsData(it) }
                 } else {
-                    Toast.makeText(requireContext(), "회의 거절 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
                     binding.acceptBtn.isEnabled = true
                     binding.rejectBtn.isEnabled = true
                 }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "회의 거절 처리 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
                 binding.acceptBtn.isEnabled = true
                 binding.rejectBtn.isEnabled = true
             }
@@ -354,7 +372,6 @@ class ListDetailFragment : Fragment() {
             val date = inputFormat.parse(dateString)
             if (date != null) outputFormat.format(date) else dateString
         } catch (e: Exception) {
-            Log.e("ListDetailFragment", "날짜 포맷 변환 오류", e)
             dateString
         }
     }
@@ -373,10 +390,8 @@ class ListDetailFragment : Fragment() {
                                 val timetableResponse = response.body()!!
                                 allUsersBusyHours.add(RoomTimetableUtils.convertToUserBusyHours(timetableResponse))
                             } else {
-                                Log.e("ListDetailFragment", "사용자 $email 시간표 로드 실패: ${response.errorBody()?.string()}")
                             }
                         } catch (e: Exception) {
-                            Log.e("ListDetailFragment", "사용자 $email 시간표 로드 중 오류", e)
                         }
                     }
                 }
@@ -395,12 +410,9 @@ class ListDetailFragment : Fragment() {
                         if (newClasses.any { it.className.contains("비는 시간") }) "${totalParticipants}명의 참가자 시간표를 분석했습니다."
                         else "${totalParticipants}명의 참가자 시간표를 분석했지만, 공통 비는 시간을 찾지 못했습니다."
                     } else "참가자가 없습니다. 기본 시간표를 표시합니다."
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                Log.e("ListDetailFragment", "시간표 데이터 로드 중 심각한 오류", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "시간표 로드 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
                     classes = emptyList()
                     availableDaysOfWeek = emptySet()
                     sharedViewModel.setTimetableData(classes)
@@ -427,12 +439,13 @@ class ListDetailFragment : Fragment() {
                     }
                 }
                 withContext(Dispatchers.Main) {
-                    if (successCount > 0) Toast.makeText(requireContext(), "${successCount}명의 사용자를 성공적으로 초대했습니다.", Toast.LENGTH_SHORT).show()
-                    if (failureDetails.isNotEmpty()) Toast.makeText(requireContext(), "일부 사용자 초대 실패:\n$failureDetails", Toast.LENGTH_LONG).show()
+                    if (successCount > 0) {
+                    }
+                    if (failureDetails.isNotEmpty()) {
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "초대 중 오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -440,12 +453,10 @@ class ListDetailFragment : Fragment() {
 
     private fun updateParticipantProfiles() {
         val participantsLayout = binding.invitedUsersLayout
-        // Remove only ImageViews that are not the addBtn
         val childrenToRemove = mutableListOf<View>()
         for (i in 0 until participantsLayout.childCount) {
             val child = participantsLayout.getChildAt(i)
-            // Check if the child is an ImageView and NOT the addBtn (which might be an ImageButton or ImageView with a specific ID)
-            if (child is ImageView && child.id != R.id.addBtn) { // Assuming addBtn has this ID if it's an ImageView too
+            if (child is ImageView && child.id != R.id.addBtn) {
                 childrenToRemove.add(child)
             }
         }
@@ -458,17 +469,16 @@ class ListDetailFragment : Fragment() {
             val imageView = ImageView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(imageSize, imageSize).apply { marginEnd = imageMarginEnd }
                 scaleType = ImageView.ScaleType.CENTER_CROP
-                tag = email // Store email in tag for potential future use
-                setOnClickListener { Toast.makeText(requireContext(), "참가자: $email", Toast.LENGTH_SHORT).show() }
+                tag = email
+                setOnClickListener {
+                }
             }
-            // Add the ImageView to the layout first, so it's there while loading
-            participantsLayout.addView(imageView, index) // Add before the addBtn
+            participantsLayout.addView(imageView, index)
 
-            // Launch a coroutine for each image to load it
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val response = withContext(Dispatchers.IO) {
-                        apiService.searchUsers(email) // Assumes this API endpoint exists and returns UserResponse
+                        apiService.searchUsers(email)
                     }
                     if (response.isSuccessful && response.body()?.isSuccess == true) {
                         val userList: List<UserResult>? = response.body()?.result
@@ -476,7 +486,7 @@ class ListDetailFragment : Fragment() {
                         val profileImageUrl = userInfo?.profileImageUrl
 
                         if (!profileImageUrl.isNullOrBlank()) {
-                            Glide.with(this@ListDetailFragment) // Use fragment's context
+                            Glide.with(this@ListDetailFragment)
                                 .load(profileImageUrl)
                                 .apply(RequestOptions.circleCropTransform())
                                 .skipMemoryCache(true)
@@ -489,17 +499,12 @@ class ListDetailFragment : Fragment() {
                         }
                     } else {
                         imageView.setImageResource(R.drawable.img_profile_default)
-                        Log.e("ListDetailFragment", "Failed to fetch profile for $email: ${response.code()} - ${response.message()}")
                     }
                 } catch (e: Exception) {
                     imageView.setImageResource(R.drawable.img_profile_default)
-                    Log.e("ListDetailFragment", "Exception loading profile for $email", e)
                 }
             }
         }
-        // Ensure the add button is at the end if it's part of this layout and managed separately
-        // Or adjust the loop/add logic if addBtn is always the last child.
-        // For now, assuming addBtn is handled separately or is not an ImageView being cleared.
         binding.invitedUsersScrollView.post { binding.invitedUsersScrollView.fullScroll(View.FOCUS_RIGHT) }
     }
 
@@ -559,9 +564,11 @@ class ListDetailFragment : Fragment() {
                         containerView.setBackgroundColor(classItem.color)
                         val classNames = classes.filter { it.dayOfWeek == day && it.timeSlot >= range.first && it.timeSlot <= range.second }
                             .map { it.className }.distinct().joinToString(", ")
-                        containerView.setOnLongClickListener { Toast.makeText(context, classNames, Toast.LENGTH_SHORT).show(); true }
+                        containerView.setOnLongClickListener {
+                            true
+                        }
                         containerView.setOnClickListener { binding.timetableLayout.performClick() }
-                        containerView.addView(View(context).apply { // Vertical line
+                        containerView.addView(View(context).apply {
                             layoutParams = LinearLayout.LayoutParams(1.dpToPx(context), LinearLayout.LayoutParams.MATCH_PARENT).apply { gravity = Gravity.END }
                             setBackgroundColor(Color.parseColor("#BBBBBB")); alpha = 0.5f
                         })
@@ -585,9 +592,11 @@ class ListDetailFragment : Fragment() {
                         }
                         classes.find { it.timeSlot == hourInMiddleRange && it.dayOfWeek == day && it.className.contains("비는 시간") }?.let { classItem ->
                             containerView.setBackgroundColor(classItem.color)
-                            containerView.setOnLongClickListener { Toast.makeText(context, classItem.className, Toast.LENGTH_SHORT).show(); true }
+                            containerView.setOnLongClickListener {
+                                true
+                            }
                             containerView.setOnClickListener { binding.timetableLayout.performClick() }
-                            containerView.addView(View(context).apply { // Vertical line
+                            containerView.addView(View(context).apply {
                                 layoutParams = LinearLayout.LayoutParams(1.dpToPx(context), LinearLayout.LayoutParams.MATCH_PARENT).apply { gravity = Gravity.END }
                                 setBackgroundColor(Color.parseColor("#BBBBBB")); alpha = 0.5f
                             })
