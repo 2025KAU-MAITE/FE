@@ -12,8 +12,6 @@ class PreferencesUtil(context: Context) {
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_LAST_JOINED_ROOM_ID = "last_joined_room_id"
-        private const val KEY_IS_SUBSCRIBED = "is_subscribed" // 구독 상태 키 추가
-        private const val KEY_USER_IS_PREMIUM = "user_is_premium" // 프리미엄 상태 키 추가
     }
 
     fun saveAccessToken(token: String) {
@@ -214,23 +212,21 @@ class PreferencesUtil(context: Context) {
      * 사용자 요금제 정보 저장
      */
     fun setUserPremiumStatus(isPremium: Boolean) {
-        prefs.edit().putBoolean(KEY_USER_IS_PREMIUM, isPremium).apply()
-        // 일관성을 위해 구독 상태도 함께 업데이트
-        saveSubscriptionStatus(isPremium)
+        setBoolean("user_is_premium", isPremium)
     }
     
     /**
      * 사용자 요금제 정보 가져오기
      */
     fun getUserPremiumStatus(): Boolean {
-        return prefs.getBoolean(KEY_USER_IS_PREMIUM, false) // 기본값: false (베이직)
+        return getBoolean("user_is_premium", false) // 기본값: false (베이직)
     }
     
     /**
      * 사용자 요금제 이름 가져오기
      */
     fun getUserPlanName(): String {
-        return if (getUserPremiumStatus() || isSubscribed()) "프리미엄" else "베이직"
+        return if (getUserPremiumStatus()) "프리미엄" else "베이직"
     }
     
     /**
@@ -238,22 +234,5 @@ class PreferencesUtil(context: Context) {
      */
     fun getCurrentPlan(): String {
         return getUserPlanName()
-    }
-
-    /**
-     * 구독 상태 저장
-     */
-    fun saveSubscriptionStatus(isSubscribed: Boolean) {
-        prefs.edit().putBoolean(KEY_IS_SUBSCRIBED, isSubscribed).apply()
-        // 일관성을 위해 프리미엄 상태도 함께 업데이트
-        setBoolean("user_is_premium", isSubscribed)
-    }
-
-    /**
-     * 구독 상태 조회
-     * @return 구독 상태 (기본값: false)
-     */
-    fun isSubscribed(): Boolean {
-        return prefs.getBoolean(KEY_IS_SUBSCRIBED, false)
     }
 }
