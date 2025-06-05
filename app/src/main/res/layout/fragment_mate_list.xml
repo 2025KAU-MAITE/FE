@@ -20,10 +20,11 @@
                 android:id="@+id/btn_back"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_back"
+                android:src="@drawable/btn_back_arrow"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
+                app:tint="@color/gray"
                 android:contentDescription="뒤로가기" />
 
             <TextView

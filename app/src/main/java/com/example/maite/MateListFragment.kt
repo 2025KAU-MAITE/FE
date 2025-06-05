@@ -55,8 +55,9 @@ class MateListFragment : Fragment() {
             setHasFixedSize(true)
         }
         
-        // 뒤로가기 버튼 설정
+        // 뒤로가기 버튼
         binding.btnBack.setOnClickListener {
+            // 친구 목록에서 돌아가기
             parentFragmentManager.popBackStack()
         }
         
