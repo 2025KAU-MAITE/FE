@@ -10,7 +10,11 @@ data class KakaoPayReadyRequest(
     val totalAmount: Int,
     @SerializedName("item_name")
     val itemName: String,
-    val quantity: Int
+    val quantity: Int,
+    @SerializedName("partner_order_id")
+    val partnerOrderId: String,
+    @SerializedName("partner_user_id")
+    val partnerUserId: String
 )
 
 /**
@@ -25,10 +29,8 @@ data class KakaoPayReadyResponse(
 
 data class KakaoPayReadyResult(
     val tid: String,
-    @SerializedName("partner_order_id")
-    val partnerOrderId: String,
-    @SerializedName("partner_user_id")
-    val partnerUserId: String,
+    val partnerOrderId: String? = null,
+    val partnerUserId: String? = null,
     @SerializedName("next_redirect_mobile_url")
     val nextRedirectMobileUrl: String
 )
@@ -38,11 +40,8 @@ data class KakaoPayReadyResult(
  */
 data class KakaoPaySuccessRequest(
     val tid: String,
-    @SerializedName("partner_order_id")
     val partnerOrderId: String,
-    @SerializedName("partner_user_id")
     val partnerUserId: String,
-    @SerializedName("pg_token")
     val pgToken: String
 )
 

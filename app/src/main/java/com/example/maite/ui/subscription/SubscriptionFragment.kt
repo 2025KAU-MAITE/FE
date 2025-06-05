@@ -8,335 +8,377 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.maite.PreferencesUtil
-import com.example.maite.R
+import com.example.maite.databinding.FragmentSubscriptionBinding
 import com.example.maite.repository.PaymentRepository
 import com.example.maite.ui.payment.KakaoPayWebViewActivity
 import kotlinx.coroutines.launch
 
 class SubscriptionFragment : Fragment() {
-
-    private lateinit var preferencesUtil: PreferencesUtil
+    
+    companion object {
+        fun newInstance(): SubscriptionFragment {
+            return SubscriptionFragment()
+        }
+    }
+    
+    private var _binding: FragmentSubscriptionBinding? = null
+    private val binding get() = _binding!!
+    
     private lateinit var paymentRepository: PaymentRepository
     
-    // 카카오페이 결제 정보를 저장할 변수들
+    // 현재 결제 정보를 저장할 변수들
     private var currentTid: String? = null
     private var currentPartnerOrderId: String? = null
     private var currentPartnerUserId: String? = null
     
-    // 카카오페이 WebView 액티비티 결과 처리
+    private val TAG = "SubscriptionFragment"
+    
+    // 카카오페이 WebView 결과 처리
     private val kakaoPayLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         handleKakaoPayResult(result.resultCode, result.data)
     }
-
-    companion object {
-        private const val TAG = "SubscriptionFragment"
-        private const val PREMIUM_AMOUNT = 9900  // 프리미엄 요금제 가격 (9,900원)
-        private const val PREMIUM_PLAN_NAME = "MAITE 프리미엄 플랜"
-        
-        fun newInstance(): SubscriptionFragment {
-            return SubscriptionFragment()
-        }
-    }
-
+    
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_subscription, container, false)
+    ): View {
+        _binding = FragmentSubscriptionBinding.inflate(inflater, container, false)
+        return binding.root
     }
-
+    
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        preferencesUtil = PreferencesUtil(requireContext())
+        // PaymentRepository 초기화
         paymentRepository = PaymentRepository(requireContext())
         
-        // 뒤로가기 버튼
-        view.findViewById<View>(R.id.btn_back).setOnClickListener {
+        setupUI()
+    }
+    
+    private fun setupUI() {
+        // 프리미엄 구독 버튼 클릭 리스너 설정
+        binding.btnSelectPremium.setOnClickListener {
+            startKakaoPayment()
+        }
+        
+        // 뒤로가기 버튼 설정
+        binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
-        
-        // 현재 요금제 정보 설정
-        setupCurrentPlanInfo()
-        
-        // 요금제 버튼 클릭 이벤트 설정
-        setupPlanButtons()
     }
     
-    private fun setupCurrentPlanInfo() {
-        val isPremium = preferencesUtil.getUserPremiumStatus()
-        
-        // 버튼 상태 업데이트
-        updateButtonStates(isPremium)
-    }
-    
-    private fun updateButtonStates(isPremium: Boolean) {
-        val btnFree = view?.findViewById<Button>(R.id.btn_select_free)
-        val btnPremium = view?.findViewById<Button>(R.id.btn_select_premium)
-        
-        // 컨텍스트가 null이 아닌 경우에만 색상을 가져옴
-        val context = context ?: return
-        val mainColor = context.getColor(R.color.mainColor)
-        val grayColor = context.getColor(R.color.gray)
-        
-        if (isPremium) {
-            // 프리미엄 사용자
-            btnFree?.text = "다운그레이드"
-            btnFree?.backgroundTintList = android.content.res.ColorStateList.valueOf(grayColor)
-            btnPremium?.text = "현재 이용중"
-            btnPremium?.backgroundTintList = android.content.res.ColorStateList.valueOf(mainColor)
-            btnPremium?.isEnabled = false
-        } else {
-            // 무료 사용자
-            btnFree?.text = "현재 이용중"
-            btnFree?.backgroundTintList = android.content.res.ColorStateList.valueOf(mainColor)
-            btnFree?.isEnabled = false
-            btnPremium?.text = "업그레이드"
-            btnPremium?.backgroundTintList = android.content.res.ColorStateList.valueOf(mainColor)
-            btnPremium?.isEnabled = true
-        }
-    }
-    
-    private fun setupPlanButtons() {
-        val isPremium = preferencesUtil.getUserPremiumStatus()
-        
-        // 무료 요금제 버튼
-        view?.findViewById<Button>(R.id.btn_select_free)?.setOnClickListener {
-            if (isPremium) {
-                // 다운그레이드 처리
-                showDowngradeDialog()
-            } else {
-                Toast.makeText(context, "이미 무료 요금제를 이용 중입니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
-        
-        // 프리미엄 요금제 버튼
-        view?.findViewById<Button>(R.id.btn_select_premium)?.setOnClickListener {
-            if (isPremium) {
-                Toast.makeText(context, "이미 프리미엄 요금제를 이용 중입니다.", Toast.LENGTH_SHORT).show()
-            } else {
-                // 바로 결제 시작
-                startKakaoPayment()
-            }
-        }
-    }
-    
-    private fun showUpgradeDialog() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("프리미엄 업그레이드")
-            .setMessage("MAITE 프리미엄 플랜 (월 9,900원)으로 업그레이드하시겠습니까?\n\n프리미엄 플랜 혜택:\n• 무제한 AI 대화\n• 고급 기능 이용\n• 광고 제거")
-            .setPositiveButton("결제하기") { _, _ ->
-                startKakaoPayment()
-            }
-            .setNegativeButton("취소", null)
-            .show()
-    }
-    
-    /**
-     * 카카오페이 결제 프로세스 시작
-     */
     private fun startKakaoPayment() {
+        Log.d(TAG, "카카오페이 결제 시작")
+        
         lifecycleScope.launch {
             try {
-                showLoadingState(true)
-                Log.d(TAG, "카카오페이 결제 준비 시작")
+                // 로딩 상태 표시
+                showLoading(true)
                 
-                // 1단계: 카카오페이 ready API 호출
-                val readyResponse = paymentRepository.readyKakaoPayment(
-                    totalAmount = PREMIUM_AMOUNT,
-                    itemName = PREMIUM_PLAN_NAME,
-                    quantity = 1
+                // 카카오페이 결제 준비 API 호출
+                val response = paymentRepository.readyKakaoPayment(
+                    totalAmount = 5000, // 구독료 5000원
+                    itemName = "MAITE 앱 구독"
                 )
                 
-                if (readyResponse.isSuccess) {
-                    val result = readyResponse.result
-                    // 결제 정보 저장
-                    currentTid = result.tid
-                    currentPartnerOrderId = result.partnerOrderId
-                    currentPartnerUserId = result.partnerUserId
+                if (response.isSuccess) {
+                    // 결제 정보 저장 (인스턴스 변수)
+                    currentTid = response.result.tid
+                    currentPartnerOrderId = response.result.partnerOrderId
+                    currentPartnerUserId = response.result.partnerUserId
                     
-                    Log.d(TAG, "카카오페이 ready 성공: tid=${result.tid}")
+                    // 결제 정보 백업 저장 (SharedPreferences) - null 체크 후 저장
+                    val tid = response.result.tid
+                    val partnerOrderId = response.result.partnerOrderId
+                    val partnerUserId = response.result.partnerUserId
                     
-                    // 2단계: WebView에서 결제 진행
-                    openKakaoPayWebView(result.nextRedirectMobileUrl)
+                    if (partnerOrderId != null && partnerUserId != null) {
+                        savePaymentDataToPrefs(tid, partnerOrderId, partnerUserId)
+                    } else {
+                        Log.e(TAG, "partnerOrderId 또는 partnerUserId가 null입니다")
+                    }
+                    
+                    Log.d(TAG, "결제 준비 성공 - tid: $currentTid")
+                    Log.d(TAG, "partnerOrderId: $currentPartnerOrderId")
+                    Log.d(TAG, "partnerUserId: $currentPartnerUserId")
+                    Log.d(TAG, "결제 URL: ${response.result.nextRedirectMobileUrl}")
+                    
+                    // WebView 액티비티 시작
+                    val intent = Intent(requireContext(), KakaoPayWebViewActivity::class.java).apply {
+                        putExtra(KakaoPayWebViewActivity.EXTRA_PAYMENT_URL, response.result.nextRedirectMobileUrl)
+                    }
+                    kakaoPayLauncher.launch(intent)
                 } else {
-                    showError(readyResponse.message ?: "결제 준비에 실패했습니다.")
+                    Log.e(TAG, "결제 준비 실패: ${response.message}")
+                    showToast("결제 준비에 실패했습니다: ${response.message}")
                 }
-                
             } catch (e: Exception) {
-                Log.e(TAG, "카카오페이 결제 준비 실패", e)
-                showError("결제 준비 중 오류가 발생했습니다: ${e.message}")
+                Log.e(TAG, "결제 준비 중 오류 발생", e)
+                showToast("결제 준비 중 오류가 발생했습니다")
             } finally {
-                showLoadingState(false)
+                showLoading(false)
             }
         }
     }
     
-    /**
-     * 카카오페이 WebView 열기
-     */
-    private fun openKakaoPayWebView(redirectUrl: String) {
-        Log.d(TAG, "카카오페이 WebView 열기: $redirectUrl")
-        
-        val intent = Intent(requireContext(), KakaoPayWebViewActivity::class.java).apply {
-            putExtra(KakaoPayWebViewActivity.EXTRA_PAYMENT_URL, redirectUrl)
-        }
-        
-        kakaoPayLauncher.launch(intent)
-    }
-    
-    /**
-     * 카카오페이 WebView 결과 처리
-     */
     private fun handleKakaoPayResult(resultCode: Int, data: Intent?) {
+        Log.d(TAG, "카카오페이 결제 결과 - resultCode: $resultCode")
+        Log.d(TAG, "WebView 결과 받은 후 - currentTid: $currentTid")
+        Log.d(TAG, "WebView 결과 받은 후 - currentPartnerOrderId: $currentPartnerOrderId")
+        Log.d(TAG, "WebView 결과 받은 후 - currentPartnerUserId: $currentPartnerUserId")
+        
         when (resultCode) {
             KakaoPayWebViewActivity.RESULT_SUCCESS -> {
                 val pgToken = data?.getStringExtra(KakaoPayWebViewActivity.EXTRA_PG_TOKEN)
-                if (!pgToken.isNullOrEmpty()) {
-                    Log.d(TAG, "카카오페이 결제 성공 - pg_token 받음")
+                if (pgToken != null) {
+                    Log.d(TAG, "결제 성공 - pg_token 받음")
                     processPaymentSuccess(pgToken)
                 } else {
-                    showError("결제 정보를 확인할 수 없습니다.")
+                    Log.e(TAG, "pg_token이 null입니다")
+                    showToast("결제 정보를 확인할 수 없습니다")
+                    clearPaymentData()
                 }
             }
-            
             KakaoPayWebViewActivity.RESULT_CANCEL -> {
-                Log.d(TAG, "카카오페이 결제 취소")
-                Toast.makeText(requireContext(), "결제가 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "결제 취소")
+                showToast("결제가 취소되었습니다")
+                clearPaymentData()
             }
-            
             KakaoPayWebViewActivity.RESULT_FAIL -> {
                 val errorMessage = data?.getStringExtra(KakaoPayWebViewActivity.EXTRA_ERROR_MESSAGE)
-                Log.e(TAG, "카카오페이 결제 실패: $errorMessage")
-                showError(errorMessage ?: "결제에 실패했습니다.")
+                Log.e(TAG, "결제 실패: $errorMessage")
+                showToast("결제에 실패했습니다: $errorMessage")
+                clearPaymentData()
+            }
+            else -> {
+                Log.w(TAG, "알 수 없는 결제 결과: $resultCode")
+                showToast("결제 중 알 수 없는 오류가 발생했습니다")
+                clearPaymentData()
             }
         }
     }
     
-    /**
-     * 결제 성공 처리
-     */
     private fun processPaymentSuccess(pgToken: String) {
+        Log.d(TAG, "결제 성공 처리 시작")
+        Log.d(TAG, "pgToken: ${pgToken.take(10)}...")
+        Log.d(TAG, "currentTid: $currentTid")
+        Log.d(TAG, "currentPartnerOrderId: $currentPartnerOrderId")
+        Log.d(TAG, "currentPartnerUserId: $currentPartnerUserId")
+        
+        // 인스턴스 변수가 null인 경우 SharedPreferences에서 복원
+        if (currentTid == null || currentPartnerOrderId == null || currentPartnerUserId == null) {
+            Log.w(TAG, "인스턴스 변수가 null, SharedPreferences에서 복원 시도")
+            restorePaymentDataFromPrefs()
+            Log.d(TAG, "복원 후 - currentTid: $currentTid")
+            Log.d(TAG, "복원 후 - currentPartnerOrderId: $currentPartnerOrderId")
+            Log.d(TAG, "복원 후 - currentPartnerUserId: $currentPartnerUserId")
+        }
+        
+        // 필요한 정보가 모두 있는지 확인
+        if (currentTid == null || currentPartnerOrderId == null || currentPartnerUserId == null) {
+            Log.e(TAG, "결제 정보가 누락되었습니다")
+            Log.e(TAG, "currentTid: $currentTid")
+            Log.e(TAG, "currentPartnerOrderId: $currentPartnerOrderId") 
+            Log.e(TAG, "currentPartnerUserId: $currentPartnerUserId")
+            showToast("결제 정보가 누락되어 처리할 수 없습니다")
+            clearPaymentData()
+            return
+        }
+        
         lifecycleScope.launch {
             try {
-                showLoadingState(true)
-                Log.d(TAG, "카카오페이 success API 호출 시작")
+                showLoading(true)
                 
-                // 3단계: 카카오페이 success API 호출
-                // 필수 정보가 모두 있는지 확인
-                val tid = currentTid
-                val partnerOrderId = currentPartnerOrderId
-                val partnerUserId = currentPartnerUserId
-                
-                if (tid.isNullOrEmpty() || partnerOrderId.isNullOrEmpty() || partnerUserId.isNullOrEmpty()) {
-                    showError("결제 정보가 누락되어 처리할 수 없습니다.")
-                    return@launch
-                }
-                
-                val successResponse = paymentRepository.processKakaoPaymentSuccess(
-                    tid = tid,
-                    partnerOrderId = partnerOrderId,
-                    partnerUserId = partnerUserId,
+                // 카카오페이 결제 성공 처리 API 호출
+                val response = paymentRepository.processKakaoPaymentSuccess(
+                    tid = currentTid!!,
+                    partnerOrderId = currentPartnerOrderId!!,
+                    partnerUserId = currentPartnerUserId!!,
                     pgToken = pgToken
                 )
                 
-                if (successResponse.isSuccess) {
-                    Log.d(TAG, "카카오페이 success API 성공")
+                if (response.isSuccess) {
+                    Log.d(TAG, "결제 완료: ${response.message}")
+                    showSubscriptionSuccessDialog()
                     
-                    // 4단계: 사용자 정보 업데이트
+                    // 사용자 정보 새로고침 (구독 상태 업데이트)
                     refreshUserSubscriptionStatus()
-                    
                 } else {
-                    showError(successResponse.message ?: "결제 완료 처리에 실패했습니다.")
+                    Log.e(TAG, "결제 처리 실패: ${response.message}")
+                    showToast("결제 처리에 실패했습니다: ${response.message}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "결제 처리 중 오류 발생", e)
+                showToast("결제 처리 중 오류가 발생했습니다")
+            } finally {
+                showLoading(false)
+                clearPaymentData()
+            }
+        }
+    }
+    
+    private fun showSubscriptionSuccessDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("구독 완료")
+            .setMessage("MAITE 구독이 완료되었습니다!\n이제 모든 기능을 자유롭게 이용하실 수 있습니다.")
+            .setPositiveButton("확인") { dialog, _ ->
+                dialog.dismiss()
+                // /auth/me API 호출 후 설정 화면으로 돌아가기
+                refreshUserInfoAndNavigateToSettings()
+            }
+            .show()
+    }
+    
+    /**
+     * 사용자 정보 갱신 후 설정 화면으로 이동
+     */
+    private fun refreshUserInfoAndNavigateToSettings() {
+        lifecycleScope.launch {
+            try {
+                showLoading(true)
+                
+                // /auth/me API 호출하여 사용자 정보 갱신
+                val prefsUtil = PreferencesUtil(requireContext())
+                val token = prefsUtil.getAccessToken() ?: ""
+                
+                if (token.isNotEmpty()) {
+                    val response = paymentRepository.refreshUserInfo(token)
+                    
+                    if (response.isSuccess) {
+                        Log.d(TAG, "구독 완료 후 사용자 정보 갱신 성공")
+                        
+                        // 구독 상태를 로컬에 업데이트
+                        if (response.result.subscribed) {
+                            prefsUtil.saveSubscriptionStatus(true)
+                            Log.d(TAG, "구독 상태가 true로 업데이트됨")
+                        }
+                    } else {
+                        Log.w(TAG, "사용자 정보 갱신 실패하지만 계속 진행: ${response.message}")
+                    }
+                } else {
+                    Log.w(TAG, "토큰이 없어서 정보 갱신을 건너뜀")
                 }
                 
+                // 설정 화면으로 돌아가기
+                navigateToSettings()
+                
             } catch (e: Exception) {
-                Log.e(TAG, "카카오페이 success 처리 실패", e)
-                showError("결제 완료 처리 중 오류가 발생했습니다: ${e.message}")
+                Log.e(TAG, "사용자 정보 갱신 중 오류 발생", e)
+                // 오류가 발생해도 설정 화면으로 돌아가기
+                navigateToSettings()
             } finally {
-                showLoadingState(false)
+                showLoading(false)
             }
         }
     }
     
     /**
-     * 사용자 구독 상태 새로고침
+     * 설정 화면으로 돌아가기
      */
+    private fun navigateToSettings() {
+        try {
+            // SubscriptionFragment에서 설정 화면으로 돌아가기
+            // Fragment를 닫고 이전 화면(설정)으로 돌아감
+            parentFragmentManager.popBackStack()
+            Log.d(TAG, "설정 화면으로 돌아가기 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "설정 화면으로 돌아가기 중 오류 발생", e)
+        }
+    }
+    
     private fun refreshUserSubscriptionStatus() {
         lifecycleScope.launch {
             try {
-                Log.d(TAG, "사용자 정보 새로고침 시작")
-                
-                // 5단계: 사용자 정보 새로고침
-                val token = preferencesUtil.getAccessToken()
-                if (!token.isNullOrEmpty()) {
-                    paymentRepository.refreshUserInfo(token)
+                // 토큰 가져오기
+                val prefsUtil = PreferencesUtil(requireContext())
+                val token = prefsUtil.getAccessToken() ?: ""
+                if (token.isNotEmpty()) {
+                    val userInfo = paymentRepository.refreshUserInfo(token)
+                    if (userInfo.isSuccess) {
+                        Log.d(TAG, "사용자 정보 새로고침 완료")
+                        // 필요시 UI 업데이트
+                    }
                 }
-                
-                // 로컬 상태 업데이트
-                preferencesUtil.setUserPremiumStatus(true)
-                setupCurrentPlanInfo()
-                
-                // 성공 메시지 표시
-                Toast.makeText(
-                    requireContext(), 
-                    "프리미엄 요금제로 업그레이드되었습니다!", 
-                    Toast.LENGTH_LONG
-                ).show()
-                
-                Log.d(TAG, "프리미엄 업그레이드 완료")
-                
             } catch (e: Exception) {
                 Log.e(TAG, "사용자 정보 새로고침 실패", e)
-                // 결제는 성공했지만 상태 업데이트 실패
-                Toast.makeText(
-                    requireContext(), 
-                    "결제는 완료되었지만 상태 업데이트에 실패했습니다. 잠시 후 다시 확인해주세요.", 
-                    Toast.LENGTH_LONG
-                ).show()
             }
         }
     }
     
+    private fun clearPaymentData() {
+        Log.d(TAG, "결제 데이터 정리")
+        currentTid = null
+        currentPartnerOrderId = null
+        currentPartnerUserId = null
+        clearPaymentDataFromPrefs()
+    }
+    
     /**
-     * 로딩 상태 표시/숨김
+     * 결제 정보를 SharedPreferences에 임시 저장
      */
-    private fun showLoadingState(isLoading: Boolean) {
-        view?.findViewById<Button>(R.id.btn_select_premium)?.apply {
-            isEnabled = !isLoading
-            text = if (isLoading) "결제 진행 중..." else {
-                if (preferencesUtil.getUserPremiumStatus()) "현재 이용중" else "업그레이드"
-            }
+    private fun savePaymentDataToPrefs(tid: String, partnerOrderId: String, partnerUserId: String) {
+        try {
+            val prefsUtil = PreferencesUtil(requireContext())
+            prefsUtil.setString("temp_payment_tid", tid)
+            prefsUtil.setString("temp_payment_partner_order_id", partnerOrderId)
+            prefsUtil.setString("temp_payment_partner_user_id", partnerUserId)
+            Log.d(TAG, "결제 정보 SharedPreferences에 백업 저장 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "결제 정보 백업 저장 실패", e)
         }
     }
     
     /**
-     * 에러 메시지 표시
+     * SharedPreferences에서 결제 정보 복원
      */
-    private fun showError(message: String) {
-        Log.e(TAG, "에러: $message")
-        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+    private fun restorePaymentDataFromPrefs() {
+        try {
+            val prefsUtil = PreferencesUtil(requireContext())
+            currentTid = prefsUtil.getString("temp_payment_tid")
+            currentPartnerOrderId = prefsUtil.getString("temp_payment_partner_order_id")
+            currentPartnerUserId = prefsUtil.getString("temp_payment_partner_user_id")
+            Log.d(TAG, "SharedPreferences에서 결제 정보 복원 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "결제 정보 복원 실패", e)
+        }
     }
-
-    private fun showDowngradeDialog() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("구독 취소")
-            .setMessage("정말로 프리미엄 구독을 취소하시겠습니까?")
-            .setPositiveButton("취소하기") { _, _ ->
-                // 실제로는 구독 취소 API 호출 필요
-                Toast.makeText(context, "구독 취소 기능은 준비 중입니다.", Toast.LENGTH_LONG).show()
-            }
-            .setNegativeButton("돌아가기", null)
-            .show()
+    
+    /**
+     * SharedPreferences에서 임시 결제 정보 삭제
+     */
+    private fun clearPaymentDataFromPrefs() {
+        try {
+            val prefsUtil = PreferencesUtil(requireContext())
+            prefsUtil.removeString("temp_payment_tid")
+            prefsUtil.removeString("temp_payment_partner_order_id")
+            prefsUtil.removeString("temp_payment_partner_user_id")
+            Log.d(TAG, "SharedPreferences에서 임시 결제 정보 삭제 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "임시 결제 정보 삭제 실패", e)
+        }
+    }
+    
+    private fun showLoading(show: Boolean) {
+        // 버튼 상태만 변경 (프로그래스바가 레이아웃에 없으므로)
+        binding.btnSelectPremium.isEnabled = !show
+        binding.btnSelectPremium.text = if (show) "처리 중..." else "업그레이드"
+    }
+    
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView() 
+        clearPaymentData()
+        _binding = null
     }
 }
