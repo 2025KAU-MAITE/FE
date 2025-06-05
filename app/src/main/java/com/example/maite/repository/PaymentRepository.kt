@@ -35,13 +35,21 @@ class PaymentRepository(private val context: Context) {
         quantity: Int = 1
     ): KakaoPayReadyResponse {
         return withContext(Dispatchers.IO) {
+            // 고유한 주문 ID와 사용자 ID 생성
+            val partnerOrderId = "MAITE_${System.currentTimeMillis()}"
+            val partnerUserId = "USER_${System.currentTimeMillis()}"
+            
             try {
                 Log.d(TAG, "카카오페이 결제 준비 API 호출: totalAmount=$totalAmount, itemName=$itemName, quantity=$quantity")
+                Log.d(TAG, "생성된 partnerOrderId: $partnerOrderId")
+                Log.d(TAG, "생성된 partnerUserId: $partnerUserId")
                 
                 val request = KakaoPayReadyRequest(
                     totalAmount = totalAmount,
                     itemName = itemName,
-                    quantity = quantity
+                    quantity = quantity,
+                    partnerOrderId = partnerOrderId,
+                    partnerUserId = partnerUserId
                 )
                 
                 val response = kakaoPayApi.readyPayment(request)
@@ -49,16 +57,39 @@ class PaymentRepository(private val context: Context) {
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null) {
+                        // Raw 응답을 JSON으로 출력하여 실제 필드명 확인
+                        Log.d(TAG, "Raw 응답: ${response.raw()}")
+                        try {
+                            val gson = com.google.gson.Gson()
+                            val jsonString = gson.toJson(body)
+                            Log.d(TAG, "응답 JSON: $jsonString")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "JSON 변환 실패", e)
+                        }
+                        
                         Log.d(TAG, "카카오페이 결제 준비 성공: tid=${body.result.tid}")
+                        Log.d(TAG, "응답에서 받은 partnerOrderId: ${body.result.partnerOrderId}")
+                        Log.d(TAG, "응답에서 받은 partnerUserId: ${body.result.partnerUserId}")
                         Log.d(TAG, "리디렉션 URL: ${body.result.nextRedirectMobileUrl}")
-                        body
+                        
+                        // 서버에서 partnerOrderId, partnerUserId를 반환하지 않는 경우를 대비해 
+                        // 요청에서 사용한 값으로 덮어쓰기
+                        val fixedResult = body.result.copy(
+                            partnerOrderId = if (body.result.partnerOrderId.isNullOrEmpty()) partnerOrderId else body.result.partnerOrderId,
+                            partnerUserId = if (body.result.partnerUserId.isNullOrEmpty()) partnerUserId else body.result.partnerUserId
+                        )
+                        
+                        Log.d(TAG, "수정된 partnerOrderId: ${fixedResult.partnerOrderId}")
+                        Log.d(TAG, "수정된 partnerUserId: ${fixedResult.partnerUserId}")
+                        
+                        body.copy(result = fixedResult)
                     } else {
                         Log.e(TAG, "카카오페이 결제 준비 응답 본문이 null입니다")
                         KakaoPayReadyResponse(
                             isSuccess = false,
                             code = "NULL_RESPONSE",
                             message = "응답 데이터가 없습니다",
-                            result = createEmptyReadyResult()
+                            result = createEmptyReadyResult(partnerOrderId, partnerUserId)
                         )
                     }
                 } else {
@@ -70,7 +101,7 @@ class PaymentRepository(private val context: Context) {
                         isSuccess = false,
                         code = "HTTP_${response.code()}",
                         message = "결제 준비 중 오류가 발생했습니다",
-                        result = createEmptyReadyResult()
+                        result = createEmptyReadyResult(partnerOrderId, partnerUserId)
                     )
                 }
             } catch (e: Exception) {
@@ -79,7 +110,7 @@ class PaymentRepository(private val context: Context) {
                     isSuccess = false,
                     code = "ERROR",
                     message = "결제 준비 중 오류가 발생했습니다: ${e.message}",
-                    result = createEmptyReadyResult()
+                    result = createEmptyReadyResult(partnerOrderId, partnerUserId)
                 )
             }
         }
@@ -112,12 +143,18 @@ class PaymentRepository(private val context: Context) {
                     pgToken = pgToken
                 )
                 
+                Log.d(TAG, "API 요청 데이터: $request")
+                
                 val response = kakaoPayApi.processPaymentSuccess(request)
+                
+                Log.d(TAG, "HTTP 응답 코드: ${response.code()}")
+                Log.d(TAG, "HTTP 응답 메시지: ${response.message()}")
                 
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null) {
                         Log.d(TAG, "카카오페이 결제 성공 처리 완료: isSuccess=${body.isSuccess}")
+                        Log.d(TAG, "응답 본문: $body")
                         body
                     } else {
                         Log.e(TAG, "카카오페이 결제 성공 처리 응답 본문이 null입니다")
@@ -131,12 +168,14 @@ class PaymentRepository(private val context: Context) {
                 } else {
                     Log.e(TAG, "카카오페이 결제 성공 처리 실패: HTTP ${response.code()}")
                     val errorBody = response.errorBody()?.string() ?: ""
-                    Log.e(TAG, "에러 응답: $errorBody")
+                    Log.e(TAG, "에러 응답 본문: $errorBody")
+                    Log.e(TAG, "요청 URL: ${response.raw().request.url}")
+                    Log.e(TAG, "요청 헤더: ${response.raw().request.headers}")
                     
                     KakaoPaySuccessResponse(
                         isSuccess = false,
                         code = "HTTP_${response.code()}",
-                        message = "결제 처리 중 오류가 발생했습니다",
+                        message = "결제 처리 중 오류가 발생했습니다: $errorBody",
                         result = null
                     )
                 }
@@ -181,10 +220,10 @@ class PaymentRepository(private val context: Context) {
     /**
      * 빈 KakaoPayReadyResult 생성
      */
-    private fun createEmptyReadyResult() = com.example.maite.model.KakaoPayReadyResult(
+    private fun createEmptyReadyResult(partnerOrderId: String = "", partnerUserId: String = "") = com.example.maite.model.KakaoPayReadyResult(
         tid = "",
-        partnerOrderId = "",
-        partnerUserId = "",
+        partnerOrderId = partnerOrderId,
+        partnerUserId = partnerUserId,
         nextRedirectMobileUrl = ""
     )
 }
