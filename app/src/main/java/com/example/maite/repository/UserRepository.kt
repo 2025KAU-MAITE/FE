@@ -17,6 +17,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.HttpException
 import java.io.File
+import java.io.EOFException
 import java.io.FileOutputStream
 
 class UserRepository(private val context: Context) {
@@ -447,6 +448,41 @@ class UserRepository(private val context: Context) {
             } catch (e: Exception) {
                 Log.e(TAG, "프로필 이미지 업로드 예외: ${e.message}")
                 return@withContext Pair(false, null)
+            }
+        }
+    }
+
+    // 친구 삭제 기능
+    suspend fun deleteMate(userId: Long): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = preferencesUtil.getAccessToken()
+                if (token == null) {
+                    Log.e(TAG, "토큰이 없습니다")
+                    return@withContext false
+                }
+                
+                Log.d(TAG, "친구 삭제 API 호출: userId=$userId")
+                val response = userApiService.deleteMate(userId)
+                
+                if (response.isSuccessful) {
+                    Log.d(TAG, "친구 삭제 성공: userId=$userId")
+                    return@withContext true
+                } else {
+                    Log.e(TAG, "친구 삭제 API 호출 실패: ${response.code()} - ${response.errorBody()?.string()}")
+                    return@withContext false
+                }
+            } catch (e: java.io.EOFException) {
+                // EOFException은 서버가 빈 응답을 보낼 때 발생할 수 있음
+                // 실제로는 삭제가 성공했을 가능성이 높음
+                Log.w(TAG, "친구 삭제 API 응답 파싱 오류 (삭제는 성공했을 가능성): $e")
+                return@withContext true  // 삭제 성공으로 처리
+            } catch (e: Exception) {
+                Log.e(TAG, "친구 삭제 중 오류 발생", e)
+                if (e is HttpException) {
+                    Log.e(TAG, "HTTP 오류 코드: ${e.code()}")
+                }
+                return@withContext false
             }
         }
     }

@@ -25,7 +25,7 @@ data class ServerMateItem(
 fun ServerMateItem.toMateItem(): MateItem {
     return MateItem(
         id = this.id,
-        userId = this.mateId,
+        userId = this.id,  // mateId 대신 id를 userId로 사용 (삭제 API용)
         name = this.name,
         email = this.email,
         profileImageUrl = this.profileImageUrl

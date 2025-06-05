@@ -14,6 +14,7 @@ import com.example.maite.databinding.FragmentMateListBinding
 import com.example.maite.model.MateItem
 import com.example.maite.model.ServerMateItem
 import com.example.maite.model.toMateItem
+import com.example.maite.repository.MateRepository
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
@@ -24,7 +25,7 @@ class MateListFragment : Fragment() {
     private val binding get() = _binding!!
     
     private lateinit var mateAdapter: MateAdapter
-    private lateinit var apiService: MaiteApiService
+    private lateinit var mateRepository: MateRepository
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,8 +39,8 @@ class MateListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        // API 서비스 초기화
-        apiService = ApiClient.getClient(requireContext()).create(MaiteApiService::class.java)
+        // Repository 초기화
+        mateRepository = MateRepository(requireContext())
         
         // 어댑터 초기화
         mateAdapter = MateAdapter { mate ->
@@ -69,40 +70,20 @@ class MateListFragment : Fragment() {
         
         lifecycleScope.launch {
             try {
-                val response = apiService.getMates()
+                val mates = mateRepository.getMates()
                 
-                if (response.isSuccessful && response.body() != null) {
-                    val responseBody = response.body()!!
-                    val serverMateList = responseBody.result ?: emptyList()
-                    
-                    // ServerMateItem을 MateItem으로 변환
-                    val mates = serverMateList.map { serverMate: ServerMateItem ->
-                        serverMate.toMateItem()
-                    }
-                    
-                    // 어댑터에 데이터 설정
-                    mateAdapter.submitList(mates)
-                    
-                    // 빈 목록 처리
-                    if (mates.isEmpty()) {
-                        binding.tvEmpty.visibility = View.VISIBLE
-                    } else {
-                        binding.tvEmpty.visibility = View.GONE
-                    }
-                } else {
-                    // 실패 처리 - 메시지 제거
+                // 어댑터에 데이터 설정
+                mateAdapter.submitList(mates)
+                
+                // 빈 목록 처리
+                if (mates.isEmpty()) {
                     binding.tvEmpty.visibility = View.VISIBLE
+                } else {
+                    binding.tvEmpty.visibility = View.GONE
                 }
-            } catch (e: IOException) {
-                // 네트워크 오류
-                Log.e("MateListFragment", "네트워크 오류", e)
-                binding.tvEmpty.visibility = View.VISIBLE
-            } catch (e: HttpException) {
-                // API 오류
-                Log.e("MateListFragment", "API 오류: ${e.code()}", e)
-                binding.tvEmpty.visibility = View.VISIBLE
+                
+                Log.d("MateListFragment", "친구 목록 로드 성공: ${mates.size}명")
             } catch (e: Exception) {
-                // 기타 오류
                 Log.e("MateListFragment", "친구 목록 로드 오류", e)
                 binding.tvEmpty.visibility = View.VISIBLE
             } finally {
@@ -128,31 +109,44 @@ class MateListFragment : Fragment() {
         
         lifecycleScope.launch {
             try {
-                // userId를 long으로 변환
-                val userId = mate.userId
+                // Repository를 통해 실제 API 호출
+                val success = mateRepository.deleteMate(mate.userId)
                 
-                // 현재는 UserApiService에 deleteMate 메서드가 없으므로 임시로 기능 처리
-                // 실제 API 구현 시 API 호출 부분 추가 필요
-                
-                // 임시로 성공 처리
-
-                
-                // 가째 데이터 업데이트를 위해 임시로 삭제된 항목을 제외한 새 리스트 생성
-                val currentList = mateAdapter.currentList.toMutableList()
-                currentList.removeAll { it.id == mate.id }
-                mateAdapter.submitList(currentList)
-                
-                // 빈 목록 처리
-                if (currentList.isEmpty()) {
-                    binding.tvEmpty.visibility = View.VISIBLE
+                if (success) {
+                    // 성공 시 친구 목록 재로드로 확실하게 동기화
+                    val updatedMates = mateRepository.getMates()
+                    mateAdapter.submitList(updatedMates)
+                    
+                    // 빈 목록 처리
+                    if (updatedMates.isEmpty()) {
+                        binding.tvEmpty.visibility = View.VISIBLE
+                    } else {
+                        binding.tvEmpty.visibility = View.GONE
+                    }
+                    
+                    // 프로필 화면의 친구 수 업데이트를 위해 이벤트 발생
+                    val mainActivity = requireActivity() as? MainActivity
+                    mainActivity?.refreshProfileFragment()
+                    
+                    Log.d("MateListFragment", "친구 삭제 성공: ${mate.name} (userId: ${mate.userId})")
+                } else {
+                    // 실패 시 에러 메시지 표시
+                    android.widget.Toast.makeText(
+                        requireContext(),
+                        "친구 삭제에 실패했습니다. 다시 시도해주세요.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    
+                    Log.e("MateListFragment", "친구 삭제 실패: ${mate.name} (userId: ${mate.userId})")
                 }
                 
-                // 프로필 화면의 친구 수 업데이트를 위해 이벤트 발생
-                val mainActivity = requireActivity() as? MainActivity
-                mainActivity?.refreshProfileFragment()
-                
             } catch (e: Exception) {
-                Log.e("MateListFragment", "친구 삭제 오류", e)
+                Log.e("MateListFragment", "친구 삭제 중 예외 발생", e)
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    "네트워크 오류가 발생했습니다.",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             } finally {
                 binding.progressBar.visibility = View.GONE
             }

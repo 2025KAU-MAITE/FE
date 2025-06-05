@@ -26,6 +26,12 @@ class MateRepository(private val context: Context) {
                     val responseBody = response.body()!!
                     val serverMateList = responseBody.result ?: emptyList()
                     
+                    // 디버깅을 위해 서버 응답 로그 추가
+                    Log.d(TAG, "서버 친구 목록 응답:")
+                    serverMateList.forEach { serverMate ->
+                        Log.d(TAG, "  - id: ${serverMate.id}, mateId: ${serverMate.mateId}, name: ${serverMate.name}, email: ${serverMate.email}")
+                    }
+                    
                     // ServerMateItem을 MateItem으로 변환
                     val mateList = serverMateList.map { serverMate: ServerMateItem ->
                         serverMate.toMateItem()
@@ -56,6 +62,28 @@ class MateRepository(private val context: Context) {
             } catch (e: Exception) {
                 Log.e(TAG, "친구 수 조회 중 오류 발생", e)
                 0
+            }
+        }
+    }
+    
+    // 친구 삭제하기
+    suspend fun deleteMate(userId: Long): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                // UserRepository를 사용하여 친구 삭제 API 호출
+                val userRepository = com.example.maite.repository.UserRepository(context)
+                val result = userRepository.deleteMate(userId)
+                
+                if (result) {
+                    Log.d(TAG, "친구 삭제 성공: userId=$userId")
+                } else {
+                    Log.e(TAG, "친구 삭제 실패: userId=$userId")
+                }
+                
+                result
+            } catch (e: Exception) {
+                Log.e(TAG, "친구 삭제 중 오류 발생", e)
+                false
             }
         }
     }
