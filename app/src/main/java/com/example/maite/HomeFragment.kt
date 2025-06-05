@@ -11,7 +11,7 @@ import android.widget.LinearLayout
 import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
-import android.widget.Toast
+
 import com.google.android.material.snackbar.Snackbar
 import com.example.maite.notification.NotificationViewModel
 import com.example.maite.notification.NotificationViewModelFactory
@@ -275,15 +275,9 @@ class HomeFragment : Fragment() {
         // 초기 회의 목록 로드 (HomeViewModel 초기화 후)
         viewModel.loadNearestMeeting()
 
-        // 회의방 참가 이벤트 관찰 (토스트 메시지 표시)
+        // 회의방 참가 이벤트 관찰
         viewModel.roomJoinEvent.observe(viewLifecycleOwner) { roomName ->
             if (roomName != null) {
-                Toast.makeText(
-                    requireContext(),
-                    "'$roomName' 회의방에 참가하였습니다.",
-                    Toast.LENGTH_SHORT
-                ).show()
-
                 // 이벤트 처리후 초기화 - 직접 접근하지 않고 ViewModel의 메서드 사용
                 try {
                     // 이벤트 처리후 초기화
@@ -580,12 +574,7 @@ class HomeFragment : Fragment() {
                             viewModel.loadNearestMeeting()
                         }, 500) // 0.5초 대기 후 새로고침
 
-                        // 성공 메시지 표시
-                        Toast.makeText(
-                            requireContext(),
-                            "회의 제안을 수락했습니다. 회의 목록을 업데이트합니다.",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        // 성공 메시지 제거
                     }
                     // ROOM_INVITE인 경우는 roomJoinEvent로 처리됨 (별도의 토스트 메시지 관찰자로)
 
@@ -595,12 +584,7 @@ class HomeFragment : Fragment() {
                     // 제안 거절 처리 - 실제 API 호출
                     viewModel.declineProposal(proposal)
 
-                    // 거절 메시지 표시
-                    Toast.makeText(
-                        requireContext(),
-                        "제안을 거절했습니다",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    // 거절 메시지 제거
                 }
 
                 // 뷰 초기화
@@ -624,11 +608,6 @@ class HomeFragment : Fragment() {
                 when (notification.type) {
                     NotificationType.MEETING_INVITE -> {
                         notificationViewModel.acceptMeetingProposal(notification.id)
-                        Toast.makeText(
-                            requireContext(),
-                            "회의 제안을 수락했습니다.",
-                            Toast.LENGTH_SHORT
-                        ).show()
 
                         // 회의 목록 새로고침 (대기 시간 증가)
                         Handler(Looper.getMainLooper()).postDelayed({
@@ -637,11 +616,6 @@ class HomeFragment : Fragment() {
                     }
                     NotificationType.ROOM_INVITE -> {
                         notificationViewModel.acceptRoomInvite(notification.id)
-                        Toast.makeText(
-                            requireContext(),
-                            "회의방에 참가했습니다.",
-                            Toast.LENGTH_SHORT
-                        ).show()
                     }
                     else -> {}
                 }
@@ -670,19 +644,9 @@ class HomeFragment : Fragment() {
                 when (notification.type) {
                     NotificationType.MEETING_INVITE -> {
                         notificationViewModel.declineMeetingProposal(notification.id)
-                        Toast.makeText(
-                            requireContext(),
-                            "회의 제안을 거절했습니다.",
-                            Toast.LENGTH_SHORT
-                        ).show()
                     }
                     NotificationType.ROOM_INVITE -> {
                         notificationViewModel.declineRoomInvite(notification.id)
-                        Toast.makeText(
-                            requireContext(),
-                            "회의방 초대를 거절했습니다.",
-                            Toast.LENGTH_SHORT
-                        ).show()
                     }
                     else -> {}
                 }
