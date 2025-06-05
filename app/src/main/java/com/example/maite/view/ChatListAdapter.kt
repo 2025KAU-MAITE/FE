@@ -8,6 +8,9 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.signature.ObjectKey
 import com.example.maite.R
 import com.example.maite.model.ChatListItem
 
@@ -35,7 +38,6 @@ class ChatListAdapter(
 
     override fun getItemViewType(position: Int): Int {
         val item = getItem(position)
-        // 사용자 아이템은 개인 채팅 아이템 레이아웃 사용
         return if (item.isGroup) VIEW_TYPE_GROUP else VIEW_TYPE_PERSONAL
     }
 
@@ -58,6 +60,28 @@ class ChatListAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val chatItem = getItem(position)
 
+        // 공통으로 프로필 이미지 로드
+        val profileImageView = when (holder) {
+            is PersonalViewHolder -> holder.profileImg
+            is GroupViewHolder -> holder.profileImg
+            else -> null
+        }
+
+        // 프로필 이미지 로드
+        if (profileImageView != null && !chatItem.profileImageUrl.isNullOrBlank()) {
+            Glide.with(profileImageView.context)
+                .load(chatItem.profileImageUrl)
+                .apply(RequestOptions.circleCropTransform())
+                .skipMemoryCache(true)
+                .signature(ObjectKey(System.currentTimeMillis().toString()))
+                .placeholder(R.drawable.img_profile_default)
+                .error(R.drawable.img_profile_default)
+                .into(profileImageView)
+        } else {
+            profileImageView?.setImageResource(R.drawable.img_profile_default)
+        }
+
+        // 아이템 유형별 처리
         when (holder) {
             is PersonalViewHolder -> {
                 // 개인 채팅 아이템 또는 사용자 아이템 바인딩
