@@ -45,5 +45,5 @@ interface UserApiService {
     
     // 친구 삭제 API
     @retrofit2.http.DELETE("api/mates/{userId}")
-    suspend fun deleteMate(@Path("userId") userId: Long): Response<ApiResponse<Any?>>
+    suspend fun deleteMate(@Path("userId") userId: Long): Response<Unit>
 }
