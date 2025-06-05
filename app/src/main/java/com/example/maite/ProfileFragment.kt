@@ -54,7 +54,7 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
 
         val preferencesUtil = PreferencesUtil(requireContext())
         val userId = preferencesUtil.getUserId()
-        
+
         // 임시 테스트 용 사용자 ID 지정 (프로필 이미지 업로드 테스트용)
         val testUserId = 1L
 
@@ -121,32 +121,32 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
             navigateToSettings()
         }
     }
-    
+
     // 개선된 프로필 이미지 로드 (URL)
     private fun loadProfileImageFromUrl(url: String?) {
         if (url.isNullOrEmpty()) {
             loadDefaultImage()
             return
         }
-        
+
         try {
             val isRemoteUrl = url.startsWith("http") || url.startsWith("https")
-            
+
             val glideRequest = Glide.with(this@ProfileFragment)
                 .load(if (isRemoteUrl) url else Uri.parse(url))
                 .circleCrop()
                 .placeholder(R.drawable.img_profile_default)
                 .error(R.drawable.img_profile_default)
-            
+
             // 원격 URL인 경우만 캐시 전략 적용
             if (isRemoteUrl) {
                 glideRequest
                     .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .signature(com.bumptech.glide.signature.ObjectKey(url + "_" + (System.currentTimeMillis() / 30000)))
             }
-            
+
             glideRequest.into(binding.ivProfile)
-            
+
             // 성공적으로 로드된 URL 캐시 저장
             val preferencesUtil = PreferencesUtil(requireContext())
             if (isRemoteUrl) {
@@ -154,13 +154,13 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
             } else {
                 preferencesUtil.setString("user_profile_image_uri", url)
             }
-            
+
         } catch (e: Exception) {
             Log.e("ProfileFragment", "프로필 이미지 로드 실패: $url", e)
             loadDefaultImage()
         }
     }
-    
+
     // URI로 이미지 로드 (새로 추가)
     private fun loadImageWithUri(uri: String) {
         try {
@@ -175,7 +175,7 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
             loadDefaultImage()
         }
     }
-    
+
     // 기본 이미지 로드
     private fun loadDefaultImage() {
         Glide.with(this)
@@ -188,30 +188,30 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
     private fun showProfileEditBottomSheet() {
         // 사용자 정보에서 프로필 이미지 URL 가져오기
         val userProfileImageUrl = viewModel.userInfo.value?.profileImageUrl
-        
+
         // 현재 이미지 소스 확인 (우선순위: 서버 URL > 로컬 URI > 캐시된 URL)
         val preferencesUtil = PreferencesUtil(requireContext())
         var imageSource: String? = null
-        
+
         // 1. 서버에서 가져온 이미지 URL이 있으면 우선 사용
         if (!userProfileImageUrl.isNullOrEmpty()) {
             imageSource = userProfileImageUrl
-        } 
+        }
         // 2. 로컬 URI 확인
         else if (!preferencesUtil.getProfileImageUri().isNullOrEmpty()) {
             imageSource = preferencesUtil.getProfileImageUri()
-        } 
+        }
         // 3. 캐시된 URL 확인
         else if (!preferencesUtil.getProfileImageUrl().isNullOrEmpty()) {
             imageSource = preferencesUtil.getProfileImageUrl()
         }
-        
+
         // 바텀시트 생성 및 이미지 소스 전달
         val bottomSheet = ProfileEditBottomSheet.newInstance(imageSource)
         bottomSheet.setProfileImageUpdateListener(this) // 리스너 설정 추가
         bottomSheet.show(childFragmentManager, ProfileEditBottomSheet.TAG)
     }
-    
+
     // 설정 화면으로 이동
     private fun navigateToSettings() {
         val settingsFragment = com.example.maite.ui.settings.SettingsFragment()
@@ -225,29 +225,29 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
     override fun onProfileImageUpdated() {
         try {
             val preferencesUtil = PreferencesUtil(requireContext())
-            
+
             // 임시 URI 확인 및 처리
             val tempImageUri = preferencesUtil.getString("user_profile_image_uri_temp")
             if (!tempImageUri.isNullOrEmpty()) {
                 preferencesUtil.saveProfileImageUri(tempImageUri)
                 preferencesUtil.removeString("user_profile_image_uri_temp")
             }
-            
+
             // 서버에서 최신 사용자 정보 다시 로드 (지연 시간 추가)
             val userId = preferencesUtil.getUserId() ?: 1L
-            
+
             // 프로필 이미지 업데이트 후 서버 반영을 위한 지연 처리
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 // 서버에서 최신 사용자 정보 로드
                 viewModel.loadUserInfo(userId)
-                
+
                 // 로컬 이미지도 즉시 반영
                 val currentUri = preferencesUtil.getProfileImageUri()
                 if (!currentUri.isNullOrEmpty()) {
                     loadImageWithUri(currentUri)
                 }
             }, 1000) // 1초 대기 후 서버에서 새로고침
-            
+
         } catch (e: Exception) {
             Log.e("ProfileFragment", "프로필 이미지 업데이트 실패", e)
         }
@@ -255,36 +255,36 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
 
     override fun onResume() {
         super.onResume()
-        
+
         // 개선된 프로필 이미지 새로고침 로직
         refreshProfileImage()
     }
-    
+
     // 프로필 이미지 새로고침 (단순화된 버전)
     private fun refreshProfileImage() {
         val preferencesUtil = PreferencesUtil(requireContext())
-        
+
         // 1순위: 로컬 URI 확인
         val localImageUri = preferencesUtil.getProfileImageUri()
         if (!localImageUri.isNullOrEmpty()) {
             loadImageWithUri(localImageUri)
             return
         }
-        
+
         // 2순위: 캐시된 URL 확인
         val cachedImageUrl = preferencesUtil.getProfileImageUrl()
         if (!cachedImageUrl.isNullOrEmpty()) {
             loadProfileImageFromUrl(cachedImageUrl)
             return
         }
-        
+
         // 3순위: 서버에서 받은 URL 확인
         val serverImageUrl = viewModel.userInfo.value?.profileImageUrl
         if (!serverImageUrl.isNullOrEmpty()) {
             loadProfileImageFromUrl(serverImageUrl)
             return
         }
-        
+
         // 모두 없으면 기본 이미지
         loadDefaultImage()
     }
@@ -364,7 +364,7 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                         val endTime = e.endHour * 60 + e.endMinute
                         val hourStart = hour * 60
                         val hourEnd = (hour + 1) * 60
-                        
+
                         e.dayOfWeek == day && !(endTime <= hourStart || startTime >= hourEnd)
                     }
 
@@ -378,34 +378,34 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                     } else {
                         // 일정이 있는 셀 생성
                         val entry = entriesInThisHour[0]
-                        
+
                         val startTimeInMinutes = entry.startHour * 60 + entry.startMinute
                         val endTimeInMinutes = entry.endHour * 60 + entry.endMinute
                         val hourStartMinutes = hour * 60
                         val hourEndMinutes = (hour + 1) * 60
-                        
+
                         val isStartHour = startTimeInMinutes >= hourStartMinutes && startTimeInMinutes < hourEndMinutes
                         val isEndHour = endTimeInMinutes > hourStartMinutes && endTimeInMinutes <= hourEndMinutes
-                        
+
                         val cell = LinearLayout(context).apply {
                             val startRatio = if (startTimeInMinutes <= hourStartMinutes) 0f
-                                           else (startTimeInMinutes - hourStartMinutes) / 60f
+                            else (startTimeInMinutes - hourStartMinutes) / 60f
                             val endRatio = if (endTimeInMinutes >= hourEndMinutes) 1f
-                                         else (endTimeInMinutes - hourStartMinutes) / 60f
-                            
+                            else (endTimeInMinutes - hourStartMinutes) / 60f
+
                             val topMargin = (hourCellHeight * startRatio).toInt()
                             val heightRatio = endRatio - startRatio
                             val cellContentHeight = (hourCellHeight * heightRatio).toInt()
-                            
+
                             layoutParams = TableRow.LayoutParams(0, cellContentHeight, 1f).apply {
                                 this.topMargin = topMargin
                             }
-                            
+
                             gravity = Gravity.CENTER
                             orientation = LinearLayout.VERTICAL
                             // 순수한 색상만 사용 - 테두리 제거
                             setBackgroundColor(Color.parseColor(entry.colorHex))
-                            
+
                             // 텍스트 표시 - 시간 정보 제거
                             if (isStartHour) {
                                 addView(TextView(context).apply {
@@ -417,8 +417,8 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                                     maxLines = 1
                                     setPadding(2, 2, 2, 2)
                                 })
-                            } else if (isEndHour && !entry.location.isNullOrEmpty() && 
-                                       (endTimeInMinutes - startTimeInMinutes) >= 60) {
+                            } else if (isEndHour && !entry.location.isNullOrEmpty() &&
+                                (endTimeInMinutes - startTimeInMinutes) >= 60) {
                                 addView(TextView(context).apply {
                                     text = "장소:${entry.location}"
                                     textSize = 8f
@@ -430,7 +430,7 @@ class ProfileFragment : Fragment(), ProfileEditBottomSheet.ProfileImageUpdateLis
                                 })
                             }
                         }
-                        
+
                         row.addView(cell)
                     }
                 }
