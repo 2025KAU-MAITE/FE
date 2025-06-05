@@ -50,15 +50,14 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/aiButtonTooltip"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/meetTitle">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingBottom="16dp">
+            android:layout_height="wrap_content">
 
             <TextView
                 android:id="@+id/textView21"
@@ -67,9 +66,9 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="8dp"
                 android:text="날짜"
+                android:textColor="@android:color/black"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -80,12 +79,12 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:text="2025.03.02"
-                android:textSize="18sp"
                 android:textColor="@android:color/darker_gray"
+                android:textSize="18sp"
                 app:layout_constraintBottom_toBottomOf="@+id/textView21"
-                app:layout_constraintStart_toEndOf="@+id/textView24"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/textView21"/>
+                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintTop_toTopOf="@+id/textView21" />
 
             <TextView
                 android:id="@+id/textView22"
@@ -94,9 +93,9 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:text="시간"
+                android:textColor="@android:color/black"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView21" />
 
@@ -107,12 +106,12 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:text="08:00 ~ 10:00"
-                android:textSize="18sp"
                 android:textColor="@android:color/darker_gray"
+                android:textSize="18sp"
                 app:layout_constraintBottom_toBottomOf="@+id/textView22"
-                app:layout_constraintStart_toEndOf="@+id/textView24"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/textView22"/>
+                app:layout_constraintStart_toEndOf="@+id/textView24"
+                app:layout_constraintTop_toTopOf="@+id/textView22" />
 
             <TextView
                 android:id="@+id/textView23"
@@ -121,9 +120,9 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:text="장소"
+                android:textColor="@android:color/black"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="@android:color/black"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView22" />
 
@@ -134,11 +133,11 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:text="경기도 성남시 어쩌구 저쩌구"
-                android:textSize="18sp"
                 android:textColor="@android:color/darker_gray"
-                app:layout_constraintTop_toTopOf="@+id/textView23"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/textView24"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintTop_toTopOf="@+id/textView23" />
 
             <TextView
                 android:id="@+id/textView24"
@@ -184,13 +183,14 @@
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/contentCard"
-                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="32dp"
                 android:layout_marginEnd="16dp"
+                android:layout_marginBottom="32dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView24">
@@ -207,16 +207,16 @@
                         android:id="@+id/tabLayout"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        app:tabSelectedTextColor="#000000"
-                        app:tabTextColor="#666666"
+                        android:background="#FFFFFF"
+                        android:visibility="gone"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
                         app:tabIndicatorColor="@android:color/transparent"
                         app:tabRippleColor="@android:color/transparent"
-                        android:background="#FFFFFF"
+                        app:tabSelectedTextColor="#000000"
                         app:tabTextAppearance="@style/TabTextAppearance"
-                        android:visibility="gone"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent">
+                        app:tabTextColor="#666666">
 
                         <com.google.android.material.tabs.TabItem
                             android:layout_width="wrap_content"
@@ -229,53 +229,65 @@
                             android:text="회의록" />
                     </com.google.android.material.tabs.TabLayout>
 
-                    <!-- 요약본 컨텐츠 (구독자용) -->
-                    <ScrollView
+                    <!-- 요약본 컨텐츠 (구독자용) - ScrollView에서 ConstraintLayout으로 변경 -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/summaryScrollView"
                         android:layout_width="match_parent"
-                        android:layout_height="0dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="250dp"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="16dp"
                         android:visibility="gone"
-                        app:layout_constraintTop_toBottomOf="@+id/tabLayout"
-                        app:layout_constraintBottom_toBottomOf="parent">
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/tabLayout">
 
                         <TextView
                             android:id="@+id/summaryTextView"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:text="등록된 요약본이 없어요"
-                            android:textSize="16sp" />
-                    </ScrollView>
+                            android:textSize="16sp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
 
-                    <!-- 회의록 컨텐츠 (구독자용) -->
-                    <ScrollView
+                    <!-- 회의록 컨텐츠 (구독자용) - ScrollView에서 ConstraintLayout으로 변경 -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/transcriptScrollView"
                         android:layout_width="match_parent"
-                        android:layout_height="0dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="250dp"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="16dp"
                         android:visibility="gone"
-                        app:layout_constraintTop_toBottomOf="@+id/tabLayout"
-                        app:layout_constraintBottom_toBottomOf="parent">
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/tabLayout">
 
                         <TextView
                             android:id="@+id/transcriptTextView"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:text="등록된 회의록이 없어요"
-                            android:textSize="16sp" />
-                    </ScrollView>
+                            android:textSize="16sp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
 
                     <!-- 기본 컨텐츠 (TabLayout이 없을 때 중앙 정렬) -->
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/defaultContentLayout"
                         android:layout_width="0dp"
                         android:layout_height="0dp"
-                        app:layout_constraintTop_toBottomOf="@+id/tabLayout"
                         app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent">
+                        app:layout_constraintTop_toBottomOf="@+id/tabLayout">
 
                         <TextView
                             android:id="@+id/textViewMinutesPlaceholder"
