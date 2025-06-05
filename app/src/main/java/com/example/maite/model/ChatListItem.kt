@@ -11,5 +11,6 @@ data class ChatListItem(
     val lastMessage: String? = null,
     val intro: String? = null,
     val timestamp: Long? = null,
-    val isGroup: Boolean = false
+    val isGroup: Boolean = false,
+    val isUser: Boolean = false
 ) : Parcelable

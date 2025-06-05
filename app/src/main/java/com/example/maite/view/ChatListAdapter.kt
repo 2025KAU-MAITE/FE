@@ -34,7 +34,9 @@ class ChatListAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (getItem(position).isGroup) VIEW_TYPE_GROUP else VIEW_TYPE_PERSONAL
+        val item = getItem(position)
+        // 사용자 아이템은 개인 채팅 아이템 레이아웃 사용
+        return if (item.isGroup) VIEW_TYPE_GROUP else VIEW_TYPE_PERSONAL
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -58,8 +60,14 @@ class ChatListAdapter(
 
         when (holder) {
             is PersonalViewHolder -> {
-                // 개인 채팅 아이템 바인딩
-                holder.nameText.text = chatItem.name
+                // 개인 채팅 아이템 또는 사용자 아이템 바인딩
+                holder.nameText.text = if (chatItem.isUser) {
+                    // 사용자 아이템인 경우, 이름과 이메일을 함께 표시
+                    "${chatItem.name} (${chatItem.intro})"
+                } else {
+                    // 일반 개인 채팅 아이템
+                    chatItem.name
+                }
 
                 // 아이템 클릭 리스너 설정
                 holder.itemView.setOnClickListener {
@@ -69,8 +77,6 @@ class ChatListAdapter(
             is GroupViewHolder -> {
                 // 단체 채팅 아이템 바인딩
                 holder.nameText.text = chatItem.name
-
-                // 소개 텍스트 설정 (lastMessage 필드 사용)
                 holder.introText.text = chatItem.intro ?: "소개글이 없습니다."
 
                 // 아이템 클릭 리스너 설정
@@ -84,7 +90,7 @@ class ChatListAdapter(
     // DiffUtil을 통한 효율적인 아이템 업데이트
     class ChatDiffCallback : DiffUtil.ItemCallback<ChatListItem>() {
         override fun areItemsTheSame(oldItem: ChatListItem, newItem: ChatListItem): Boolean {
-            return oldItem.id == newItem.id
+            return oldItem.id == newItem.id && oldItem.isUser == newItem.isUser
         }
 
         override fun areContentsTheSame(oldItem: ChatListItem, newItem: ChatListItem): Boolean {
