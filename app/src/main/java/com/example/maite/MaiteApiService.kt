@@ -2,7 +2,9 @@ package com.example.maite
 
 import com.example.maite.model.ApiResponse
 import com.example.maite.model.ChatListApiResponse
+import com.example.maite.model.ChatRoomCreateResponse
 import com.example.maite.model.ClovaSummaryResponse
+import com.example.maite.model.CreateGroupChatRequest
 import com.example.maite.model.CreateMeetingRequest
 import com.example.maite.model.MateItem
 import com.example.maite.model.RoomItem
@@ -109,4 +111,9 @@ interface MaiteApiService {
         @Query("meeting") meetingId: Long,
         @Part file: MultipartBody.Part
     ): Response<ClovaSummaryResponse>
+
+    @POST("api/chats/rooms/group")
+    suspend fun createGroupChatRoom(
+        @Body request: CreateGroupChatRequest
+    ): Response<ChatRoomCreateResponse>
 }
