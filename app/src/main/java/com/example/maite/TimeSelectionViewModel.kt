@@ -77,7 +77,11 @@ class TimeSelectionViewModel : ViewModel() {
             if (mergedSlots.isEmpty() || mergedSlots.last().second < slot.first) {
                 mergedSlots.add(slot)
             } else {
-                val lastSlot = mergedSlots.removeLast()
+                // removeLast() 대신 아래 방법 사용
+                val lastIndex = mergedSlots.size - 1
+                val lastSlot = mergedSlots[lastIndex]
+                mergedSlots.removeAt(lastIndex)
+
                 mergedSlots.add(Pair(lastSlot.first, max(lastSlot.second, slot.second)))
             }
         }

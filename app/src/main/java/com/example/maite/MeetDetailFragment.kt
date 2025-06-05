@@ -192,18 +192,19 @@ class MeetDetailFragment : Fragment() {
 
     private fun setupSubscribedUI() {
         binding.apply {
-            textViewMinutesPlaceholder.visibility = View.VISIBLE
-            recordBtn.visibility = View.VISIBLE
-            uploadBtn.visibility = View.VISIBLE
-
-            summerizedText.text = ""
+            // summerizedText를 명시적으로 숨김
             summerizedText.visibility = View.GONE
 
+            // 구독자를 위한 TabLayout 활성화
             tabLayout.visibility = View.VISIBLE
 
+            // 첫 번째 탭을 선택 상태로 초기화
             val firstTab = tabLayout.getTabAt(0)
             firstTab?.select()
             firstTab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
+
+            // 내용 유무에 따라 UI 업데이트
+            updateUiForTabSelection(0, hasSummary, hasTranscript)
 
             tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -220,15 +221,46 @@ class MeetDetailFragment : Fragment() {
 
                 override fun onTabReselected(tab: TabLayout.Tab?) {}
             })
-
         }
     }
 
     private fun updateUiForTabSelection(position: Int, hasValidSummary: Boolean = false, hasValidTranscript: Boolean = false) {
         binding.apply {
-            summerizedText.text = ""
+            // summerizedText를 항상 숨김 (구독자용 UI에서)
             summerizedText.visibility = View.GONE
 
+            // 기본 뷰 요소를 초기에 숨김
+            defaultContentLayout.visibility = View.GONE
+
+            // 가시성 상태 초기화
+            summaryScrollView.visibility = View.GONE
+            transcriptScrollView.visibility = View.GONE
+            textViewMinutesPlaceholder.visibility = View.GONE
+
+            when (position) {
+                0 -> { // 요약본 탭
+                    if (hasValidSummary) {
+                        summaryScrollView.visibility = View.VISIBLE
+                        summaryTextView.text = summaryContent ?: "등록된 요약본이 없어요"
+                    } else {
+                        textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
+                        textViewMinutesPlaceholder.visibility = View.VISIBLE
+                        defaultContentLayout.visibility = View.VISIBLE
+                    }
+                }
+                1 -> { // 회의록 탭
+                    if (hasValidTranscript) {
+                        transcriptScrollView.visibility = View.VISIBLE
+                        transcriptTextView.text = transcriptContent ?: "등록된 회의록이 없어요"
+                    } else {
+                        textViewMinutesPlaceholder.text = "등록된 회의록이 없어요"
+                        textViewMinutesPlaceholder.visibility = View.VISIBLE
+                        defaultContentLayout.visibility = View.VISIBLE
+                    }
+                }
+            }
+
+            // 액션 버튼의 가시성 제어
             val hasContent = when (position) {
                 0 -> hasValidSummary
                 1 -> hasValidTranscript
@@ -237,33 +269,6 @@ class MeetDetailFragment : Fragment() {
 
             recordBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
             uploadBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
-
-            when (position) {
-                0 -> {
-                    transcriptScrollView.visibility = View.GONE
-
-                    if (hasValidSummary) {
-                        summaryScrollView.visibility = View.VISIBLE
-                        textViewMinutesPlaceholder.visibility = View.GONE
-                    } else {
-                        summaryScrollView.visibility = View.GONE
-                        textViewMinutesPlaceholder.text = "등록된 요약본이 없어요"
-                        textViewMinutesPlaceholder.visibility = View.VISIBLE
-                    }
-                }
-                1 -> {
-                    summaryScrollView.visibility = View.GONE
-
-                    if (hasValidTranscript) {
-                        transcriptScrollView.visibility = View.VISIBLE
-                        textViewMinutesPlaceholder.visibility = View.GONE
-                    } else {
-                        transcriptScrollView.visibility = View.GONE
-                        textViewMinutesPlaceholder.text = "등록된 회의록이 없어요"
-                        textViewMinutesPlaceholder.visibility = View.VISIBLE
-                    }
-                }
-            }
         }
     }
 
@@ -379,12 +384,37 @@ class MeetDetailFragment : Fragment() {
             }
             participantsLayout.requestLayout()
 
-            if (!detail.textSum.isNullOrBlank()) {
-                showSummaryView(detail.textSum)
-            } else if (!detail.recordText.isNullOrBlank()) {
-                showSummaryView(detail.recordText)
+            // summaryContent와 transcriptContent에 데이터를 저장
+            summaryContent = detail.textSum
+            transcriptContent = detail.recordText
+
+            // 내용이 있는지 여부 플래그 업데이트
+            hasSummary = !detail.textSum.isNullOrBlank()
+            hasTranscript = !detail.recordText.isNullOrBlank()
+
+            // 구독자와 비구독자에 따른 UI 업데이트 분리
+            if (isSubscribed) {
+                // 구독자는 summerizedText를 숨기고 탭 레이아웃 사용
+                summerizedText.visibility = View.GONE
+
+                // 적절한 TextView에 내용 설정 (탭용)
+                summaryTextView.text = detail.textSum ?: "등록된 요약본이 없어요"
+                transcriptTextView.text = detail.recordText ?: "등록된 회의록이 없어요"
+
+                // 탭 UI 업데이트
+                tabLayout.visibility = View.VISIBLE
+                updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
             } else {
-                showInitialViewMinutes()
+                // 비구독자는 기존 방식대로 간단한 요약 표시
+                tabLayout.visibility = View.GONE
+
+                if (!detail.textSum.isNullOrBlank()) {
+                    showSummaryView(detail.textSum)
+                } else if (!detail.recordText.isNullOrBlank()) {
+                    showSummaryView(detail.recordText)
+                } else {
+                    showInitialViewMinutes()
+                }
             }
         }
     }
