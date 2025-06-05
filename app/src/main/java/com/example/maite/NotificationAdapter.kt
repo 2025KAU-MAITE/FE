@@ -39,7 +39,7 @@ class NotificationAdapter(
         if (!notification.profileImageUrl.isNullOrEmpty()) {
             com.bumptech.glide.Glide.with(holder.itemView.context)
                 .load(notification.profileImageUrl)
-                .placeholder(R.drawable.ic_launcher_foreground) // 로딩 중 표시할 이미지
+                .placeholder(R.drawable.img_profile_default) // 로딩 중 표시할 이미지
                 .error(notification.profileImageRes) // 오류 발생 시 표시할 이미지
                 .circleCrop() // 원형으로 이미지 표시
                 .into(holder.imgProfile)
