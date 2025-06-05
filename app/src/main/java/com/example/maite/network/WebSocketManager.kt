@@ -1,5 +1,7 @@
 package com.example.maite.network
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.example.maite.PreferencesUtil
 import com.example.maite.model.Message
@@ -21,6 +23,8 @@ class WebSocketManager private constructor() {
     private val disposables = CompositeDisposable()
     private val subscribers = mutableMapOf<String, MutableList<(Message) -> Unit>>()
     private lateinit var preferencesUtil: PreferencesUtil
+    // 메인 스레드 핸들러 인스턴스 추가
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     // WebSocket 서버 URL
     private val WS_URL = "ws://3.39.205.32:8080/ws-chat"
@@ -71,8 +75,8 @@ class WebSocketManager private constructor() {
                     lifecycleEvent.exception?.printStackTrace()
                     isConnecting = false
 
-                    // 오류 발생 시 재연결 시도
-                    android.os.Handler().postDelayed({
+                    // 오류 발생 시 재연결 시도 - mainHandler 사용
+                    mainHandler.postDelayed({
                         if (!isConnected()) {
                             Log.d(TAG, "오류 후 재연결 시도")
                             connect()
@@ -177,8 +181,8 @@ class WebSocketManager private constructor() {
 
             connect()
 
-            // 연결 후 구독 시도 (1초 대기)
-            android.os.Handler().postDelayed({
+            // 연결 후 구독 시도 (1초 대기) - mainHandler 사용
+            mainHandler.postDelayed({
                 if (stompClient?.isConnected == true) {
                     Log.d(TAG, "연결 완료 후 구독 시도: $roomId")
                     subscribeToTopicInternal(roomId)
@@ -256,8 +260,8 @@ class WebSocketManager private constructor() {
                     Log.e(TAG, "구독 오류: ${error.message}")
                     error.printStackTrace()
 
-                    // 오류 발생 시 재구독 시도
-                    android.os.Handler().postDelayed({
+                    // 오류 발생 시 재구독 시도 - mainHandler 사용
+                    mainHandler.postDelayed({
                         if (stompClient?.isConnected == true) {
                             Log.d(TAG, "구독 재시도: $topic")
                             subscribeToTopicInternal(roomId)
@@ -288,8 +292,8 @@ class WebSocketManager private constructor() {
             Log.e(TAG, "STOMP 클라이언트가 연결되지 않았습니다. 연결 시도 후 메시지 전송")
             connect()
 
-            // 연결 후 메시지 전송 시도
-            android.os.Handler().postDelayed({
+            // 연결 후 메시지 전송 시도 - mainHandler 사용
+            mainHandler.postDelayed({
                 if (stompClient?.isConnected == true) {
                     Log.d(TAG, "연결 후 메시지 전송: $roomId - $content")
                     sendMessageInternal(roomId, content)
@@ -375,8 +379,8 @@ class WebSocketManager private constructor() {
 
     // 메시지 저장 확인을 위한 메서드
     private fun scheduleMessageStorageCheck(roomId: Long, content: String) {
-        // 3초 후 메시지가 실제로 저장되었는지 확인
-        android.os.Handler().postDelayed({
+        // 3초 후 메시지가 실제로 저장되었는지 확인 - mainHandler 사용
+        mainHandler.postDelayed({
             // 현재 구독에 등록된 콜백을 통해 메시지 수신 여부 확인
             Log.d(TAG, "===== 메시지 저장 확인 시작 =====")
             Log.d(TAG, "메시지 내용: $content")
