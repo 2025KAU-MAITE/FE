@@ -5,7 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
-import android.widget.Toast
+
 import android.widget.TextView
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
@@ -235,9 +235,7 @@ class NotificationFragment : Fragment() {
         }
         
         viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
-            }
+            // 에러 메시지 표시 제거
         }
     }
     
@@ -245,15 +243,12 @@ class NotificationFragment : Fragment() {
         when (notification.type) {
             NotificationType.ROOM_INVITE -> {
                 viewModel.acceptRoomInvite(notification.id)
-                Toast.makeText(requireContext(), "회의방에 참가했습니다.", Toast.LENGTH_SHORT).show()
             }
             NotificationType.MEETING_INVITE -> {
                 viewModel.acceptMeetingProposal(notification.id)
-                Toast.makeText(requireContext(), "회의 제안을 수락했습니다.", Toast.LENGTH_SHORT).show()
             }
             NotificationType.FRIEND_REQUEST -> {
                 viewModel.acceptFriendRequest(notification.id)
-                Toast.makeText(requireContext(), "${notification.senderName}님과 친구가 되었습니다.", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
@@ -263,15 +258,12 @@ class NotificationFragment : Fragment() {
         when (notification.type) {
             NotificationType.ROOM_INVITE -> {
                 viewModel.declineRoomInvite(notification.id)
-                Toast.makeText(requireContext(), "회의방 초대를 거절했습니다.", Toast.LENGTH_SHORT).show()
             }
             NotificationType.MEETING_INVITE -> {
                 viewModel.declineMeetingProposal(notification.id)
-                Toast.makeText(requireContext(), "회의 제안을 거절했습니다.", Toast.LENGTH_SHORT).show()
             }
             NotificationType.FRIEND_REQUEST -> {
                 viewModel.declineFriendRequest(notification.id)
-                Toast.makeText(requireContext(), "${notification.senderName}님의 친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }

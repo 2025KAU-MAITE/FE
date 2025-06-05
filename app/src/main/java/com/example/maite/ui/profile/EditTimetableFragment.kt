@@ -7,7 +7,10 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.LinearLayout
+import android.widget.TableLayout
+import android.widget.TableRow
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -149,7 +152,7 @@ class EditTimetableFragment : Fragment() {
                 if (areAllFieldsFilled()) {
                     addTimetableEntryRealtime()
                 } else {
-                    Toast.makeText(requireContext(), "모든 필드를 입력해주세요.", Toast.LENGTH_SHORT).show()
+                    // 입력 필드 검증 실패 시 아무것도 하지 않음
                 }
             }
         }
@@ -247,14 +250,12 @@ class EditTimetableFragment : Fragment() {
                 when (event) {
                     is ProfileViewModel.TimetableEvent.Added -> {
                         // 실시간 일정 추가 성공
-                        Toast.makeText(requireContext(), "일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
                         clearInputFields()
                         // 시간표 UI 즉시 갱신
                         updateTimetableFromServer()
                     }
                     is ProfileViewModel.TimetableEvent.Removed -> {
                         // 실시간 일정 삭제 성공
-                        Toast.makeText(requireContext(), "${event.entry.title} 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
                         // 시간표 UI 즉시 갱신
                         updateTimetableFromServer()
                         // 삭제 모드 해제
@@ -264,7 +265,6 @@ class EditTimetableFragment : Fragment() {
                     }
                     is ProfileViewModel.TimetableEvent.Cleared -> {
                         // 실시간 시간표 초기화 성공
-                        Toast.makeText(requireContext(), "시간표가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
                         // 시간표 UI 즉시 갱신
                         updateTimetableFromServer()
                         // 삭제 모드 해제
@@ -277,13 +277,12 @@ class EditTimetableFragment : Fragment() {
                         showConflictDialogRealtime(event.existing, event.new)
                     }
                     is ProfileViewModel.TimetableEvent.Error -> {
-                        // 에러 발생
-                        Toast.makeText(requireContext(), event.message, Toast.LENGTH_LONG).show()
+                        // 에러 발생 - 메시지 표시 제거
                     }
                     is ProfileViewModel.TimetableEvent.SyncCompleted -> {
                         // 동기화 완료 (성능 최적화: 로그 제거)
                         if (!event.success) {
-                            Toast.makeText(requireContext(), "동기화 오류: ${event.message}", Toast.LENGTH_SHORT).show()
+                            // 동기화 오류 메시지 제거
                         }
                     }
                     else -> { /* 다른 이벤트 처리 */ }
@@ -308,7 +307,6 @@ class EditTimetableFragment : Fragment() {
         val location = binding.etLocation.text?.toString()?.trim() ?: ""
 
         if (title.isEmpty()) {
-            Toast.makeText(requireContext(), "제목을 입력해주세요.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -581,7 +579,6 @@ class EditTimetableFragment : Fragment() {
                                 // 이미 선택된 항목 클릭 시 선택 해제
                                 selectedEntry = null
                                 isDeleteMode = false
-                                Toast.makeText(context, "선택 해제됨", Toast.LENGTH_SHORT).show()
                             } else {
                                 // 새 항목 선택
                                 selectedEntry = entry

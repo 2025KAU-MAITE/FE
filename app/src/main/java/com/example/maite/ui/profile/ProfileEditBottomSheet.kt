@@ -8,7 +8,7 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
+
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModelProvider
@@ -69,14 +69,11 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                     // 임시 URI 상태를 ProfileViewModel에도 공유
                     viewModel.setTempProfileImageUri(uri.toString())
                     
-                    Toast.makeText(requireContext(), "이미지가 선택되었습니다. '완료' 버튼을 눌러 저장하세요.", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     android.util.Log.e(TAG, "이미지 설정 중 오류 발생", e)
-                    Toast.makeText(requireContext(), "이미지 설정 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 }
             } ?: run {
                 android.util.Log.e(TAG, "이미지 URI가 null입니다")
-                Toast.makeText(requireContext(), "이미지를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -312,7 +309,6 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                 }
             } else {
                 android.util.Log.w(TAG, "이미지가 변경되지 않았지만 완료 버튼이 클릭됨")
-                Toast.makeText(requireContext(), "이미지를 변경한 후 저장해주세요.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -340,8 +336,6 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
         
         // 하단 완료 버튼 활성화
         binding.btnSaveProfile.isEnabled = true
-        
-        Toast.makeText(requireContext(), "기본 이미지로 초기화됩니다. 저장하려면 '완료' 버튼을 눌러주세요.", Toast.LENGTH_SHORT).show()
     }
     
     private fun saveDefaultProfileImage() {
@@ -354,7 +348,6 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
             
             if (result != null && result) {
                 // 초기화 성공
-                Toast.makeText(requireContext(), "프로필 이미지가 초기화되었습니다.", Toast.LENGTH_SHORT).show()
                 
                 // 로컬에 저장된 URI 삭제
                 val preferencesUtil = PreferencesUtil(requireContext())
@@ -371,7 +364,6 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                 dismiss()
             } else {
                 // 초기화 실패
-                Toast.makeText(requireContext(), "프로필 이미지 초기화에 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -390,7 +382,6 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                 android.util.Log.d(TAG, "URI 유효성 확인 완료")
             } else {
                 android.util.Log.e(TAG, "URI가 null이어서 업로드 실패")
-                Toast.makeText(requireContext(), "이미지 업로드에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
                 showLoading(false)
                 return
             }
@@ -413,7 +404,6 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                 if (result != null && result) {
                     // 업로드 성공
                     android.util.Log.d(TAG, "프로필 이미지 업로드 성공")
-                    Toast.makeText(requireContext(), "프로필 이미지가 변경되었습니다.", Toast.LENGTH_SHORT).show()
                     
                     // 이미지 URI를 정식 저장
                     // 1. 임시 URI를 정식 URI로 복사
@@ -459,14 +449,12 @@ class ProfileEditBottomSheet : BottomSheetDialogFragment() {
                 } else {
                     // 업로드 실패
                     android.util.Log.e(TAG, "프로필 이미지 업로드 실패")
-                    Toast.makeText(requireContext(), "이미지 업로드에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
                     
                     // 실패 시 임시 URI 부분적으로 유지 (다시 시도할 수 있도록)
                 }
             }
         } catch (e: Exception) {
             android.util.Log.e(TAG, "이미지 업로드 중 오류 발생", e)
-            Toast.makeText(requireContext(), "이미지 업로드 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
             showLoading(false)
         }
     }

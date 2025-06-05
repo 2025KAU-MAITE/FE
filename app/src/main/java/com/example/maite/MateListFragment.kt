@@ -5,7 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
+
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -90,24 +90,20 @@ class MateListFragment : Fragment() {
                         binding.tvEmpty.visibility = View.GONE
                     }
                 } else {
-                    // 실패 처리
-                    Toast.makeText(requireContext(), "친구 목록을 불러오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    // 실패 처리 - 메시지 제거
                     binding.tvEmpty.visibility = View.VISIBLE
                 }
             } catch (e: IOException) {
                 // 네트워크 오류
                 Log.e("MateListFragment", "네트워크 오류", e)
-                Toast.makeText(requireContext(), "네트워크 연결을 확인해주세요.", Toast.LENGTH_SHORT).show()
                 binding.tvEmpty.visibility = View.VISIBLE
             } catch (e: HttpException) {
                 // API 오류
                 Log.e("MateListFragment", "API 오류: ${e.code()}", e)
-                Toast.makeText(requireContext(), "서버 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 binding.tvEmpty.visibility = View.VISIBLE
             } catch (e: Exception) {
                 // 기타 오류
                 Log.e("MateListFragment", "친구 목록 로드 오류", e)
-                Toast.makeText(requireContext(), "오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 binding.tvEmpty.visibility = View.VISIBLE
             } finally {
                 binding.progressBar.visibility = View.GONE
@@ -139,7 +135,7 @@ class MateListFragment : Fragment() {
                 // 실제 API 구현 시 API 호출 부분 추가 필요
                 
                 // 임시로 성공 처리
-                Toast.makeText(requireContext(), "${mate.name}님이 친구 목록에서 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+
                 
                 // 가째 데이터 업데이트를 위해 임시로 삭제된 항목을 제외한 새 리스트 생성
                 val currentList = mateAdapter.currentList.toMutableList()
@@ -157,7 +153,6 @@ class MateListFragment : Fragment() {
                 
             } catch (e: Exception) {
                 Log.e("MateListFragment", "친구 삭제 오류", e)
-                Toast.makeText(requireContext(), "오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
             } finally {
                 binding.progressBar.visibility = View.GONE
             }
