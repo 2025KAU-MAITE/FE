@@ -46,6 +46,11 @@ class ChatListRepository(private val context: Context) {
                     it.lastMessage?.contains(query, ignoreCase = true) == true
         }
     }
+
+    // ViewModel에서 Context에 접근하기 위한 함수 추가
+    fun getContext(): Context {
+        return context
+    }
 }
 
 // DTO를 ChatListItem으로 변환하는 확장 함수

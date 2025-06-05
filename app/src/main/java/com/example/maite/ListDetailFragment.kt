@@ -3,6 +3,7 @@ package com.example.maite
 import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -27,12 +28,17 @@ import com.example.maite.model.MaiteListItem
 import com.example.maite.model.MeetingDataManager
 import com.example.maite.model.MeetingResponse
 import com.example.maite.UserResult
+import com.example.maite.model.ChatListItem
+import com.example.maite.view.ChatRoomFragment
 import com.example.maite.viewmodel.InviteListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.example.maite.model.ChatListRepository
+import com.example.maite.model.CreateGroupChatRequest
+
 
 class ListDetailFragment : Fragment() {
     private var _binding: FragmentListDetailBinding? = null
@@ -53,6 +59,9 @@ class ListDetailFragment : Fragment() {
     private var participantEmails: List<String> = emptyList()
     private var userEmail: String? = null
 
+    private lateinit var preferencesUtil: PreferencesUtil
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -66,6 +75,8 @@ class ListDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        preferencesUtil = PreferencesUtil(requireContext())
+
         inviteViewModel = ViewModelProvider(this)[InviteListViewModel::class.java]
         inviteViewModel.inviteList.observe(viewLifecycleOwner) { userList ->
         }
@@ -74,6 +85,10 @@ class ListDetailFragment : Fragment() {
 
         binding.title.text = maiteListItem?.title
         binding.intro.text = maiteListItem?.intro
+
+        binding.chatBtn.setOnClickListener {
+            navigateToChatRoom()
+        }
 
         participantEmails = maiteListItem?.participantEmails ?: emptyList()
 
@@ -209,6 +224,112 @@ class ListDetailFragment : Fragment() {
             } catch (e: Exception) {
             }
         }
+    }
+
+    private fun navigateToChatRoom() {
+        // MAITE 항목이 유효한지 확인
+        val maiteItem = maiteListItem ?: return
+        val maiteTitle = maiteItem.title // 회의방 이름 (예: "KAU")
+
+        // 로딩 표시 (실제 코드에선 ProgressBar 등으로 대체 권장)
+        val loadingDialog = android.app.AlertDialog.Builder(requireContext())
+            .setMessage("채팅방을 확인하는 중...")
+            .setCancelable(false)
+            .show()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // 1. 채팅방 목록 가져오기
+                val chatRepository = ChatListRepository(requireContext())
+                val allChatRooms = withContext(Dispatchers.IO) {
+                    chatRepository.getChatRooms()
+                }
+
+                // 2. 회의방과 동일한 이름을 가진 채팅방 찾기
+                val matchingChatRoom = allChatRooms.find { chatRoom ->
+                    chatRoom.name.equals(maiteTitle, ignoreCase = true)
+                }
+
+                if (matchingChatRoom != null) {
+                    // 3a. 일치하는 채팅방이 있으면 해당 채팅방으로 이동
+                    withContext(Dispatchers.Main) {
+                        loadingDialog.dismiss()
+                        navigateToChatRoomWithItem(matchingChatRoom)
+                    }
+                } else {
+                    // 3b. 일치하는 채팅방이 없으면 새 채팅방 생성
+                    // 먼저 참여자 ID 목록 가져오기
+                    val memberIds = mutableListOf<Long>()
+                    val userId = preferencesUtil.getUserId() ?: -1L
+                    memberIds.add(userId) // 현재 사용자 추가
+
+                    // 현재 회의방의 참여자들 ID 가져오기
+                    for (email in participantEmails) {
+                        try {
+                            val response = withContext(Dispatchers.IO) {
+                                apiService.searchUsers(email)
+                            }
+                            if (response.isSuccessful && response.body()?.isSuccess == true) {
+                                val user = response.body()?.result?.firstOrNull { it.email == email }
+                                if (user != null && !memberIds.contains(user.id)) {
+                                    memberIds.add(user.id)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("ListDetailFragment", "사용자 검색 오류: $email", e)
+                        }
+                    }
+
+                    // 채팅방 생성 요청
+                    val request = CreateGroupChatRequest(
+                        roomName = maiteTitle,
+                        memberIds = memberIds,
+                        profileImageUrl = null
+                    )
+
+                    val createResponse = withContext(Dispatchers.IO) {
+                        apiService.createGroupChatRoom(request)
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        loadingDialog.dismiss()
+
+                        if (createResponse.isSuccessful && createResponse.body()?.isSuccess == true) {
+                            // 생성된 채팅방 정보로 ChatListItem 생성
+                            val result = createResponse.body()?.result
+                            val newChatItem = ChatListItem(
+                                id = result?.id.toString(),
+                                name = result?.roomName ?: maiteTitle,
+                                profileImageUrl = result?.profileImageUrl,
+                                lastMessage = result?.lastMessageContent,
+                                intro = "참여자 ${result?.participantCount ?: memberIds.size}명",
+                                timestamp = System.currentTimeMillis(),
+                                isGroup = true
+                            )
+
+                            // 생성된 채팅방으로 이동
+                            navigateToChatRoomWithItem(newChatItem)
+                        } else {
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    private fun navigateToChatRoomWithItem(chatItem: ChatListItem) {
+        val chatRoomFragment = ChatRoomFragment.newInstance(chatItem)
+        parentFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_right,
+                0,
+                0,
+                R.anim.slide_out_right
+            )
+            .add(R.id.main_frm, chatRoomFragment, ChatRoomFragment.TAG)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun updateMeetingsUI() {
