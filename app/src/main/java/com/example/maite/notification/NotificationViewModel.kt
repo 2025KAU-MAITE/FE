@@ -65,7 +65,7 @@ class NotificationViewModel(
                                     type = NotificationType.ROOM_INVITE,
                                     senderName = invite.name,  // 회의방 이름
                                     message = "${hostName}의 회의방 초대를 받았어요.",
-                                    profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageRes = com.example.maite.R.drawable.img_profile_default,
                                     profileImageUrl = profileImageUrl,
                                     senderEmail = invite.hostEmail,
                                     roomId = invite.roomId
@@ -95,7 +95,7 @@ class NotificationViewModel(
                                     type = NotificationType.MEETING_INVITE,
                                     senderName = notification.proposerName,  
                                     message = "${notification.proposerName}의 회의 제안을 받았어요.",
-                                    profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageRes = com.example.maite.R.drawable.img_profile_default,
                                     profileImageUrl = profileImageUrl,
                                     senderEmail = null, // 제안자의 이메일 정보가 없음
                                     meetingId = notification.meetingId,
@@ -128,7 +128,7 @@ class NotificationViewModel(
                                     type = NotificationType.FRIEND_REQUEST,
                                     senderName = request.name,
                                     message = "${request.name}의 친구 초대를 받았어요.",
-                                    profileImageRes = com.example.maite.R.drawable.ic_launcher_foreground,
+                                    profileImageRes = com.example.maite.R.drawable.img_profile_default,
                                     profileImageUrl = profileImageUrl,
                                     senderEmail = request.email,
                                     friendRequestId = request.requestId,
