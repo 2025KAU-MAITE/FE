@@ -231,9 +231,67 @@ class SubscriptionFragment : Fragment() {
             .setMessage("MAITE 구독이 완료되었습니다!\n이제 모든 기능을 자유롭게 이용하실 수 있습니다.")
             .setPositiveButton("확인") { dialog, _ ->
                 dialog.dismiss()
-                // 메인 화면으로 이동하거나 다른 처리
+                // /auth/me API 호출 후 설정 화면으로 돌아가기
+                refreshUserInfoAndNavigateToSettings()
             }
             .show()
+    }
+    
+    /**
+     * 사용자 정보 갱신 후 설정 화면으로 이동
+     */
+    private fun refreshUserInfoAndNavigateToSettings() {
+        lifecycleScope.launch {
+            try {
+                showLoading(true)
+                
+                // /auth/me API 호출하여 사용자 정보 갱신
+                val prefsUtil = PreferencesUtil(requireContext())
+                val token = prefsUtil.getAccessToken() ?: ""
+                
+                if (token.isNotEmpty()) {
+                    val response = paymentRepository.refreshUserInfo(token)
+                    
+                    if (response.isSuccess) {
+                        Log.d(TAG, "구독 완료 후 사용자 정보 갱신 성공")
+                        
+                        // 구독 상태를 로컬에 업데이트
+                        if (response.result.subscribed) {
+                            prefsUtil.saveSubscriptionStatus(true)
+                            Log.d(TAG, "구독 상태가 true로 업데이트됨")
+                        }
+                    } else {
+                        Log.w(TAG, "사용자 정보 갱신 실패하지만 계속 진행: ${response.message}")
+                    }
+                } else {
+                    Log.w(TAG, "토큰이 없어서 정보 갱신을 건너뜀")
+                }
+                
+                // 설정 화면으로 돌아가기
+                navigateToSettings()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "사용자 정보 갱신 중 오류 발생", e)
+                // 오류가 발생해도 설정 화면으로 돌아가기
+                navigateToSettings()
+            } finally {
+                showLoading(false)
+            }
+        }
+    }
+    
+    /**
+     * 설정 화면으로 돌아가기
+     */
+    private fun navigateToSettings() {
+        try {
+            // SubscriptionFragment에서 설정 화면으로 돌아가기
+            // Fragment를 닫고 이전 화면(설정)으로 돌아감
+            parentFragmentManager.popBackStack()
+            Log.d(TAG, "설정 화면으로 돌아가기 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "설정 화면으로 돌아가기 중 오류 발생", e)
+        }
     }
     
     private fun refreshUserSubscriptionStatus() {
