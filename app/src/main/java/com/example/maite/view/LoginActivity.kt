@@ -474,7 +474,6 @@ class LoginActivity : AppCompatActivity() {
                 if (response.isSuccess) {
                     // 로그인 성공
                     Log.d(TAG, "서버 인증 성공: ${response.message}")
-                    Toast.makeText(this@LoginActivity, "Google 로그인 성공", Toast.LENGTH_SHORT).show()
                     
                     // 액세스 토큰이 유효한지 확인
                     if (response.result.accessToken.isNotBlank()) {
@@ -600,8 +599,6 @@ class LoginActivity : AppCompatActivity() {
                 
                 if (loginResult.isSuccess) {
                     // Login successful
-                    Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
-                    
                     // Save access token
                     preferencesUtil.saveAccessToken(loginResult.result.accessToken)
 

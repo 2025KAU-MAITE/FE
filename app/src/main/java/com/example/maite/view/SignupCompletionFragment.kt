@@ -109,7 +109,6 @@ class SignupCompletionFragment : Fragment() {
                 if (response.result.registered) {
                     // 회원가입 성공
                     Log.d(TAG, "회원가입 성공: userId=${response.result.userId}, email=${response.result.email}")
-                    Toast.makeText(requireContext(), "회원가입이 완료되었습니다. 이제 로그인할 수 있습니다.", Toast.LENGTH_SHORT).show()
                     
                     // 모든 수집된 사용자 정보 초기화
                     SignupDataHolder.clear()
@@ -162,8 +161,6 @@ class SignupCompletionFragment : Fragment() {
                     response.result.accessToken?.let { token ->
                         Log.d(TAG, "accessToken=${token.take(15)}...")
                     } ?: Log.d(TAG, "accessToken=null")
-                    
-                    Toast.makeText(requireContext(), "회원가입이 완료되었습니다", Toast.LENGTH_SHORT).show()
                     
                     // 모든 수집된 사용자 정보 초기화
                     SignupDataHolder.clear()

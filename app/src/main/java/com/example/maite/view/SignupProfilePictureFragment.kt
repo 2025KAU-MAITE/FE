@@ -179,12 +179,10 @@ class SignupProfilePictureFragment : Fragment() {
                     if (!imageUrl.isNullOrEmpty()) {
                         SignupDataHolder.profileImageUrl = imageUrl
                         Log.d(TAG, "회원가입 프로필 이미지 업로드 및 URL 저장 완료: $imageUrl")
-                        Toast.makeText(requireContext(), "프로필 이미지가 업로드되었습니다", Toast.LENGTH_SHORT).show()
                     } else {
                         // 업로드는 성공했지만 URL을 못 받은 경우
                         SignupDataHolder.profileImageUrl = ""
                         Log.d(TAG, "회원가입 프로필 이미지 업로드 성공, URL은 받지 못함")
-                        Toast.makeText(requireContext(), "프로필 이미지가 업로드되었습니다", Toast.LENGTH_SHORT).show()
                     }
                     navigateToNextScreen()
                 } else {

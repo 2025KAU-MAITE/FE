@@ -186,7 +186,7 @@ class SignupProfileFragment : Fragment() {
                 
                 if (response.isSuccess) {
                     // 인증번호 발송 성공
-                    Toast.makeText(requireContext(), "인증번호가 발송되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "SMS 인증번호 발송 성공")
                     
                     // 인증 입력 UI 표시
                     showAuthenticationViews()
@@ -242,7 +242,7 @@ class SignupProfileFragment : Fragment() {
                 
                 if (response.isSuccess) {
                     // 인증번호 재발송 성공
-                    Toast.makeText(requireContext(), "인증번호가 재발송되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "SMS 인증번호 재발송 성공")
                     
                     // 인증 코드 초기화
                     clearAuthCodeFields()
@@ -306,7 +306,7 @@ class SignupProfileFragment : Fragment() {
                 
                 if (response.isSuccess) {
                     // 인증 성공
-                    Toast.makeText(requireContext(), "인증이 완료되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "SMS 인증번호 검증 성공")
                     
                     // 상태 업데이트
                     isAuthVerified = true
