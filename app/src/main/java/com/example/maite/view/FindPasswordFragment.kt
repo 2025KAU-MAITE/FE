@@ -204,7 +204,7 @@ class FindPasswordFragment : Fragment() {
                 
                 if (response.isSuccess) {
                     // Auth code sent successfully
-                    Toast.makeText(requireContext(), "인증번호가 발송되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "비밀번호 찾기 인증번호 발송 성공")
                     
                     // Show authentication input UI
                     showAuthenticationViews()
@@ -257,7 +257,7 @@ class FindPasswordFragment : Fragment() {
                 
                 if (response.isSuccess) {
                     // Auth code verification successful
-                    Toast.makeText(requireContext(), "인증이 완료되었습니다", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "비밀번호 찾기 인증번호 검증 성공")
                     
                     // Update status
                     isAuthVerified = true
