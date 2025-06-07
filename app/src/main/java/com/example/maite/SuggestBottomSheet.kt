@@ -114,7 +114,6 @@ class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlace
                 datePicker.show(childFragmentManager, "datePicker")
             } ?: run {
                 Log.e("SuggestBottomSheet", "availableDaysOfWeek가 null이라 DateBottomSheet를 열 수 없습니다.")
-                Toast.makeText(context, "요일 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -334,7 +333,6 @@ class SuggestBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlace
 
                         if (selectPlaceResponse.isSuccessful) {
                             Log.d("SuggestBottomSheet", "2단계: 장소 선택 성공")
-                            Toast.makeText(context, "회의 제안을 성공적으로 보냈습니다!", Toast.LENGTH_SHORT).show()
                             dismiss()
                         } else {
                             val errorBody = selectPlaceResponse.errorBody()?.string() ?: selectPlaceResponse.message()

@@ -173,7 +173,7 @@ class ListDetailFragment : Fragment() {
         binding.propHamberger.setOnClickListener {
             val fragmentTag = PropMeetFragment::class.java.name
             val fragmentManager = parentFragmentManager
-            var propMeetFragment = fragmentManager.findFragmentByTag(fragmentTag)
+            var propMeetFragment = fragmentManager.findFragmentByTag(fragmentTag) as? PropMeetFragment // 타입 캐스팅
 
             val transaction = fragmentManager.beginTransaction()
 
@@ -186,8 +186,15 @@ class ListDetailFragment : Fragment() {
             )
 
             if (propMeetFragment == null) {
-                propMeetFragment = PropMeetFragment()
-                transaction.add(R.id.main_frm, propMeetFragment, fragmentTag)
+                val currentRoomId = maiteListItem?.roomId
+                if (currentRoomId != null) {
+                    propMeetFragment = PropMeetFragment.newInstance(currentRoomId) // roomId 전달
+                    transaction.add(R.id.main_frm, propMeetFragment, fragmentTag)
+                } else {
+                    Log.e("ListDetailFragment", "Cannot open PropMeetFragment, roomId is null")
+                    // roomId가 없는 경우 사용자에게 알림 등의 처리
+                    return@setOnClickListener
+                }
             } else {
                 transaction.show(propMeetFragment)
             }
@@ -199,7 +206,7 @@ class ListDetailFragment : Fragment() {
         binding.recentHamberger.setOnClickListener {
             val fragmentTag = MeetListFragment::class.java.name
             val fragmentManager = parentFragmentManager
-            var meetListFragment = fragmentManager.findFragmentByTag(fragmentTag)
+            var meetListFragment = fragmentManager.findFragmentByTag(fragmentTag) as? MeetListFragment // 타입 캐스팅
 
             val transaction = fragmentManager.beginTransaction()
 
@@ -211,9 +218,19 @@ class ListDetailFragment : Fragment() {
             )
 
             if (meetListFragment == null) {
-                meetListFragment = MeetListFragment()
-                transaction.add(R.id.main_frm, meetListFragment, fragmentTag)
+                val currentRoomId = maiteListItem?.roomId
+                if (currentRoomId != null) {
+                    meetListFragment = MeetListFragment.newInstance(currentRoomId) // roomId 전달
+                    transaction.add(R.id.main_frm, meetListFragment, fragmentTag)
+                } else {
+                    Log.e("ListDetailFragment", "Cannot open MeetListFragment, roomId is null")
+                    // roomId가 없는 경우 사용자에게 알림 등의 처리
+                    return@setOnClickListener
+                }
             } else {
+                // 이미 존재하는 Fragment 인스턴스를 보여줄 때도 데이터를 새로고침하고 싶다면,
+                // meetListFragment.loadDataAndUpdateViewModel()와 유사한 public 메소드를 호출할 수 있습니다.
+                // 또는 Fragment가 onResume 등에서 스스로 데이터를 갱신하도록 할 수 있습니다.
                 transaction.show(meetListFragment)
             }
 
