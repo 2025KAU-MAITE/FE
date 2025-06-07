@@ -124,16 +124,13 @@ class CreateMaiteBottomSheet : BottomSheetDialogFragment() {
                     // 방 생성 완료 결과를 ListFragment에 전달
                     setFragmentResult(ROOM_CREATED_REQUEST_KEY, bundleOf(ROOM_CREATED_RESULT_KEY to true))
 
-                    Toast.makeText(requireContext(), "MAITE 생성 완료", Toast.LENGTH_SHORT).show()
                     dismiss()
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e(TAG, "Failed to create room: $errorBody")
-                    Toast.makeText(requireContext(), "MAITE 생성 실패: $errorBody", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "API call failed", e)
-                Toast.makeText(requireContext(), "오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 showLoading(false)
             }
