@@ -128,6 +128,20 @@ class ListDetailFragment : Fragment() {
             loadTimetableData()
         }
 
+        parentFragmentManager.setFragmentResultListener("meeting_update_result", viewLifecycleOwner) { _, bundle ->
+            val success = bundle.getBoolean("meeting_update_success", false)
+            if (success) {
+                // 회의 ID 받기(필요 시)
+                val updatedMeetingId = bundle.getLong("updated_meeting_id", -1L)
+                Log.d("ListDetailFragment", "회의 정보 업데이트 감지: meetingId=$updatedMeetingId")
+
+                // 회의 데이터 새로 로드
+                maiteListItem?.roomId?.let { roomId ->
+                    loadMeetingsData(roomId)
+                }
+            }
+        }
+
         binding.timetableLayout.setOnClickListener {
             if (!::availableDaysOfWeek.isInitialized || availableDaysOfWeek.isEmpty()) {
                 val allDaysList = ArrayList((1..7).toList())

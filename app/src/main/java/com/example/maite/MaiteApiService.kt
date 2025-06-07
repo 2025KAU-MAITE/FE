@@ -121,6 +121,12 @@ interface MaiteApiService {
 
     @POST("api/chats/rooms")
     suspend fun createChatRoom(@Body request: CreateChatRoomRequest): Response<ChatRoomCreateResponse>
+
+    @PUT("meetings/{meetingId}")
+    suspend fun updateMeeting(
+        @Path("meetingId") meetingId: Long,
+        @Body request: UpdateMeetingRequest
+    ): Response<ResponseBody>
 }
 
 data class ChatRoomCreateResponse(
@@ -128,4 +134,12 @@ data class ChatRoomCreateResponse(
     val code: String,
     val message: String,
     val result: ChatRoomDto
+)
+
+data class UpdateMeetingRequest(
+    val title: String,
+    val meetingDay: String,
+    val meetingTime: String,
+    val meetingEndTime: String,
+    val address: String
 )

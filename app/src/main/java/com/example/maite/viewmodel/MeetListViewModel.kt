@@ -48,4 +48,12 @@ class MeetListViewModel : ViewModel() {
         _meetList.value = sortedData
         Log.d("MeetListViewModel", "회의 목록 로드: ${sortedData.size}개 항목")
     }
+
+    fun refreshData() {
+        // 저장소에서 최신 데이터 가져오기
+        val latestData = MeetListRepository.getInstance().getMeetList()
+
+        // LiveData 업데이트
+        _meetList.value = latestData
+    }
 }
