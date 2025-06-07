@@ -64,15 +64,71 @@ class SubscriptionFragment : Fragment() {
     }
     
     private fun setupUI() {
+        // 현재 구독 상태 확인
+        checkCurrentSubscriptionStatus()
+        
         // 프리미엄 구독 버튼 클릭 리스너 설정
         binding.btnSelectPremium.setOnClickListener {
             startKakaoPayment()
+        }
+        
+        // 기본 요금제 버튼 클릭 리스너 설정 (다운그레이드)
+        binding.btnSelectFree.setOnClickListener {
+            showDowngradeConfirmDialog()
         }
         
         // 뒤로가기 버튼 설정
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
+    }
+    
+    /**
+     * 현재 구독 상태를 확인하고 UI 업데이트
+     */
+    private fun checkCurrentSubscriptionStatus() {
+        val prefsUtil = PreferencesUtil(requireContext())
+        val isSubscribed = prefsUtil.isSubscribed()
+        
+        Log.d(TAG, "현재 구독 상태 확인: $isSubscribed")
+        
+        if (isSubscribed) {
+            // 이미 구독 중인 경우 UI 업데이트
+            updateUIForSubscribedUser()
+        } else {
+            // 구독하지 않은 경우 기본 UI 유지
+            updateUIForNonSubscribedUser()
+        }
+    }
+    
+    /**
+     * 구독 중인 사용자를 위한 UI 업데이트
+     */
+    private fun updateUIForSubscribedUser() {
+        // 프리미엄 버튼 - 현재 구독중 상태로 변경
+        binding.btnSelectPremium.text = "현재 구독중"
+        binding.btnSelectPremium.isEnabled = false
+        
+        // 기본 요금제 버튼 - 다운그레이드 가능 상태로 변경
+        binding.btnSelectFree.text = "다운그레이드"
+        binding.btnSelectFree.isEnabled = true
+        
+        Log.d(TAG, "구독 중인 사용자 UI로 업데이트 완료")
+    }
+    
+    /**
+     * 구독하지 않은 사용자를 위한 UI 업데이트
+     */
+    private fun updateUIForNonSubscribedUser() {
+        // 프리미엄 버튼 - 업그레이드 가능 상태로 변경
+        binding.btnSelectPremium.text = "업그레이드"
+        binding.btnSelectPremium.isEnabled = true
+        
+        // 기본 요금제 버튼 - 현재 이용중 상태로 변경
+        binding.btnSelectFree.text = "현재 이용중"
+        binding.btnSelectFree.isEnabled = false
+        
+        Log.d(TAG, "구독하지 않은 사용자 UI로 업데이트 완료")
     }
     
     private fun startKakaoPayment() {
@@ -259,6 +315,9 @@ class SubscriptionFragment : Fragment() {
                         if (response.result.subscribed) {
                             prefsUtil.saveSubscriptionStatus(true)
                             Log.d(TAG, "구독 상태가 true로 업데이트됨")
+                            
+                            // 현재 화면의 UI도 즉시 업데이트
+                            updateUIForSubscribedUser()
                         }
                     } else {
                         Log.w(TAG, "사용자 정보 갱신 실패하지만 계속 진행: ${response.message}")
@@ -367,9 +426,15 @@ class SubscriptionFragment : Fragment() {
     }
     
     private fun showLoading(show: Boolean) {
-        // 버튼 상태만 변경 (프로그래스바가 레이아웃에 없으므로)
-        binding.btnSelectPremium.isEnabled = !show
-        binding.btnSelectPremium.text = if (show) "처리 중..." else "업그레이드"
+        if (show) {
+            // 로딩 중일 때 두 버튼 모두 비활성화
+            binding.btnSelectPremium.isEnabled = false
+            binding.btnSelectPremium.text = "처리 중..."
+            binding.btnSelectFree.isEnabled = false
+        } else {
+            // 로딩 완료 후 현재 구독 상태에 따라 UI 복원
+            checkCurrentSubscriptionStatus()
+        }
     }
     
     private fun showToast(message: String) {
@@ -380,5 +445,60 @@ class SubscriptionFragment : Fragment() {
         super.onDestroyView() 
         clearPaymentData()
         _binding = null
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // 화면이 다시 표시될 때마다 구독 상태 확인
+        checkCurrentSubscriptionStatus()
+    }
+    
+    /**
+     * 다운그레이드 확인 다이얼로그 표시
+     */
+    private fun showDowngradeConfirmDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("기본 요금제로 변경")
+            .setMessage("프리미엄 구독을 취소하고 기본 요금제로 변경하시겠습니까?\n\n변경 후에는 프리미엄 기능 이용이 제한됩니다.")
+            .setPositiveButton("확인") { dialog, _ ->
+                dialog.dismiss()
+                processDowngrade()
+            }
+            .setNegativeButton("취소") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    
+    /**
+     * 다운그레이드 처리
+     */
+    private fun processDowngrade() {
+        lifecycleScope.launch {
+            try {
+                showLoading(true)
+                
+                // 구독 상태를 로컬에서 false로 변경
+                val prefsUtil = PreferencesUtil(requireContext())
+                prefsUtil.saveSubscriptionStatus(false)
+                
+                Log.d(TAG, "구독 상태가 false로 업데이트됨 (다운그레이드)")
+                
+                // UI 즉시 업데이트
+                updateUIForNonSubscribedUser()
+                
+                // 성공 메시지 표시
+                showToast("기본 요금제로 변경되었습니다")
+                
+                // 서버에도 구독 취소 요청 (실제 API가 있다면)
+                // val response = paymentRepository.cancelSubscription()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "다운그레이드 처리 중 오류 발생", e)
+                showToast("요금제 변경 중 오류가 발생했습니다")
+            } finally {
+                showLoading(false)
+            }
+        }
     }
 }
