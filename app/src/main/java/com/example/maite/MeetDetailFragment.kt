@@ -46,6 +46,8 @@ const val ARG_CURRENT_DATE = "current_date"
 const val ARG_CURRENT_TIME = "current_time"
 const val ARG_CURRENT_PLACE = "current_place"
 
+private const val ARG_EDIT_MEETING_ID = "edit_meeting_id"
+
 class MeetDetailFragment : Fragment() {
     private var _binding: FragmentMeetDetailBinding? = null
     private val binding get() = _binding!!
@@ -91,6 +93,23 @@ class MeetDetailFragment : Fragment() {
                 val responseBody = bundle.getString(UploadBottomSheet.BUNDLE_KEY_RESPONSE)
                 requireActivity().runOnUiThread {
                     _binding?.let { bindingNonNull -> showSummaryView(responseBody ?: "요약본이 생성되었습니다.") }
+                }
+            }
+        }
+
+        childFragmentManager.setFragmentResultListener(EditMeetBottomSheet.REQUEST_KEY, this) { _, bundle ->
+            val success = bundle.getBoolean(EditMeetBottomSheet.BUNDLE_KEY_SUCCESS, false)
+            if (success) {
+                // 회의 정보가 업데이트 되었으니 다시 로드
+                meetingId?.let { id ->
+                    loadMeetingDetails(id)
+
+                    // 부모 Fragment에게도 업데이트 알림 (추가된 부분)
+                    val resultBundle = Bundle().apply {
+                        putBoolean("meeting_update_success", true)
+                        putLong("updated_meeting_id", id)
+                    }
+                    parentFragmentManager.setFragmentResult("meeting_update_result", resultBundle)
                 }
             }
         }
@@ -145,9 +164,11 @@ class MeetDetailFragment : Fragment() {
                 meetingDetail?.let { detail ->
                     val editMeetBottomSheet = EditMeetBottomSheet()
                     val args = Bundle().apply {
+                        // 충돌되는 ARG_MEETING_ID 대신 ARG_EDIT_MEETING_ID 사용
+                        putLong(ARG_EDIT_MEETING_ID, meetingId ?: -1L)
                         putString(ARG_CURRENT_TITLE, detail.title)
                         putString(ARG_CURRENT_DATE, detail.meetingDate)
-                        putString(ARG_CURRENT_TIME, detail.meetingTime)
+                        putString(ARG_CURRENT_TIME, "${detail.meetingTime} ~ ${detail.meetingEndTime}")
                         putString(ARG_CURRENT_PLACE, detail.address)
                     }
                     editMeetBottomSheet.arguments = args
