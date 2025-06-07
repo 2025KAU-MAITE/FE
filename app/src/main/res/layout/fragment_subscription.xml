@@ -87,7 +87,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="무료 요금제"
+                            android:text="베이직 요금제"
                             android:textColor="#333333"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -180,7 +180,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="₩15,000 / 월"
-                                android:textColor="@color/mainColor"
+                                android:textColor="@color/black"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
