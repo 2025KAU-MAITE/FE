@@ -160,9 +160,11 @@ class UpdatePasswordFragment : Fragment() {
      * 이메일과 비밀번호로 재설정 API 호출
      */
     private fun proceedWithPasswordReset(email: String, newPassword: String) {
-        // Show loading state
-        binding.progressBar.visibility = View.VISIBLE
-        binding.btnUpdatePassword.isEnabled = false
+        // Safely show loading state
+        if (_binding != null && isAdded && !isDetached) {
+            binding.progressBar.visibility = View.VISIBLE
+            binding.btnUpdatePassword.isEnabled = false
+        }
         
         // Use AuthRepository to update the password
         val authRepository = AuthRepository(requireContext())
@@ -182,13 +184,23 @@ class UpdatePasswordFragment : Fragment() {
                     com.example.maite.util.PasswordResetDataHolder.clear()
                     Log.d(TAG, "Cleared email from DataHolder after successful password reset")
                     
-                    // 성공 메시지를 충분히 보여주기 위해 잠시 대기
-                    kotlinx.coroutines.delay(1500)
-                    
-                    // Navigate back to login screen
-                    if (activity is LoginActivity) {
-                        (activity as LoginActivity).showLoginUI()
-                        requireActivity().supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                    // 성공 메시지를 충분히 보여주기 위해 잠시 대기 후 네비게이션
+                    // 별도의 코루틴으로 처리하여 메인 try-catch 블록과 분리
+                    launch {
+                        kotlinx.coroutines.delay(1500)
+                        
+                        // 안전하게 로그인 화면으로 돌아가기
+                        if (isAdded && !isDetached && activity != null) {
+                            activity?.runOnUiThread {
+                                try {
+                                    // 단순히 뒤로가기 처리 - LoginActivity가 알아서 처리하도록
+                                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                                    Log.d(TAG, "Triggered back press after password reset")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error during back press", e)
+                                }
+                            }
+                        }
                     }
                 } else {
                     Toast.makeText(requireContext(), "비밀번호 변경 실패: ${response.message}", Toast.LENGTH_SHORT).show()
@@ -196,8 +208,11 @@ class UpdatePasswordFragment : Fragment() {
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "네트워크 오류: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                binding.progressBar.visibility = View.GONE
-                binding.btnUpdatePassword.isEnabled = true
+                // Safely access binding only if fragment view still exists
+                if (_binding != null && isAdded && !isDetached) {
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnUpdatePassword.isEnabled = true
+                }
             }
         }
     }
