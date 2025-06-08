@@ -6,7 +6,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.maite.databinding.BottomSheetPlaceBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -18,6 +20,9 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.OnMapReadyCallback
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PlaceBottomSheet : BottomSheetDialogFragment(), OnMapReadyCallback {
     private var _binding: BottomSheetPlaceBinding? = null
@@ -28,6 +33,14 @@ class PlaceBottomSheet : BottomSheetDialogFragment(), OnMapReadyCallback {
     private var selectedLatLng: LatLng? = null // 선택된 위치 좌표 저장
     private var currentMarker: Marker? = null // 선택된 위치에 표시할 마커
     private var selectedPlaceName: String? = null // 선택된 장소 이름 저장
+    private lateinit var apiService: MaiteApiService
+    private var cafeMarkers: MutableList<Marker> = mutableListOf() // 카페 마커 목록
+
+    // AI 버튼 표시 여부를 제어하는 플래그 추가
+    private var showAiButton: Boolean = false
+
+    // 회의 ID 저장 변수
+    private var meetingId: Long = -1
 
     // --- 리스너 인터페이스 (이름도 전달) ---
     interface OnPlaceSelectedListener {
@@ -84,6 +97,14 @@ class PlaceBottomSheet : BottomSheetDialogFragment(), OnMapReadyCallback {
     ): View {
         _binding = BottomSheetPlaceBinding.inflate(inflater, container, false)
         mapView = binding.mapView
+
+        // API 서비스 초기화
+        apiService = MaiteRetrofitClient.getInstance(requireContext())
+
+        // Bundle에서 설정값 가져오기
+        showAiButton = arguments?.getBoolean(ARG_SHOW_AI_BUTTON, false) ?: false
+        meetingId = arguments?.getLong(ARG_MEETING_ID, -1) ?: -1
+
         // *** MapView 생명주기 이벤트 전파 ***
         mapView.onCreate(savedInstanceState)
         return binding.root
@@ -91,6 +112,38 @@ class PlaceBottomSheet : BottomSheetDialogFragment(), OnMapReadyCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // AI 버튼/툴팁 가시성 설정
+        binding.aiCardView.visibility = if (showAiButton) View.VISIBLE else View.GONE
+        binding.aiButtonTooltip2.visibility = if (showAiButton) View.GONE else View.GONE // 기본은 GONE, 표시할 때만 VISIBLE로 설정
+
+        // AI 버튼이 표시되는 경우에만 툴팁 표시 로직 추가
+        if (showAiButton) {
+            // 일정 시간 후 툴팁 표시 (예: 1초 후)
+            view.postDelayed({
+                if (isAdded && _binding != null) { // Fragment가 아직 활성 상태인지 확인
+                    binding.aiButtonTooltip2.visibility = View.VISIBLE
+                }
+            }, 1000)
+
+            // 툴팁 자동 숨김 (예: 4초 후)
+            view.postDelayed({
+                if (isAdded && _binding != null) {
+                    binding.aiButtonTooltip2.visibility = View.GONE
+                }
+            }, 4000)
+
+            // AI 버튼 클릭 이벤트 설정
+            binding.btnAi.setOnClickListener {
+                Log.d("PlaceBottomSheet", "AI 버튼 클릭됨")
+
+                if (meetingId > 0) {
+                    fetchNearbyCafes(meetingId)
+                } else {
+                    Toast.makeText(context, "유효한 회의 ID가 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
         // 비동기적으로 지도 로딩 시작
         mapView.getMapAsync(this)
@@ -126,6 +179,126 @@ class PlaceBottomSheet : BottomSheetDialogFragment(), OnMapReadyCallback {
         }
 
         // 초기 버튼 상태 설정은 onMapReady에서 수행
+    }
+
+    // API를 호출하여 주변 카페 정보를 가져오는 함수
+    private fun fetchNearbyCafes(meetingId: Long) {
+
+        lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    apiService.getNearbyCafes(meetingId)
+                }
+
+                if (response.isSuccessful) {
+                    val cafes = response.body() ?: emptyList()
+                    Log.d("PlaceBottomSheet", "주변 카페 ${cafes.size}개 조회됨")
+
+                    if (cafes.isEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "주변 카페가 없습니다.", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            // 기존 카페 마커 제거
+                            clearCafeMarkers()
+
+                            // 지도에 카페 표시
+                            displayCafesOnMap(cafes)
+
+                            // 카페 목록 중앙으로 카메라 이동 (첫 번째 카페 위치로 이동)
+                            moveCameraToFirstCafe(cafes)
+                        }
+                    }
+                } else {
+                    Log.e("PlaceBottomSheet", "API 오류: ${response.code()} ${response.message()}")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "카페 검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("PlaceBottomSheet", "API 호출 실패", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "네트워크 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // 기존 카페 마커 제거
+    private fun clearCafeMarkers() {
+        for (marker in cafeMarkers) {
+            marker.map = null
+        }
+        cafeMarkers.clear()
+    }
+
+    // 지도에 카페 표시
+    private fun displayCafesOnMap(cafes: List<NearByCafe>) {
+        val cafeMarkerIcon = OverlayImage.fromResource(R.drawable.ic_marker) // 카페용 아이콘 (준비 필요)
+
+        naverMap?.let { map ->
+            for (cafe in cafes) {
+                try {
+                    // String을 Double로 변환
+                    val lat = cafe.mapy.toDoubleOrNull()?.let { it / 10000000.0 } ?: continue
+                    val lng = cafe.mapx.toDoubleOrNull()?.let { it / 10000000.0 } ?: continue
+
+                    val cafePosition = LatLng(lat, lng)
+                    val marker = Marker().apply {
+                        position = cafePosition
+                        icon = cafeMarkerIcon
+                        width = 100  // 카페 마커 크기
+                        height = 100
+                        captionText = cafe.title
+                        tag = cafe  // 마커에 카페 정보 저장
+
+                        context?.let { ctx ->
+                            iconTintColor = ContextCompat.getColor(ctx, R.color.mainColor) // 카페 마커 색상
+                        }
+
+                        this.map = map
+                    }
+
+                    // 마커 클릭 이벤트 설정
+                    marker.setOnClickListener {
+                        // 선택된 카페로 설정
+                        selectedLatLng = cafePosition
+                        selectedPlaceName = cafe.title + " (" + cafe.roadAddress + ")"
+
+                        // 검색창 텍스트 업데이트
+                        binding.textView20.text = selectedPlaceName
+
+                        // 완료 버튼 활성화
+                        updateDoneButtonState(true)
+
+                        // 이벤트 소비
+                        true
+                    }
+
+                    cafeMarkers.add(marker)
+                } catch (e: Exception) {
+                    Log.e("PlaceBottomSheet", "카페 마커 생성 오류", e)
+                }
+            }
+        }
+    }
+
+    // 첫 번째 카페로 카메라 이동
+    private fun moveCameraToFirstCafe(cafes: List<NearByCafe>) {
+        if (cafes.isNotEmpty() && naverMap != null) {
+            try {
+                val lat = cafes[0].mapy.toDoubleOrNull()?.let { it / 10000000.0 }
+                val lng = cafes[0].mapx.toDoubleOrNull()?.let { it / 10000000.0 }
+
+                if (lat != null && lng != null) {
+                    val cameraUpdate = CameraUpdate.scrollTo(LatLng(lat, lng))
+                    naverMap?.moveCamera(cameraUpdate)
+                }
+            } catch (e: Exception) {
+                Log.e("PlaceBottomSheet", "카메라 이동 오류", e)
+            }
+        }
     }
 
     override fun onMapReady(naverMap: NaverMap) {
@@ -278,8 +451,27 @@ class PlaceBottomSheet : BottomSheetDialogFragment(), OnMapReadyCallback {
     private fun Double.format(digits: Int) = "%.${digits}f".format(this)
 
     companion object {
+        // 인자 키 상수 추가
+        private const val ARG_SHOW_AI_BUTTON = "show_ai_button"
+        private const val ARG_MEETING_ID = "meeting_id"
+
+        // 기존 메서드 유지 (AI 버튼 표시 안함)
         fun newInstance(): PlaceBottomSheet {
-            return PlaceBottomSheet()
+            return PlaceBottomSheet().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_SHOW_AI_BUTTON, false) // 기본적으로 AI 버튼 숨김
+                }
+            }
+        }
+
+        // AI 버튼 표시 여부와 meetingId를 지정할 수 있는 새 메서드
+        fun newInstance(showAiButton: Boolean, meetingId: Long = -1): PlaceBottomSheet {
+            return PlaceBottomSheet().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_SHOW_AI_BUTTON, showAiButton)
+                    putLong(ARG_MEETING_ID, meetingId)
+                }
+            }
         }
     }
 }

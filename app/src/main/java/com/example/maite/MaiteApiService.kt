@@ -127,6 +127,17 @@ interface MaiteApiService {
         @Path("meetingId") meetingId: Long,
         @Body request: UpdateMeetingRequest
     ): Response<ResponseBody>
+
+    @GET("meetings/{meetingId}/cafes")
+    suspend fun getNearbyCafes(
+        @Path("meetingId") meetingId: Long
+    ): Response<List<NearByCafe>>
+
+    @POST("meetings/{meetingId}/address")
+    suspend fun setMyMeetingAddress(
+        @Path("meetingId") meetingId: Long,
+        @Body request: SetAddressRequest
+    ): Response<Void>
 }
 
 data class ChatRoomCreateResponse(
@@ -141,5 +152,18 @@ data class UpdateMeetingRequest(
     val meetingDay: String,
     val meetingTime: String,
     val meetingEndTime: String,
+    val address: String
+)
+
+data class NearByCafe(
+    val title: String,
+    val category: String,
+    val roadAddress: String,
+    val description: String,
+    val mapx: String,
+    val mapy: String
+)
+
+data class SetAddressRequest(
     val address: String
 )
