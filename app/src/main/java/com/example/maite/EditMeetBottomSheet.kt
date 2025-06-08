@@ -177,7 +177,8 @@ class EditMeetBottomSheet : BottomSheetDialogFragment(), PlaceBottomSheet.OnPlac
         }
 
         binding.placeCardView.setOnClickListener {
-            val placeBottomSheet = PlaceBottomSheet.newInstance()
+            // meetingId와 함께 AI 버튼 활성화
+            val placeBottomSheet = PlaceBottomSheet.newInstance(true, meetingId)
             placeBottomSheet.setOnPlaceSelectedListener(this)
             placeBottomSheet.show(parentFragmentManager, placeBottomSheet.tag)
         }
