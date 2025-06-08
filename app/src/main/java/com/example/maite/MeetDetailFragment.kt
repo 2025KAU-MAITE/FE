@@ -1,18 +1,26 @@
 package com.example.maite
 
 import android.Manifest
+import android.app.AlertDialog
+import android.app.Dialog
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -208,8 +216,95 @@ class MeetDetailFragment : Fragment() {
                 }
             }
             view.postDelayed({ hideAiButtonTooltip() }, 5000)
+
+            b.imageView3.setOnClickListener {
+                showAddressInputDialog()
+            }
         }
     }
+
+    private fun showAddressInputDialog() {
+        val meetingId = meetingId ?: return
+
+        // 커스텀 다이얼로그 생성
+        val dialog = Dialog(requireContext())
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_address_input)
+
+        // 다이얼로그 크기 설정
+        val window = dialog.window
+        window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        // 컴포넌트 가져오기
+        val titleTextView = dialog.findViewById<TextView>(R.id.titleTextView)
+        val addressEditText = dialog.findViewById<EditText>(R.id.addressEditText)
+        val saveButton = dialog.findViewById<Button>(R.id.saveButton)
+
+        // 텍스트 변경 리스너 설정
+        addressEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                // 텍스트가 있으면 활성화 스타일, 없으면 비활성화 스타일
+                updateButtonAppearance(saveButton, s?.isNotEmpty() == true)
+            }
+
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+
+        // 완료 버튼 클릭 리스너
+        saveButton.setOnClickListener {
+            val address = addressEditText.text.toString()
+            if (address.isNotEmpty()) {
+                updateMeetingAddress(meetingId, address)
+                dialog.dismiss()
+            } else {
+                // 텍스트가 없는 경우 아무 동작 안함 (버튼이 이미 비활성화 스타일이므로)
+            }
+        }
+
+        dialog.show()
+    }
+
+    // 버튼 모양 업데이트 함수
+    private fun updateButtonAppearance(button: Button, isActive: Boolean) {
+        if (isActive) {
+            // 활성화 상태 - subColor 배경, 흰색 텍스트
+            button.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.mainColor))
+            button.setTextColor(Color.WHITE)
+        } else {
+            // 비활성화 상태 - btn_inactive 배경, 검은색 텍스트
+            button.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.btn_inactive))
+            button.setTextColor(Color.BLACK)
+        }
+    }
+
+    private fun updateMeetingAddress(meetingId: Long, address: String) {
+        lifecycleScope.launch {
+            try {
+                // 로딩 표시 (필요하면 구현)
+
+                val request = SetAddressRequest(address)
+                val response = withContext(Dispatchers.IO) {
+                    apiService.setMyMeetingAddress(meetingId, request)
+                }
+
+                if (response.isSuccessful) {
+                    binding.meetPlace.text = address
+
+                    // 회의 상세 정보 다시 로드
+                    loadMeetingDetails(meetingId)
+                } else {
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+
 
     private fun setupSubscribedUI() {
         binding.apply {
