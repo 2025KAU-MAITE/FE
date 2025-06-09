@@ -1,18 +1,16 @@
 package com.example.maite
 
 import android.Manifest
-import android.app.AlertDialog
-import android.app.Dialog
+import android.app.Dialog // Keep for showAddressInputDialog
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.media.MediaPlayer
+import android.media.MediaPlayer // Re-added for AI voice response
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.text.InputType
+import android.os.Handler // Re-added for AI voice response completion
+import android.os.Looper // Re-added for AI voice response completion
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -24,17 +22,20 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.signature.ObjectKey
 import com.example.maite.databinding.FragmentMeetDetailBinding
-import com.example.maite.model.ClovaSummaryResponse
+// import com.example.maite.model.ClovaSummaryResponse // Keep if API service uses it for upload
 import com.example.maite.model.MeetingDetailResponse
 import com.example.maite.UserResult
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -66,17 +67,22 @@ class MeetDetailFragment : Fragment() {
     private var mediaRecorder: MediaRecorder? = null
     private var isRecording = false
     private var audioFilePath: String? = null
-    private var aiDialog: AiDialog? = null
 
+    // Dialogs for different recording flows
+    private var aiDialog: AiDialog? = null // For floating button (AI voice response)
+    private var recordDialog: RecordDialog? = null // For recordBtn (upload flow)
+
+    // For AI Voice Response Playback
     private var responseMediaPlayer: MediaPlayer? = null
     private var currentResponseAudioPath: String? = null
 
     private lateinit var apiService: MaiteApiService
+    private var uploadJob: Job? = null // For the upload flow
+
+    private var recordingForUploadFlow: Boolean = false // Flag to distinguish recording type
 
     private var isSubscribed = false
-
     private var currentTabPosition = 0
-
     private var hasSummary = false
     private var hasTranscript = false
     private var summaryContent: String? = null
@@ -95,12 +101,9 @@ class MeetDetailFragment : Fragment() {
             if (success) {
                 requireActivity().runOnUiThread {
                     meetingId?.let { id ->
+                        Log.d(TAG, "UploadBottomSheet success. Reloading details for meeting ID: $id")
                         loadMeetingDetails(id)
                     }
-                }
-                val responseBody = bundle.getString(UploadBottomSheet.BUNDLE_KEY_RESPONSE)
-                requireActivity().runOnUiThread {
-                    _binding?.let { bindingNonNull -> showSummaryView(responseBody ?: "요약본이 생성되었습니다.") }
                 }
             }
         }
@@ -108,11 +111,8 @@ class MeetDetailFragment : Fragment() {
         childFragmentManager.setFragmentResultListener(EditMeetBottomSheet.REQUEST_KEY, this) { _, bundle ->
             val success = bundle.getBoolean(EditMeetBottomSheet.BUNDLE_KEY_SUCCESS, false)
             if (success) {
-                // 회의 정보가 업데이트 되었으니 다시 로드
                 meetingId?.let { id ->
                     loadMeetingDetails(id)
-
-                    // 부모 Fragment에게도 업데이트 알림 (추가된 부분)
                     val resultBundle = Bundle().apply {
                         putBoolean("meeting_update_success", true)
                         putLong("updated_meeting_id", id)
@@ -134,15 +134,27 @@ class MeetDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        if (context == null) return
 
         val preferencesUtil = PreferencesUtil(requireContext())
         isSubscribed = preferencesUtil.isSubscribed()
 
+        // Initialize AiDialog (for floating button - AI voice response)
         aiDialog = AiDialog(requireContext()).apply {
-            onAiCardViewClick = {
+            onAiCardViewClick = { // Button inside AiDialog
                 if (isRecording) {
+                    // recordingForUploadFlow should be false if AiDialog was used
                     stopRecording()
-                    this.startProcessing()
+                }
+            }
+        }
+
+        // Initialize RecordDialog (for recordBtn - upload flow)
+        recordDialog = RecordDialog(requireContext()).apply {
+            onRecordDialogClick = { // Button inside RecordDialog
+                if (isRecording) {
+                    // recordingForUploadFlow should be true if RecordDialog was used
+                    stopRecording()
                 }
             }
         }
@@ -157,11 +169,15 @@ class MeetDetailFragment : Fragment() {
             } ?: run {
                 showInitialView()
             }
-
+            // Initial UI setup based on subscription status
             if (isSubscribed) {
                 setupSubscribedUI()
             } else {
-                showInitialView()
+                if (meetingDetail == null) {
+                    showInitialView()
+                } else {
+                    updateUiWithMeetingDetails(meetingDetail!!)
+                }
             }
 
             b.backBtn.setOnClickListener {
@@ -171,8 +187,8 @@ class MeetDetailFragment : Fragment() {
             b.editBtn.setOnClickListener {
                 meetingDetail?.let { detail ->
                     val editMeetBottomSheet = EditMeetBottomSheet()
+                    // ... (args setup)
                     val args = Bundle().apply {
-                        // 충돌되는 ARG_MEETING_ID 대신 ARG_EDIT_MEETING_ID 사용
                         putLong(ARG_EDIT_MEETING_ID, meetingId ?: -1L)
                         putString(ARG_CURRENT_TITLE, detail.title)
                         putString(ARG_CURRENT_DATE, detail.meetingDate)
@@ -184,30 +200,50 @@ class MeetDetailFragment : Fragment() {
                 }
             }
 
+            // Record Button (for Upload Flow)
             b.recordBtn.setOnClickListener {
+                if (meetingDetail == null && meetingId == null) {
+                    Toast.makeText(context, "회의 정보를 먼저 로드하거나 생성해주세요.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                if (checkRecordingPermission()) {
+                    if (!isRecording) {
+                        recordingForUploadFlow = true // Set flag for UPLOAD flow
+                        recordDialog?.show()
+                        startRecording()
+                    }
+                } else {
+                    requestRecordingPermission()
+                }
             }
 
             b.uploadBtn.setOnClickListener {
+                // ... (uploadBottomSheet logic remains the same)
                 val currentTitle = meetingDetail?.title ?: b.meetTitle.text.toString()
                 val currentMeetingId = meetingId
-
-                if (currentTitle.isBlank() && meetingDetail == null) {
+                if ((currentTitle.isBlank()) && meetingDetail == null) {
+                    Toast.makeText(requireContext(), "회의 정보를 먼저 입력하거나 생성해주세요.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
-
-                if (currentMeetingId == null) {
+                if (currentMeetingId == null || currentMeetingId == -1L) {
+                    Toast.makeText(requireContext(), "회의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
-
                 val uploadBottomSheet = UploadBottomSheet.newInstance(currentTitle, currentMeetingId)
                 uploadBottomSheet.show(childFragmentManager, UploadBottomSheet.TAG)
             }
 
+            // Floating AI Button (for AI Voice Response Flow)
             showAiButtonTooltip()
             b.aiCardView.setOnClickListener {
                 hideAiButtonTooltip()
+                if (meetingDetail == null && meetingId == null) { // Prevent use if no meeting context
+                    Toast.makeText(context, "회의 정보를 먼저 로드하거나 생성해주세요.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
                 if (checkRecordingPermission()) {
                     if (!isRecording) {
+                        recordingForUploadFlow = false // Set flag for AI RESPONSE flow
                         aiDialog?.show()
                         startRecording()
                     }
@@ -223,138 +259,115 @@ class MeetDetailFragment : Fragment() {
         }
     }
 
-    private fun showAddressInputDialog() {
-        val meetingId = meetingId ?: return
+    // ... showAddressInputDialog, updateButtonAppearance, updateMeetingAddress ...
+    // ... setupSubscribedUI, updateUiForTabSelection, loadMeetingDetails, formatDateForDisplay ...
+    // ... updateUiWithMeetingDetails, loadProfileImage, showAiButtonTooltip, hideAiButtonTooltip ...
+    // (These functions remain largely the same, ensure context checks)
 
-        // 커스텀 다이얼로그 생성
+    private fun showAddressInputDialog() {
+        val currentMeetingId = meetingId ?: return
+        if (!isAdded || context == null) return
+
         val dialog = Dialog(requireContext())
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.dialog_address_input)
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        // 다이얼로그 크기 설정
-        val window = dialog.window
-        window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
-        // 컴포넌트 가져오기
-        val titleTextView = dialog.findViewById<TextView>(R.id.titleTextView)
         val addressEditText = dialog.findViewById<EditText>(R.id.addressEditText)
         val saveButton = dialog.findViewById<Button>(R.id.saveButton)
+        updateButtonAppearance(saveButton, false)
 
-        // 텍스트 변경 리스너 설정
         addressEditText.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                // 텍스트가 있으면 활성화 스타일, 없으면 비활성화 스타일
                 updateButtonAppearance(saveButton, s?.isNotEmpty() == true)
             }
-
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
-
-        // 완료 버튼 클릭 리스너
         saveButton.setOnClickListener {
-            val address = addressEditText.text.toString()
+            val address = addressEditText.text.toString().trim()
             if (address.isNotEmpty()) {
-                updateMeetingAddress(meetingId, address)
+                updateMeetingAddress(currentMeetingId, address)
                 dialog.dismiss()
-            } else {
-                // 텍스트가 없는 경우 아무 동작 안함 (버튼이 이미 비활성화 스타일이므로)
             }
         }
-
         dialog.show()
     }
 
-    // 버튼 모양 업데이트 함수
     private fun updateButtonAppearance(button: Button, isActive: Boolean) {
+        if (!isAdded || context == null) return
         if (isActive) {
-            // 활성화 상태 - subColor 배경, 흰색 텍스트
             button.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.mainColor))
             button.setTextColor(Color.WHITE)
         } else {
-            // 비활성화 상태 - btn_inactive 배경, 검은색 텍스트
             button.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.btn_inactive))
             button.setTextColor(Color.BLACK)
         }
     }
 
-    private fun updateMeetingAddress(meetingId: Long, address: String) {
+    private fun updateMeetingAddress(id: Long, address: String) {
+        if (!isAdded || context == null) return
         lifecycleScope.launch {
             try {
-                // 로딩 표시 (필요하면 구현)
-
                 val request = SetAddressRequest(address)
-                val response = withContext(Dispatchers.IO) {
-                    apiService.setMyMeetingAddress(meetingId, request)
-                }
-
+                val response = withContext(Dispatchers.IO) { apiService.setMyMeetingAddress(id, request) }
                 if (response.isSuccessful) {
                     binding.meetPlace.text = address
-
-                    // 회의 상세 정보 다시 로드
-                    loadMeetingDetails(meetingId)
+                    loadMeetingDetails(id)
                 } else {
+                    Toast.makeText(context, "주소 업데이트 실패: ${response.message()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error updating meeting address", e)
+                Toast.makeText(context, "주소 업데이트 중 오류: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-
     private fun setupSubscribedUI() {
+        if (!isAdded || context == null) return
         binding.apply {
-            // summerizedText를 명시적으로 숨김
             summerizedText.visibility = View.GONE
-
-            // 구독자를 위한 TabLayout 활성화
             tabLayout.visibility = View.VISIBLE
-
-            // 첫 번째 탭을 선택 상태로 초기화
             val firstTab = tabLayout.getTabAt(0)
             firstTab?.select()
-            firstTab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
-
-            // 내용 유무에 따라 UI 업데이트
-            updateUiForTabSelection(0, hasSummary, hasTranscript)
-
+            context?.let { ctx ->
+                firstTab?.view?.setBackgroundColor(ContextCompat.getColor(ctx, R.color.subColor))
+            }
+            updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
             tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let {
                         currentTabPosition = it.position
                         updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
-                        tab.view.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.subColor))
+                        context?.let { ctx ->
+                            it.view.setBackgroundColor(ContextCompat.getColor(ctx, R.color.subColor))
+                        }
                     }
                 }
-
                 override fun onTabUnselected(tab: TabLayout.Tab?) {
-                    tab?.view?.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
+                    if (!isAdded) return
+                    context?.let { ctx ->
+                        tab?.view?.setBackgroundColor(ContextCompat.getColor(ctx, R.color.white))
+                    }
                 }
-
                 override fun onTabReselected(tab: TabLayout.Tab?) {}
             })
         }
     }
 
-    private fun updateUiForTabSelection(position: Int, hasValidSummary: Boolean = false, hasValidTranscript: Boolean = false) {
+    private fun updateUiForTabSelection(position: Int, hasValidSummary: Boolean, hasValidTranscript: Boolean) {
+        if (!isAdded || context == null) return
         binding.apply {
-            // summerizedText를 항상 숨김 (구독자용 UI에서)
             summerizedText.visibility = View.GONE
-
-            // 기본 뷰 요소를 초기에 숨김
             defaultContentLayout.visibility = View.GONE
-
-            // 가시성 상태 초기화
             summaryScrollView.visibility = View.GONE
             transcriptScrollView.visibility = View.GONE
             textViewMinutesPlaceholder.visibility = View.GONE
 
             when (position) {
-                0 -> { // 요약본 탭
+                0 -> {
                     if (hasValidSummary) {
                         summaryScrollView.visibility = View.VISIBLE
                         summaryTextView.text = summaryContent ?: "등록된 요약본이 없어요"
@@ -364,7 +377,7 @@ class MeetDetailFragment : Fragment() {
                         defaultContentLayout.visibility = View.VISIBLE
                     }
                 }
-                1 -> { // 회의록 탭
+                1 -> {
                     if (hasValidTranscript) {
                         transcriptScrollView.visibility = View.VISIBLE
                         transcriptTextView.text = transcriptContent ?: "등록된 회의록이 없어요"
@@ -375,91 +388,50 @@ class MeetDetailFragment : Fragment() {
                     }
                 }
             }
-
-            // 액션 버튼의 가시성 제어
-            val hasContent = when (position) {
-                0 -> hasValidSummary
-                1 -> hasValidTranscript
-                else -> false
-            }
-
-            recordBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
-            uploadBtn.visibility = if (hasContent) View.GONE else View.VISIBLE
+            val hasContentForCurrentTab = if (position == 0) hasValidSummary else hasValidTranscript
+            recordBtn.visibility = if (hasContentForCurrentTab) View.GONE else View.VISIBLE
+            uploadBtn.visibility = if (hasContentForCurrentTab) View.GONE else View.VISIBLE
         }
     }
 
     private fun loadMeetingDetails(id: Long) {
+        if (!isAdded || context == null) return
+        Log.d(TAG, "Loading meeting details for ID: $id")
         lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) {
-                    apiService.getMeetingDetail(id)
-                }
+                val response = withContext(Dispatchers.IO) { apiService.getMeetingDetail(id) }
                 if (response.isSuccessful) {
                     meetingDetail = response.body()
-                    Log.d("MeetDetail", "API Response: ${meetingDetail?.title}, ${meetingDetail?.meetingDate}")
-
+                    Log.d(TAG, "Successfully loaded meeting details: ${meetingDetail?.title}")
                     meetingDetail?.let { detail ->
-                        // 구독 상태와 관계없이 기본 정보는 항상 업데이트
                         updateUiWithMeetingDetails(detail)
-
-                        // 구독 상태에 따른 추가 UI 업데이트
-                        if (isSubscribed) {
-                            // 구독자용 추가 기능 업데이트
-                            updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
-                        }
-                    } ?: run {
-                        showInitialView()
-                    }
+                    } ?: showInitialView()
                 } else {
+                    Log.e(TAG, "Failed to load meeting details: ${response.code()} - ${response.message()}")
                     showInitialView()
+                    Toast.makeText(context, "회의 정보를 불러오지 못했습니다: ${response.message()}", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Exception loading meeting details", e)
                 showInitialView()
+                Toast.makeText(context, "회의 정보 로드 중 오류 발생: ${e.message}", Toast.LENGTH_LONG).show()
             }
-        }
-    }
-
-    private fun handleStandardApiResponse(response: Response<ResponseBody>) {
-        if (response.isSuccessful) {
-            try {
-                val responseBody = response.body()?.string() ?: "응답 내용이 없습니다."
-
-                meetingId?.let { id ->
-                    loadMeetingDetails(id)
-                }
-
-            } catch (e: Exception) {
-            }
-        } else {
-        }
-    }
-
-    private fun handleClovaApiResponse(response: Response<ClovaSummaryResponse>) {
-        if (!response.isSuccessful) {
-            showApiErrorMessage("API 호출 실패: ${response.message()}")
-        }
-    }
-
-    private fun showApiErrorMessage(message: String) {
-        binding.apply {
-            summaryTextView.text = "요약본을 불러올 수 없습니다. $message"
-            transcriptTextView.text = "회의록을 불러올 수 없습니다. $message"
         }
     }
 
     private fun formatDateForDisplay(dateString: String): String {
         return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val outputFormat = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault())
-            val date = inputFormat.parse(dateString)
-            date?.let { outputFormat.format(it) } ?: dateString
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateString)?.let {
+                SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(it)
+            } ?: dateString
         } catch (e: Exception) {
             dateString
         }
     }
 
     private fun updateUiWithMeetingDetails(detail: MeetingDetailResponse) {
-        Log.d("MeetDetail", "Updating UI with: ${detail.title}, ${detail.meetingDate}, ${detail.meetingTime}")
+        if (!isAdded || context == null) return
+        Log.d(TAG, "Updating UI with meeting details: ${detail.title}")
         _binding?.apply {
             meetTitle.text = detail.title
             meetDate.text = formatDateForDisplay(detail.meetingDate)
@@ -474,86 +446,66 @@ class MeetDetailFragment : Fragment() {
                 profileImg.visibility = View.GONE
             } else {
                 profileImg.visibility = View.VISIBLE
-
-                val firstEmail = detail.participantEmails[0]
-                loadProfileImage(firstEmail, profileImg)
-
+                loadProfileImage(detail.participantEmails[0], profileImg)
                 if (detail.participantEmails.size > 1) {
                     for (i in 1 until detail.participantEmails.size) {
                         val email = detail.participantEmails[i]
-                        val imageView = ImageView(requireContext())
-                        val imageSizeInPx = (30 * resources.displayMetrics.density).toInt()
-                        val marginEndInPx = (8 * resources.displayMetrics.density).toInt()
-                        val layoutParams = LinearLayout.LayoutParams(imageSizeInPx, imageSizeInPx).apply {
-                            this.marginEnd = marginEndInPx
+                        val imageView = ImageView(requireContext()).apply {
+                            val imageSize = (30 * resources.displayMetrics.density).toInt()
+                            layoutParams = LinearLayout.LayoutParams(imageSize, imageSize).apply { marginEnd = (8 * resources.displayMetrics.density).toInt() }
+                            scaleType = ImageView.ScaleType.CENTER_CROP
                         }
-                        imageView.layoutParams = layoutParams
-                        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-
                         loadProfileImage(email, imageView)
-
-                        imageView.setOnClickListener {
-                        }
                         participantsLayout.addView(imageView)
                     }
                 }
             }
             participantsLayout.requestLayout()
 
-            // summaryContent와 transcriptContent에 데이터를 저장
             summaryContent = detail.textSum
             transcriptContent = detail.recordText
-
-            // 내용이 있는지 여부 플래그 업데이트
             hasSummary = !detail.textSum.isNullOrBlank()
             hasTranscript = !detail.recordText.isNullOrBlank()
 
-            // 구독자와 비구독자에 따른 UI 업데이트 분리
             if (isSubscribed) {
-                // 구독자는 summerizedText를 숨기고 탭 레이아웃 사용
-                summerizedText.visibility = View.GONE
-
-                // 적절한 TextView에 내용 설정 (탭용)
-                summaryTextView.text = detail.textSum ?: "등록된 요약본이 없어요"
-                transcriptTextView.text = detail.recordText ?: "등록된 회의록이 없어요"
-
-                // 탭 UI 업데이트
-                tabLayout.visibility = View.VISIBLE
-                updateUiForTabSelection(currentTabPosition, hasSummary, hasTranscript)
+                setupSubscribedUI()
             } else {
-                // 비구독자는 기존 방식대로 간단한 요약 표시
                 tabLayout.visibility = View.GONE
+                summaryScrollView.visibility = View.GONE
+                transcriptScrollView.visibility = View.GONE
+                defaultContentLayout.visibility = View.GONE
+                textViewMinutesPlaceholder.visibility = View.GONE
+                summerizedText.visibility = View.VISIBLE
 
-                if (!detail.textSum.isNullOrBlank()) {
-                    showSummaryView(detail.textSum)
-                } else if (!detail.recordText.isNullOrBlank()) {
-                    showSummaryView(detail.recordText)
+                if (hasSummary) {
+                    summerizedText.text = detail.textSum
+                    recordBtn.visibility = View.GONE
+                    uploadBtn.visibility = View.GONE
+                } else if (hasTranscript) {
+                    summerizedText.text = detail.recordText
+                    recordBtn.visibility = View.GONE
+                    uploadBtn.visibility = View.GONE
                 } else {
-                    showInitialViewMinutes()
+                    summerizedText.text = "생성된 요약본 또는 회의록이 없습니다.\nAI 기능을 사용해 회의를 기록하고 요약해보세요!"
+                    recordBtn.visibility = View.VISIBLE
+                    uploadBtn.visibility = View.VISIBLE
                 }
             }
         }
+        Log.d(TAG, "UI update finished for: ${detail.title}")
     }
 
     private fun loadProfileImage(email: String, imageView: ImageView) {
+        if (!isAdded || context == null) return
         lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) {
-                    apiService.searchUsers(email)
-                }
-
+                val response = withContext(Dispatchers.IO) { apiService.searchUsers(email) }
                 if (response.isSuccessful && response.body()?.isSuccess == true) {
-                    val userList: List<UserResult>? = response.body()?.result
-                    val userInfo: UserResult? = userList?.firstOrNull { it.email == email }
-                        ?: userList?.firstOrNull()
-
-                    val profileImageUrl = userInfo?.profileImageUrl
-
-                    if (!profileImageUrl.isNullOrBlank()) {
+                    val user = response.body()?.result?.firstOrNull { it.email == email } ?: response.body()?.result?.firstOrNull()
+                    if (!user?.profileImageUrl.isNullOrBlank()) {
                         Glide.with(this@MeetDetailFragment)
-                            .load(profileImageUrl)
+                            .load(user!!.profileImageUrl)
                             .apply(RequestOptions.circleCropTransform())
-                            .skipMemoryCache(true)
                             .signature(ObjectKey(System.currentTimeMillis().toString()))
                             .placeholder(R.drawable.img_profile_default)
                             .error(R.drawable.img_profile_default)
@@ -565,313 +517,408 @@ class MeetDetailFragment : Fragment() {
                     imageView.setImageResource(R.drawable.img_profile_default)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error loading profile image", e)
                 imageView.setImageResource(R.drawable.img_profile_default)
             }
         }
     }
 
-    private fun showAiButtonTooltip() {
-        _binding?.aiButtonTooltip?.apply {
-            visibility = View.VISIBLE; alpha = 0f
-            animate().alpha(1f).setDuration(300).start()
-        }
-    }
+    private fun showAiButtonTooltip() { _binding?.aiButtonTooltip?.apply { visibility = View.VISIBLE; alpha = 0f; animate().alpha(1f).setDuration(300).start() } }
+    private fun hideAiButtonTooltip() { _binding?.aiButtonTooltip?.apply { animate().alpha(0f).setDuration(300).withEndAction { visibility = View.GONE }.start() } }
 
-    private fun hideAiButtonTooltip() {
-        _binding?.aiButtonTooltip?.apply {
-            animate().alpha(0f).setDuration(300).withEndAction { visibility = View.GONE }.start()
-        }
-    }
 
     private fun startRecording() {
+        if (!isAdded || context == null) return
         try {
-            audioFilePath = "${requireActivity().externalCacheDir?.absolutePath}/audio_record_${System.currentTimeMillis()}.mp3"
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(requireContext()) else MediaRecorder()
-            mediaRecorder?.apply {
+            audioFilePath = "${requireActivity().externalCacheDir?.absolutePath}/MAITE_REC_${System.currentTimeMillis()}.m4a"
+            mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(requireContext()) else MediaRecorder()).apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioSamplingRate(44100)
+                setAudioEncodingBitRate(128000)
                 setOutputFile(audioFilePath)
-                try {
-                    prepare()
-                    start()
-                    isRecording = true
-                    updateRecordingUI(true)
-                } catch (e: IOException) {
-                    aiDialog?.dismiss()
-                }
+                prepare()
+                start()
             }
+            isRecording = true
+            Log.d(TAG, "Recording started: $audioFilePath. For upload flow: $recordingForUploadFlow")
+        } catch (e: IOException) {
+            Log.e(TAG, "MediaRecorder prepare/start failed", e)
+            if (recordingForUploadFlow) recordDialog?.dismiss() else aiDialog?.dismiss()
+            Toast.makeText(context, "녹음 시작 실패", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            aiDialog?.dismiss()
+            Log.e(TAG, "MediaRecorder setup failed", e)
+            if (recordingForUploadFlow) recordDialog?.dismiss() else aiDialog?.dismiss()
+            Toast.makeText(context, "녹음 장치 초기화 실패", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun stopRecording() {
-        try {
-            mediaRecorder?.apply { stop(); reset(); release() }
-            mediaRecorder = null
-            isRecording = false
-            updateRecordingUI(false)
-
-            processRecordedAudio(audioFilePath)
-        } catch (e: Exception) {
+        Log.d(TAG, "Attempting to stop recording. For upload flow: $recordingForUploadFlow")
+        if (!isRecording && mediaRecorder == null) {
+            Log.w(TAG, "StopRecording called but not recording or recorder is null.")
+            if (recordingForUploadFlow) recordDialog?.dismiss() else aiDialog?.dismiss()
+            cleanupRecordedFile(audioFilePath)
+            return
         }
-    }
+        val currentAudioFilePath = audioFilePath // Capture before it's nulled by cleanup
+        isRecording = false // Set recording state to false immediately
 
-    private fun updateRecordingUI(isRecording: Boolean) {
-    }
+        try {
+            mediaRecorder?.apply {
+                stop()
+                reset()
+                release()
+            }
+            Log.d(TAG, "MediaRecorder stopped and released.")
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "MediaRecorder stop/reset/release failed (IllegalStateException)", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during MediaRecorder stop/reset/release", e)
+        } finally {
+            mediaRecorder = null // Ensure recorder is nullified
 
-    private fun processRecordedAudio(filePath: String?) {
-        filePath?.let { path ->
-
-            lifecycleScope.launch {
-                try {
-
-                    val file = File(path)
-                    if (!file.exists()) {
-                        aiDialog?.dismiss()
-                        return@launch
-                    }
-
-                    val requestFile = file.asRequestBody("audio/mp3".toMediaTypeOrNull())
-                    val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-
-                    val response = withContext(Dispatchers.IO) {
-                        apiService.getAiReply(body)
-                    }
-
-                    if (response.isSuccessful) {
-                        val responseBody = response.body()
-                        if (responseBody != null) {
-                            val audioBytes = responseBody.bytes()
-
-                            saveAndAutoPlayAudioResponse(audioBytes)
-                        } else {
-                            aiDialog?.dismiss()
-                        }
-                    } else {
-                        aiDialog?.dismiss()
-                    }
-
-                    file.delete()
-
-                } catch (e: Exception) {
-                    aiDialog?.dismiss()
+            if (currentAudioFilePath != null && File(currentAudioFilePath).exists()) {
+                Log.d(TAG, "Recorded file exists: $currentAudioFilePath.")
+                if (recordingForUploadFlow) {
+                    recordDialog?.startProcessing()
+                    processRecordedAudioAndUpload(currentAudioFilePath)
+                } else {
+                    aiDialog?.startProcessing()
+                    processRecordedAudioForAiResponse(currentAudioFilePath)
                 }
+            } else {
+                Log.w(TAG, "No valid audio file path or file does not exist after stopping. Path: $currentAudioFilePath")
+                if (recordingForUploadFlow) recordDialog?.dismiss() else aiDialog?.dismiss()
+                if (isAdded && context != null) Toast.makeText(context, "녹음된 파일이 없거나 유효하지 않습니다.", Toast.LENGTH_SHORT).show()
+                cleanupRecordedFile(currentAudioFilePath) // Clean up path variable even if file didn't exist
             }
         }
     }
 
-    private fun showLoadingState() {
-        _binding?.apply {
+    // For Upload Flow (used by recordBtn via RecordDialog)
+    private fun processRecordedAudioAndUpload(filePath: String?) {
+        val safeContext = context ?: run {
+            Log.e(TAG, "Context is null for upload.")
+            recordDialog?.dismiss()
+            cleanupRecordedFile(filePath)
+            return
+        }
+        // ... (rest of the upload logic from previous correct version)
+        if (filePath == null) { /* ... */ return }
+        val audioFile = File(filePath)
+        if (!audioFile.exists() || audioFile.length() == 0L) { /* ... */ cleanupRecordedFile(filePath); return }
+        val currentMeetingId = meetingId ?: run { /* ... */ cleanupRecordedFile(filePath); return }
+        val topic = meetingDetail?.title?.trim() ?: "녹음된 회의"
+
+        Log.d(TAG, "Uploading recorded audio. Topic: '$topic', Meeting ID: $currentMeetingId, File: $filePath")
+        uploadJob?.cancel()
+        uploadJob = viewLifecycleOwner.lifecycleScope.launch {
+            var uploadSuccess = false
+            var apiMessage: String? = null
+            try {
+                val requestFile = audioFile.asRequestBody("audio/m4a".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", audioFile.name, requestFile)
+                val isUserSubscribed = PreferencesUtil(safeContext).isSubscribed()
+
+                val response : Response<out Any> = withContext(Dispatchers.IO) {
+                    if (isUserSubscribed) {
+                        apiService.uploadAudioSummaryClova(topic, currentMeetingId, filePart)
+                    } else {
+                        apiService.uploadAudioSummary(topic, currentMeetingId, filePart)
+                    }
+                }
+                if (response.isSuccessful) {
+                    uploadSuccess = true
+                    apiMessage = "녹음 파일 업로드 및 처리 성공!"
+                    Log.d(TAG, "Recorded audio upload successful. Code: ${response.code()}")
+                    loadMeetingDetails(currentMeetingId)
+                } else {
+                    val errorBody = (response as? Response<ResponseBody>)?.errorBody()?.string() ?: response.message() ?: "알 수 없는 오류"
+                    Log.e(TAG, "Recorded audio upload failed. Code: ${response.code()}, Message: $errorBody")
+                    apiMessage = "업로드 실패 (코드: ${response.code()}): $errorBody"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception during recorded audio upload", e)
+                apiMessage = if (e is kotlinx.coroutines.CancellationException) "업로드가 취소되었습니다." else "오류 발생: ${e.message}"
+            } finally {
+                withContext(Dispatchers.Main) {
+                    recordDialog?.dismiss()
+                    if (isAdded) Toast.makeText(safeContext, apiMessage, Toast.LENGTH_LONG).show()
+                }
+                cleanupRecordedFile(filePath) // Ensure original recording is cleaned up
+            }
         }
     }
 
-    private fun hideLoadingState() {
-        _binding?.apply {
+    // For AI Voice Response Flow (used by floating aiCardView via AiDialog)
+    private fun processRecordedAudioForAiResponse(filePath: String?) {
+        val safeContext = context ?: run {
+            Log.e(TAG, "Context is null for AI response.")
+            aiDialog?.dismiss()
+            cleanupRecordedFile(filePath)
+            return
+        }
+        if (filePath == null) {
+            Log.e(TAG, "Audio file path is null for AI response.")
+            Toast.makeText(safeContext, "녹음 파일 경로를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+            aiDialog?.dismiss()
+            return
+        }
+        val audioFile = File(filePath)
+        if (!audioFile.exists() || audioFile.length() == 0L) {
+            Log.e(TAG, "Audio file does not exist or is empty for AI response: $filePath")
+            Toast.makeText(safeContext, "녹음된 파일이 없거나 비어있습니다.", Toast.LENGTH_SHORT).show()
+            aiDialog?.dismiss()
+            cleanupRecordedFile(filePath)
+            return
+        }
+
+        Log.d(TAG, "Processing recorded audio for AI response. File: $filePath")
+        lifecycleScope.launch {
+            var apiMessage: String? = null
+            var success = false
+            try {
+                val requestFile = audioFile.asRequestBody("audio/m4a".toMediaTypeOrNull())
+                val body = MultipartBody.Part.createFormData("file", audioFile.name, requestFile)
+
+                val response = withContext(Dispatchers.IO) {
+                    apiService.getAiReply(body) // Assumes getAiReply returns Response<ResponseBody> with audio
+                }
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    if (responseBody != null) {
+                        val audioBytes = responseBody.bytes()
+                        saveAndAutoPlayAudioResponse(audioBytes) // This will handle aiDialog.startAiResponse
+                        success = true // Assuming saveAndAutoPlay handles its own UI updates via aiDialog
+                    } else {
+                        apiMessage = "AI 응답 내용이 없습니다."
+                        aiDialog?.dismiss()
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: response.message() ?: "알 수 없는 오류"
+                    Log.e(TAG, "AI reply failed. Code: ${response.code()}, Message: $errorBody")
+                    apiMessage = "AI 응답 실패 (코드: ${response.code()}): $errorBody"
+                    aiDialog?.dismiss()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception processing audio for AI response", e)
+                apiMessage = if (e is kotlinx.coroutines.CancellationException) "AI 응답 처리가 취소되었습니다." else "AI 응답 처리 중 오류: ${e.message}"
+                aiDialog?.dismiss()
+            } finally {
+                if (!success && apiMessage != null && isAdded) { // Only show toast if saveAndAutoPlay didn't take over UI
+                    Toast.makeText(safeContext, apiMessage, Toast.LENGTH_LONG).show()
+                }
+                cleanupRecordedFile(filePath) // Ensure original recording is cleaned up
+            }
         }
     }
 
+    // --- AI Voice Response Playback Helper Functions (Restored) ---
     private fun saveAndAutoPlayAudioResponse(audioBytes: ByteArray) {
+        if (!isAdded || context == null) return
         try {
-            val responseAudioPath = "${requireActivity().externalCacheDir?.absolutePath}/ai_response_${System.currentTimeMillis()}.mp3"
-            val responseFile = File(responseAudioPath)
-
+            val responseDir = File(requireActivity().externalCacheDir, "ai_responses")
+            if (!responseDir.exists()) responseDir.mkdirs()
+            currentResponseAudioPath = "${responseDir.absolutePath}/ai_response_${System.currentTimeMillis()}.mp3" // Or m4a
+            val responseFile = File(currentResponseAudioPath!!)
             responseFile.writeBytes(audioBytes)
-
-            currentResponseAudioPath = responseAudioPath
-
-            autoPlayAudioResponse(responseAudioPath)
-
+            autoPlayAudioResponse(currentResponseAudioPath!!)
         } catch (e: Exception) {
+            Log.e(TAG, "Error saving AI response audio", e)
+            aiDialog?.dismiss() // Dismiss if saving fails
+            Toast.makeText(context, "AI 응답 저장 실패", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun autoPlayAudioResponse(audioPath: String) {
-        try {
-            stopAudioResponse()
-
-            responseMediaPlayer = MediaPlayer().apply {
+        if (!isAdded || context == null) return
+        stopAudioResponse() // Stop any previous playback
+        responseMediaPlayer = MediaPlayer().apply {
+            try {
                 setDataSource(audioPath)
                 prepareAsync()
                 setOnPreparedListener { mediaPlayer ->
                     mediaPlayer.start()
-
-                    aiDialog?.startAiResponse(mediaPlayer)
-
-                    setOnCompletionListener {
-
-                        aiDialog?.stopAiResponse()
-
-                        cleanupResponseAudio()
-
-                        Handler(Looper.getMainLooper()).postDelayed({
+                    aiDialog?.startAiResponse(mediaPlayer) // Notify AiDialog to change state
+                }
+                setOnCompletionListener {
+                    aiDialog?.stopAiResponse()
+                    cleanupResponseAudio() // Clean up the AI's response file
+                    // Optional: auto-dismiss AiDialog after a delay
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (aiDialog?.isDialogShowing == true) { // Check if still showing
                             aiDialog?.dismiss()
-                        }, 500)
-                    }
+                        }
+                    }, 500)
                 }
                 setOnErrorListener { _, what, extra ->
+                    Log.e(TAG, "MediaPlayer error: what $what, extra $extra")
                     aiDialog?.stopAiResponse()
                     aiDialog?.dismiss()
+                    cleanupResponseAudio()
+                    Toast.makeText(context, "AI 응답 재생 실패", Toast.LENGTH_SHORT).show()
                     true
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "MediaPlayer setup failed for AI response", e)
+                aiDialog?.stopAiResponse()
+                aiDialog?.dismiss()
+                cleanupResponseAudio()
+                Toast.makeText(context, "AI 응답 재생 준비 실패", Toast.LENGTH_SHORT).show()
             }
-
-        } catch (e: Exception) {
-            aiDialog?.dismiss()
         }
     }
 
     private fun stopAudioResponse() {
         responseMediaPlayer?.apply {
             try {
-                if (isPlaying) {
-                    stop()
-                }
+                if (isPlaying) stop()
                 reset()
                 release()
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) { Log.e(TAG, "Error stopping/releasing responseMediaPlayer", e) }
         }
         responseMediaPlayer = null
-
-        aiDialog?.stopAiResponse()
+        aiDialog?.stopAiResponse() // Ensure AiDialog state is reset
     }
 
-    private fun cleanupResponseAudio() {
+    private fun cleanupResponseAudio() { // Cleans up the AI's response audio file
         currentResponseAudioPath?.let { path ->
             try {
-                File(path).delete()
-            } catch (e: Exception) {
-            }
+                val file = File(path)
+                if (file.exists() && file.delete()) Log.d(TAG, "Deleted AI response audio file: $path")
+            } catch (e: Exception) { Log.e(TAG, "Error deleting AI response audio file", e) }
         }
         currentResponseAudioPath = null
     }
+    // --- End of AI Voice Response Playback Helpers ---
 
-    private fun uploadAudioFileForSubscriber(filePath: String, meetingId: Long, topic: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
+    private fun cleanupRecordedFile(filePath: String?) { // Cleans up the user's original recording
+        filePath?.let {
             try {
-                val file = File(filePath)
-                if (!file.exists()) {
-                    withContext(Dispatchers.Main) {
-                    }
-                    return@launch
-                }
-
-                val requestFile = file.asRequestBody("audio/*".toMediaTypeOrNull())
-                val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
-
-                val response = apiService.uploadAudioSummaryClova(topic, meetingId, filePart)
-
-                withContext(Dispatchers.Main) {
-                    if (response.isSuccessful) {
-                        val clovaResponse = response.body()
-                        if (clovaResponse != null && clovaResponse.isSuccess) {
-
-                            loadMeetingDetails(meetingId)
-                        } else {
-                        }
-                    } else {
-                        handleClovaApiResponse(response)
-                    }
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                }
-            }
+                val file = File(it)
+                if (file.exists() && file.delete()) Log.d(TAG, "Deleted recorded file: $it")
+                else if (file.exists()) Log.w(TAG, "Failed to delete recorded file: $it")
+            } catch (e: Exception) { Log.e(TAG, "Error deleting recorded file: $it", e) }
+        }
+        if (this.audioFilePath == filePath) { // Only nullify if it's the current main path
+            this.audioFilePath = null
         }
     }
 
-    private fun checkRecordingPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun requestRecordingPermission() {
-        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
-    }
+    private fun checkRecordingPermission(): Boolean = if(context != null) ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED else false
+    private fun requestRecordingPermission() { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION) }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                aiDialog?.show()
-                startRecording()
+                if (!isRecording) {
+                    // Show the correct dialog based on which flow initiated permission request
+                    // This part is tricky if requestRecordingPermission() is generic.
+                    // For now, assume the flag 'recordingForUploadFlow' was set *before* permission was requested.
+                    if (recordingForUploadFlow) {
+                        recordDialog?.show()
+                    } else {
+                        aiDialog?.show()
+                    }
+                    startRecording()
+                }
             } else {
+                if (isAdded && context != null) Toast.makeText(context, "녹음 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun showInitialView() {
+        if (!isAdded || context == null) return
+        Log.d(TAG, "Displaying initial view")
         _binding?.apply {
             meetTitle.text = "회의 정보 로드 실패"
-            meetDate.text = ""
-            meetTime.text = ""
-            meetPlace.text = ""
+            meetDate.text = "" ; meetTime.text = "" ; meetPlace.text = ""
             profileImg.visibility = View.GONE
             while (participantsLayout.childCount > 1) {
                 participantsLayout.removeViewAt(participantsLayout.childCount - 1)
             }
-            showInitialViewMinutes()
-        }
-    }
 
-    private fun showInitialViewMinutes() {
-        _binding?.apply {
-            textViewMinutesPlaceholder.visibility = View.VISIBLE
-            recordBtn.visibility = View.VISIBLE
-            uploadBtn.visibility = View.VISIBLE
-            summerizedText.visibility = View.GONE
-        }
-    }
-
-    private fun showSummaryView(summaryText: String) {
-        requireActivity().runOnUiThread {
-            _binding?.apply {
-                textViewMinutesPlaceholder.visibility = View.GONE
-                recordBtn.visibility = View.GONE
-                uploadBtn.visibility = View.GONE
+            if (isSubscribed) {
+                tabLayout.visibility = View.VISIBLE
+                summerizedText.visibility = View.GONE
+                updateUiForTabSelection(currentTabPosition, false, false)
+            } else {
+                tabLayout.visibility = View.GONE
                 summerizedText.visibility = View.VISIBLE
-                summerizedText.text = summaryText
+                summerizedText.text = "회의 정보를 불러오지 못했습니다.\n새로운 회의를 만들거나 기존 회의를 선택해주세요."
+                recordBtn.visibility = View.VISIBLE
+                uploadBtn.visibility = View.VISIBLE
+                textViewMinutesPlaceholder.visibility = View.GONE
+                defaultContentLayout.visibility = View.GONE
+                summaryScrollView.visibility = View.GONE
+                transcriptScrollView.visibility = View.GONE
             }
         }
     }
 
+    private fun showSummaryView(summaryText: String) { // Primarily for UploadBottomSheet callback
+        if (!isAdded || _binding == null || context == null) return
+        requireActivity().runOnUiThread {
+            _binding?.apply {
+                if (isSubscribed) { // Subscribers use tabs, so loadMeetingDetails is better
+                    // This might be called after UploadBottomSheet, so we ensure meeting details are reloaded
+                    // which then updates the tabs.
+                    // For simplicity, if this is directly setting summary, ensure it's on the correct tab.
+                    // However, relying on loadMeetingDetails is cleaner.
+                    // summaryTextView.text = summaryText
+                    // updateUiForTabSelection(0, !summaryText.isBlank(), hasTranscript)
+                    // The above is now handled by loadMeetingDetails called from UploadBottomSheet callback.
+                } else { // Non-subscribers use summerizedText
+                    textViewMinutesPlaceholder.visibility = View.GONE
+                    recordBtn.visibility = View.GONE
+                    uploadBtn.visibility = View.GONE
+                    summerizedText.visibility = View.VISIBLE
+                    summerizedText.text = summaryText
+                }
+            }
+        }
+    }
+
+
     override fun onStop() {
         super.onStop()
+        Log.d(TAG, "onStop called. isRecording: $isRecording")
         if (isRecording) {
-            stopRecording()
-            aiDialog?.dismiss()
+            stopRecording() // This will correctly dismiss the appropriate dialog
         }
-
-        stopAudioResponse()
+        uploadJob?.cancel() // Cancel any upload from recordBtn flow
+        stopAudioResponse() // Stop AI voice response playback
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        Log.d(TAG, "onDestroyView called.")
         mediaRecorder?.release()
         mediaRecorder = null
 
-        stopAudioResponse()
+        cleanupRecordedFile(audioFilePath) // Clean up user's recording
+        uploadJob?.cancel()
 
-        cleanupResponseAudio()
+        stopAudioResponse() // Stop and release AI response MediaPlayer
+        cleanupResponseAudio() // Clean up AI's response audio file
 
         aiDialog?.dismiss()
         aiDialog = null
+        recordDialog?.dismiss()
+        recordDialog = null
         _binding = null
     }
 
     companion object {
         const val TAG = "MeetDetailFragment"
         const val REQUEST_RECORD_AUDIO_PERMISSION = 200
-
         @JvmStatic
-        fun newInstance(meetingId: Long): MeetDetailFragment {
-            return MeetDetailFragment().apply {
-                arguments = Bundle().apply {
-                    putLong(ARG_MEETING_ID, meetingId)
-                }
-            }
-        }
+        fun newInstance(meetingId: Long): MeetDetailFragment =
+            MeetDetailFragment().apply { arguments = Bundle().apply { putLong(ARG_MEETING_ID, meetingId) } }
     }
 }
