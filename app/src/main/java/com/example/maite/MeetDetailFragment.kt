@@ -473,7 +473,7 @@ class MeetDetailFragment : Fragment() {
                 tabLayout.visibility = View.GONE
                 summaryScrollView.visibility = View.GONE
                 transcriptScrollView.visibility = View.GONE
-                defaultContentLayout.visibility = View.GONE
+                defaultContentLayout.visibility = View.VISIBLE
                 textViewMinutesPlaceholder.visibility = View.GONE
                 summerizedText.visibility = View.VISIBLE
 
@@ -486,7 +486,8 @@ class MeetDetailFragment : Fragment() {
                     recordBtn.visibility = View.GONE
                     uploadBtn.visibility = View.GONE
                 } else {
-                    summerizedText.text = "생성된 요약본 또는 회의록이 없습니다.\nAI 기능을 사용해 회의를 기록하고 요약해보세요!"
+                    textViewMinutesPlaceholder.visibility = View.VISIBLE
+                    summerizedText.visibility = View.GONE
                     recordBtn.visibility = View.VISIBLE
                     uploadBtn.visibility = View.VISIBLE
                 }
@@ -849,11 +850,10 @@ class MeetDetailFragment : Fragment() {
                 updateUiForTabSelection(currentTabPosition, false, false)
             } else {
                 tabLayout.visibility = View.GONE
-                summerizedText.visibility = View.VISIBLE
-                summerizedText.text = "회의 정보를 불러오지 못했습니다.\n새로운 회의를 만들거나 기존 회의를 선택해주세요."
+                summerizedText.visibility = View.GONE
                 recordBtn.visibility = View.VISIBLE
                 uploadBtn.visibility = View.VISIBLE
-                textViewMinutesPlaceholder.visibility = View.GONE
+                textViewMinutesPlaceholder.visibility = View.VISIBLE
                 defaultContentLayout.visibility = View.GONE
                 summaryScrollView.visibility = View.GONE
                 transcriptScrollView.visibility = View.GONE
