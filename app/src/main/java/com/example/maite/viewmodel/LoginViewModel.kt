@@ -162,7 +162,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     name = name,
                     provider = provider,
                     phoneNumber = phoneNumber,
-                    address = address
+                    address = address,
+                    profileImageUrl = null // LoginViewModel에서는 프로필 이미지가 없으므로 null
                 )
                 
                 Log.d(TAG, "소셜 회원가입 응답: isSuccess=${response.isSuccess}")

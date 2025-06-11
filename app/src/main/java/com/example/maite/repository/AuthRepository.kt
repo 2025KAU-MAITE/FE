@@ -160,10 +160,10 @@ class AuthRepository(private val context: Context) {
     /**
      * 회원가입 처리 (서버 API 연동)
      */
-    suspend fun signup(email: String, password: String, name: String, phoneNumber: String, address: String): SignupResponse {
+    suspend fun signup(email: String, password: String, name: String, phoneNumber: String, address: String, profileImageUrl: String? = null): SignupResponse {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "회원가입 API 호출: 이메일=$email, 이름=$name, 전화번호=$phoneNumber, 주소=$address")
+                Log.d(TAG, "회원가입 API 호출: 이메일=$email, 이름=$name, 전화번호=$phoneNumber, 주소=$address, 프로필이미지=$profileImageUrl")
                 
                 // POST 요청에 필요한 데이터 생성
                 val request = SignupRequest(
@@ -171,7 +171,8 @@ class AuthRepository(private val context: Context) {
                     password = password,
                     name = name,
                     phoneNumber = phoneNumber,
-                    address = address
+                    address = address,
+                    profileImageUrl = profileImageUrl
                 )
                 
                 // 실제 API 호출
@@ -389,17 +390,18 @@ class AuthRepository(private val context: Context) {
         name: String,
         provider: String,
         phoneNumber: String,
-        address: String
+        address: String,
+        profileImageUrl: String? = null
     ): SocialSignupResponse {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "소셜 로그인 회원가입 API 호출: 이메일=$email, 이름=$name, 제공자=$provider, 전화번호=$phoneNumber, 주소=$address")
+                Log.d(TAG, "소셜 로그인 회원가입 API 호출: 이메일=$email, 이름=$name, 제공자=$provider, 전화번호=$phoneNumber, 주소=$address, 프로필이미지=$profileImageUrl")
                 
                 // 요청 URL을 로그로 출력
-                val requestUrl = "auth/complete-social-signup?email=$email&name=$name&provider=$provider&phonenumber=$phoneNumber&address=$address"
+                val requestUrl = "auth/complete-social-signup?email=$email&name=$name&provider=$provider&phonenumber=$phoneNumber&address=$address&profileImageUrl=$profileImageUrl"
                 Log.d(TAG, "요청 URL: $requestUrl")
                 
-                // 토큰들을 가져옴
+                // 토큰들을 가져옴 (로그 목적으로만 사용)
                 val idToken = com.example.maite.model.SignupDataHolder.idToken
                 val accessToken = com.example.maite.model.SignupDataHolder.accessToken
                 
@@ -412,13 +414,11 @@ class AuthRepository(private val context: Context) {
                     Log.e(TAG, "Access 토큰이 비어 있습니다. 소셜 로그인 과정에서 액세스 토큰이 저장되지 않았을 수 있습니다.")
                 }
                 
-                val authHeader = if (idToken.isNotEmpty()) "Bearer $idToken" else null
-                
                 // API 문서에 따라 쿼리 파라미터 사용
                 // SocialSignupRequest 객체 사용 안함 (쿼리 파라미터로 전달)
                 
                 // 요청 내용 로깅 - 쿼리 파라미터
-                Log.d(TAG, "요청 쿼리 파라미터: email=$email, name=$name, provider=$provider, phonenumber=$phoneNumber, address=$address")
+                Log.d(TAG, "요청 쿼리 파라미터: email=$email, name=$name, provider=$provider, phonenumber=$phoneNumber, address=$address, profileImageUrl=$profileImageUrl")
                 
                 // idToken과 인증 헤더는 사용하지 않음 (API 문서에 따라 쿼리 파라미터만 필요)
                 
@@ -428,7 +428,8 @@ class AuthRepository(private val context: Context) {
                     name = name,
                     provider = provider,
                     phonenumber = phoneNumber,
-                    address = address
+                    address = address,
+                    profileImageUrl = profileImageUrl
                 )
                 
                 Log.d(TAG, "API 응답: isSuccess=${response.isSuccess}, message=${response.message}")

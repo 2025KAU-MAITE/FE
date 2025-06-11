@@ -130,6 +130,11 @@ class SignupFragment : Fragment() {
                         isEmailVerified = false
                     } else {
                         Log.d(TAG, "사용 가능한 이메일 확인됨")
+                        Toast.makeText(
+                            requireContext(),
+                            "사용 가능한 이메일입니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         binding.etEmail.error = null
                         isEmailVerified = true
                         currentVerifiedEmail = email

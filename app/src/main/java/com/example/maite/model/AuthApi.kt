@@ -71,7 +71,8 @@ interface AuthApi {
         @Query("name") name: String,
         @Query("provider") provider: String,
         @Query("phonenumber") phonenumber: String,
-        @Query("address") address: String
+        @Query("address") address: String,
+        @Query("profileImageUrl") profileImageUrl: String? = null
     ): SocialSignupResponse
 
     @GET("auth/me")
