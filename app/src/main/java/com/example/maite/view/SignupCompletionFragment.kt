@@ -102,8 +102,10 @@ class SignupCompletionFragment : Fragment() {
     private fun completeNormalSignup(email: String, password: String, name: String, phoneNumber: String, address: String) {
         lifecycleScope.launch {
             try {
-                Log.d(TAG, "일반 회원가입 API 호출 시작: 이메일=$email, 이름=$name, 전화번호=$phoneNumber, 주소=$address")
-                val response = authRepository.signup(email, password, name, phoneNumber, address)
+                // 프로필 이미지 URL 가져오기
+                val profileImageUrl = SignupDataHolder.profileImageUrl
+                Log.d(TAG, "일반 회원가입 API 호출 시작: 이메일=$email, 이름=$name, 전화번호=$phoneNumber, 주소=$address, 프로필이미지=$profileImageUrl")
+                val response = authRepository.signup(email, password, name, phoneNumber, address, profileImageUrl)
                 
                 // 응답에서 result.registered 값 확인 (API 명세에 따라 이 값이 true면 회원가입 성공)
                 if (response.result.registered) {
@@ -152,7 +154,11 @@ class SignupCompletionFragment : Fragment() {
                     Log.e(TAG, "ID 토큰이 비어있음! 구글 로그인 정보가 제대로 저장되지 않았을 수 있음")
                 }
                 
-                val response = authRepository.completeSocialSignup(email, name, provider, phoneNumber, address)
+                // 프로필 이미지 URL 가져오기
+                val profileImageUrl = SignupDataHolder.profileImageUrl
+                Log.d(TAG, "소셜 로그인 회원가입에 사용할 프로필이미지: $profileImageUrl")
+                
+                val response = authRepository.completeSocialSignup(email, name, provider, phoneNumber, address, profileImageUrl)
                 
                 if (response.isSuccess) {
                     // 소셜 회원가입 성공

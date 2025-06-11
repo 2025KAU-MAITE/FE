@@ -11,5 +11,6 @@ data class SignupRequest(
     val name: String,
     @SerializedName("phonenumber")  // API 명세에 맞게 phonenumber로 변경
     val phoneNumber: String,
-    val address: String
+    val address: String,
+    val profileImageUrl: String? = null
 )

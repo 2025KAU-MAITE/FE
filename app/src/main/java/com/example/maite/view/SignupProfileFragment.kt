@@ -199,6 +199,12 @@ class SignupProfileFragment : Fragment() {
                     SignupDataHolder.phoneNumber = phoneNumber
                 } else {
                     // 인증번호 발송 실패
+                    Log.e(TAG, "SMS 인증번호 발송 실패: ${response.message}")
+                    
+                    // 인증 상태 초기화
+                    isAuthSent = false
+                    isAuthVerified = false
+                    
                     Toast.makeText(
                         requireContext(), 
                         "인증번호 발송 실패: ${response.message}", 
@@ -211,6 +217,11 @@ class SignupProfileFragment : Fragment() {
             } catch (e: Exception) {
                 // 네트워크 오류 등의 예외 처리
                 Log.e(TAG, "API 호출 중 예외 발생", e)
+                
+                // 인증 상태 초기화
+                isAuthSent = false
+                isAuthVerified = false
+                
                 Toast.makeText(
                     requireContext(),
                     "네트워크 오류가 발생했습니다: ${e.message}",
@@ -314,6 +325,13 @@ class SignupProfileFragment : Fragment() {
                     // 인증 입력 UI 비활성화
                     disableAuthFields()
                     
+                    // 성공 메시지 표시
+                    Toast.makeText(
+                        requireContext(), 
+                        "인증이 완료되었습니다", 
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    
                     // 이름과 전화번호 저장 후 바로 다음 화면으로 이동
                     SignupDataHolder.name = name
                     SignupDataHolder.phoneNumber = phoneNumber
@@ -323,24 +341,40 @@ class SignupProfileFragment : Fragment() {
                     navigateToAddressScreen()
                 } else {
                     // 인증 실패
+                    Log.e(TAG, "SMS 인증번호 검증 실패: ${response.message}")
+                    
+                    // 인증 실패 상태로 되돌리기
+                    isAuthVerified = false
+                    
                     Toast.makeText(
                         requireContext(), 
-                        "인증번호가 일치하지 않습니다", 
+                        "인증번호가 일치하지 않습니다. 다시 입력해주세요.", 
                         Toast.LENGTH_SHORT
                     ).show()
                     
                     // 인증 코드 초기화
                     clearAuthCodeFields()
                     binding.etAuthCode1.requestFocus()
+                    
+                    // 다음 화면으로 넘어가지 않도록 명시적으로 return
+                    return@launch
                 }
             } catch (e: Exception) {
                 // 네트워크 오류 등의 예외 처리
                 Log.e(TAG, "API 호출 중 예외 발생", e)
+                
+                // 인증 실패 상태로 설정
+                isAuthVerified = false
+                
                 Toast.makeText(
                     requireContext(),
                     "네트워크 오류가 발생했습니다: ${e.message}",
                     Toast.LENGTH_SHORT
                 ).show()
+                
+                // 인증 코드 초기화
+                clearAuthCodeFields()
+                binding.etAuthCode1.requestFocus()
             } finally {
                 // 로딩 상태 종료
                 binding.progressBar.visibility = View.GONE
@@ -431,14 +465,24 @@ class SignupProfileFragment : Fragment() {
         // 이름 확인 - 소셜 로그인인 경우 이미 채워지고 비활성화되었을 것이므로 별도 체크 필요 없음
         if (!isSocialLogin && name.isEmpty()) {
             binding.etName.error = "이름을 입력해주세요"
+            binding.etName.requestFocus()
             return false
         }
         
-        if (!isAuthSent || !isAuthVerified) {
+        // 전화번호 인증 상태 확인
+        if (!isAuthSent) {
+            Toast.makeText(requireContext(), "전화번호 인증번호를 먼저 발송해주세요", Toast.LENGTH_SHORT).show()
+            binding.btnSendAuth.requestFocus()
+            return false
+        }
+        
+        if (!isAuthVerified) {
             Toast.makeText(requireContext(), "전화번호 인증을 완료해주세요", Toast.LENGTH_SHORT).show()
+            binding.etAuthCode1.requestFocus()
             return false
         }
         
+        Log.d(TAG, "모든 입력 검증 통과 - 이름: $name, 인증상태: isAuthSent=$isAuthSent, isAuthVerified=$isAuthVerified")
         return true
     }
     
